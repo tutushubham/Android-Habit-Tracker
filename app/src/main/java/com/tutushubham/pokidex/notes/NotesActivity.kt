@@ -1,19 +1,18 @@
-package com.tutushubham.pokidex
+package com.tutushubham.pokidex.notes
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.tutushubham.pokidex.profile.ProfileScreen
 import com.tutushubham.pokidex.ui.theme.PokidexTheme
 
-class MainActivity : ComponentActivity() {
+class NotesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PokidexTheme {
-                ProfileScreen()
+                NotesScreen()
             }
         }
     }
