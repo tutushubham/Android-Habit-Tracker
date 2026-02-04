@@ -1,29 +1,26 @@
-package com.tutushubham.pokidex.feature_today
+package com.tutushubham.pokidex.feature_focus
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
+import com.tutushubham.pokidex.core.domain.model.Domain
+import com.tutushubham.pokidex.core.domain.repository.DomainFocusConfigRepository
 import com.tutushubham.pokidex.core.domain.repository.FocusRepository
-import com.tutushubham.pokidex.core.domain.repository.SessionRepository
 import com.tutushubham.pokidex.core.engine.FocusResolver
-import com.tutushubham.pokidex.core.engine.TodayEngine
 import java.time.Clock
 
-class TodayViewModelFactory(
-    private val engine: TodayEngine,
-    private val sessionRepository: SessionRepository,
+class FocusViewModelFactory(
+    private val domain: Domain,
     private val focusRepository: FocusRepository,
-    private val dailyOverrideRepository: DailyFocusOverrideRepository,
+    private val configRepository: DomainFocusConfigRepository,
     private val focusResolver: FocusResolver,
     private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return TodayViewModel(
-            todayEngine = engine,
-            sessionRepository = sessionRepository,
+        return FocusViewModel(
+            domain = domain,
             focusRepository = focusRepository,
-            dailyFocusOverrideRepository = dailyOverrideRepository,
+            configRepository = configRepository,
             focusResolver = focusResolver,
             clock = clock
         ) as T

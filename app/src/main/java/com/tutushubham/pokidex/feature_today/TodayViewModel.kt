@@ -2,9 +2,15 @@ package com.tutushubham.pokidex.feature_today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tutushubham.pokidex.core.domain.entity.DailyFocusOverride
+import com.tutushubham.pokidex.core.domain.entity.Focus
+import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SessionStatus
 import com.tutushubham.pokidex.core.domain.model.SkipReason
+import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
+import com.tutushubham.pokidex.core.domain.repository.FocusRepository
 import com.tutushubham.pokidex.core.domain.repository.SessionRepository
+import com.tutushubham.pokidex.core.engine.FocusResolver
 import com.tutushubham.pokidex.core.engine.TodayEngine
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,14 +19,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 
 class TodayViewModel(
     private val todayEngine: TodayEngine,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val focusRepository: FocusRepository,
+    private val dailyFocusOverrideRepository: DailyFocusOverrideRepository,
+    private val focusResolver: FocusResolver,
+    private val clock: Clock = java.time.Clock.systemDefaultZone()
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(TodayContract.TodayState(isLoading = true))
+    private val _state = MutableStateFlow(
+        TodayContract.TodayState(isLoading = true, date = LocalDate.now(clock))
+    )
     val state: StateFlow<TodayContract.TodayState> = _state.asStateFlow()
 
     private val _effect = Channel<TodayContract.TodayEffect>(Channel.BUFFERED)
@@ -42,20 +56,42 @@ class TodayViewModel(
 
             is TodayContract.TodayEvent.SessionTick ->
                 updateElapsed(event.elapsedMinutes)
+
+            is TodayContract.TodayEvent.OverrideFocusForToday ->
+                overrideFocus(event.domain, event.focusId)
+
+            is TodayContract.TodayEvent.RequestFocusOverride ->
+                requestFocusOverride(event.domain)
+
+            TodayContract.TodayEvent.CancelFocusOverride ->
+                _state.update {
+                    it.copy(pendingOverrideDomain = null, availableOverrideFocuses = emptyList())
+                }
+
+            is TodayContract.TodayEvent.ClearOverrideForToday ->
+                clearOverrideForToday(event.domain)
         }
     }
 
     private fun loadToday() = viewModelScope.launch {
-        _state.update { it.copy(isLoading = true, error = null) }
+        val today = LocalDate.now(clock)
+        _state.update { it.copy(isLoading = true, error = null, date = today) }
 
         try {
-            val today = _state.value.date
             val plan = todayEngine.generate(today)
+
+            val focusMap = buildMap<Domain, Focus> {
+                for (domain in plan.sessions.map { it.domain }.distinct()) {
+                    focusResolver.resolve(domain, today)?.let { put(domain, it) }
+                }
+            }
 
             _state.update {
                 it.copy(
                     isLoading = false,
-                    sessions = plan.sessions
+                    sessions = plan.sessions,
+                    activeFocusByDomain = focusMap,
+                    date = today
                 )
             }
         } catch (t: Throwable) {
@@ -63,6 +99,39 @@ class TodayViewModel(
                 it.copy(isLoading = false, error = t.message)
             }
         }
+    }
+
+    private fun requestFocusOverride(domain: Domain) =
+        viewModelScope.launch {
+            val focuses = focusRepository.getFocusesByDomain(domain)
+            _state.update {
+                it.copy(
+                    pendingOverrideDomain = domain,
+                    availableOverrideFocuses = focuses
+                )
+            }
+        }
+
+    private fun overrideFocus(domain: Domain, focusId: String) = viewModelScope.launch {
+        val today = _state.value.date
+        dailyFocusOverrideRepository.setOverride(
+            DailyFocusOverride(domain = domain, date = today, focusId = focusId)
+        )
+        _state.update {
+            it.copy(pendingOverrideDomain = null, availableOverrideFocuses = emptyList())
+        }
+        loadToday()
+        _effect.send(TodayContract.TodayEffect.ShowMessage("Focus changed for today"))
+    }
+
+    private fun clearOverrideForToday(domain: Domain) = viewModelScope.launch {
+        val today = _state.value.date
+        dailyFocusOverrideRepository.clearOverride(domain, today)
+        _state.update {
+            it.copy(pendingOverrideDomain = null, availableOverrideFocuses = emptyList())
+        }
+        loadToday()
+        _effect.send(TodayContract.TodayEffect.ShowMessage("Using automatic focus"))
     }
 
     private fun startSession(sessionId: String) = viewModelScope.launch {

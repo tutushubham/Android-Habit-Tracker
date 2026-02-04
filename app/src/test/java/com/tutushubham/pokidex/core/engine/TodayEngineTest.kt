@@ -9,6 +9,7 @@ import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SessionStatus
 import com.tutushubham.pokidex.core.domain.entity.DomainFocusConfig
 import com.tutushubham.pokidex.core.domain.repository.AnchorRepository
+import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
 import com.tutushubham.pokidex.core.domain.repository.DomainFocusConfigRepository
 import com.tutushubham.pokidex.core.domain.repository.FocusRepository
 import com.tutushubham.pokidex.core.domain.repository.IntentRepository
@@ -35,7 +36,11 @@ class TodayEngineTest {
         val anchorRepo = FakeAnchorRepository(listOf(anchor1, anchor2))
         val intentRepo = FakeIntentRepository(listOf(intent1, intent2))
         val sessionRepo = FakeSessionRepository(mutableListOf())
-        val focusResolver = FocusResolver(FakeFocusRepository(emptyList()), FakeDomainFocusConfigRepository(null))
+        val focusResolver = FocusResolver(
+            FakeFocusRepository(emptyList()),
+            FakeDomainFocusConfigRepository(null),
+            FakeDailyFocusOverrideRepository()
+        )
 
         val engine = TodayEngine(intentRepo, sessionRepo, anchorRepo, focusResolver)
 
@@ -66,7 +71,11 @@ class TodayEngineTest {
         val anchorRepo = FakeAnchorRepository(listOf(anchor1, anchor2))
         val intentRepo = FakeIntentRepository(listOf(intent1, intent2))
         val sessionRepo = FakeSessionRepository(mutableListOf(existingSession))
-        val focusResolver = FocusResolver(FakeFocusRepository(emptyList()), FakeDomainFocusConfigRepository(null))
+        val focusResolver = FocusResolver(
+            FakeFocusRepository(emptyList()),
+            FakeDomainFocusConfigRepository(null),
+            FakeDailyFocusOverrideRepository()
+        )
 
         val engine = TodayEngine(intentRepo, sessionRepo, anchorRepo, focusResolver)
 
@@ -90,7 +99,11 @@ class TodayEngineTest {
         val anchorRepo = FakeAnchorRepository(listOf(anchor))
         val intentRepo = FakeIntentRepository(listOf(intent1, intent2))
         val sessionRepo = FakeSessionRepository(mutableListOf())
-        val focusResolver = FocusResolver(FakeFocusRepository(emptyList()), FakeDomainFocusConfigRepository(null))
+        val focusResolver = FocusResolver(
+            FakeFocusRepository(emptyList()),
+            FakeDomainFocusConfigRepository(null),
+            FakeDailyFocusOverrideRepository()
+        )
 
         val engine = TodayEngine(intentRepo, sessionRepo, anchorRepo, focusResolver)
 
@@ -109,7 +122,11 @@ class TodayEngineTest {
         val anchorRepo = FakeAnchorRepository(emptyList())
         val intentRepo = FakeIntentRepository(emptyList())
         val sessionRepo = FakeSessionRepository(mutableListOf())
-        val focusResolver = FocusResolver(FakeFocusRepository(emptyList()), FakeDomainFocusConfigRepository(null))
+        val focusResolver = FocusResolver(
+            FakeFocusRepository(emptyList()),
+            FakeDomainFocusConfigRepository(null),
+            FakeDailyFocusOverrideRepository()
+        )
 
         val engine = TodayEngine(intentRepo, sessionRepo, anchorRepo, focusResolver)
 
@@ -130,7 +147,11 @@ class TodayEngineTest {
         val anchorRepo = FakeAnchorRepository(listOf(anchor))
         val intentRepo = FakeIntentRepository(listOf(intent))
         val sessionRepo = FakeSessionRepository(mutableListOf())
-        val focusResolver = FocusResolver(FakeFocusRepository(emptyList()), FakeDomainFocusConfigRepository(null))
+        val focusResolver = FocusResolver(
+            FakeFocusRepository(emptyList()),
+            FakeDomainFocusConfigRepository(null),
+            FakeDailyFocusOverrideRepository()
+        )
 
         val engine = TodayEngine(intentRepo, sessionRepo, anchorRepo, focusResolver)
 
@@ -151,7 +172,11 @@ class TodayEngineTest {
         val anchorRepo = FakeAnchorRepository(listOf(anchor))
         val intentRepo = FakeIntentRepository(listOf(intent))
         val sessionRepo = FakeSessionRepository(mutableListOf())
-        val focusResolver = FocusResolver(FakeFocusRepository(emptyList()), FakeDomainFocusConfigRepository(null))
+        val focusResolver = FocusResolver(
+            FakeFocusRepository(emptyList()),
+            FakeDomainFocusConfigRepository(null),
+            FakeDailyFocusOverrideRepository()
+        )
 
         val engine = TodayEngine(intentRepo, sessionRepo, anchorRepo, focusResolver)
 
@@ -313,6 +338,7 @@ class FakeFocusRepository(
         focuses.firstOrNull { it.id == id }
     override suspend fun getFocusesByDomain(domain: Domain): List<com.tutushubham.pokidex.core.domain.entity.Focus> =
         focuses.filter { it.domain == domain }
+    override suspend fun getAllFocuses(): List<com.tutushubham.pokidex.core.domain.entity.Focus> = focuses
     override suspend fun insertFocus(focus: com.tutushubham.pokidex.core.domain.entity.Focus) {}
     override suspend fun updateFocus(focus: com.tutushubham.pokidex.core.domain.entity.Focus) {}
     override suspend fun deleteFocus(id: String) {}
@@ -326,13 +352,20 @@ class FakeDomainFocusConfigRepository(
     override suspend fun upsertConfig(config: com.tutushubham.pokidex.core.domain.entity.DomainFocusConfig) {}
 }
 
+class FakeDailyFocusOverrideRepository : DailyFocusOverrideRepository {
+    override suspend fun getOverride(domain: Domain, date: LocalDate) = null
+    override suspend fun setOverride(override: com.tutushubham.pokidex.core.domain.entity.DailyFocusOverride) {}
+    override suspend fun clearOverride(domain: Domain, date: LocalDate) {}
+}
+
 // Fake FocusResolver for testing - returns a fixed focus or null
 // This bypasses the real FocusResolver logic for unit testing TodayEngine's focus integration
 class FakeFocusResolver(
     private val focus: com.tutushubham.pokidex.core.domain.entity.Focus?
 ) : FocusResolver(
     FakeFocusRepository(emptyList()),
-    FakeDomainFocusConfigRepository(null)
+    FakeDomainFocusConfigRepository(null),
+    FakeDailyFocusOverrideRepository()
 ) {
     override suspend fun resolve(domain: Domain, date: LocalDate): com.tutushubham.pokidex.core.domain.entity.Focus? {
         return if (focus?.domain == domain) focus else null

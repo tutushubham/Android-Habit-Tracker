@@ -1,6 +1,8 @@
 package com.tutushubham.pokidex.feature_today
 
+import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.entity.Session
+import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SkipReason
 import java.time.LocalDate
 
@@ -36,6 +38,15 @@ object TodayContract {
 
         /** System / time driven events */
         data class SessionTick(val elapsedMinutes: Int) : TodayEvent
+
+        /** Focus override for today */
+        data class OverrideFocusForToday(
+            val domain: Domain,
+            val focusId: String
+        ) : TodayEvent
+        data class RequestFocusOverride(val domain: Domain) : TodayEvent
+        data object CancelFocusOverride : TodayEvent
+        data class ClearOverrideForToday(val domain: Domain) : TodayEvent
     }
 
     /**
@@ -54,8 +65,15 @@ object TodayContract {
         /** Derived UI state */
         val elapsedMinutes: Int = 0,
 
+        /** Resolved focus per domain for today (derived, not persisted) */
+        val activeFocusByDomain: Map<Domain, Focus> = emptyMap(),
+
         /** Error handling */
-        val error: String? = null
+        val error: String? = null,
+
+        /** Pending focus override (domain + available focuses for selection) */
+        val pendingOverrideDomain: Domain? = null,
+        val availableOverrideFocuses: List<Focus> = emptyList()
     ) {
         /**
          * Computed property: Get the active session if any

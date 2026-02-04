@@ -171,6 +171,8 @@ class FakeFocusDao(
         return focuses.filter { it.domain == domain }
     }
 
+    override suspend fun getAllFocuses(): List<FocusEntity> = focuses
+
     override suspend fun insert(focus: FocusEntity) {
         insertedFocuses.add(focus)
         focuses.add(focus)

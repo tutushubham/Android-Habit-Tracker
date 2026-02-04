@@ -1,11 +1,13 @@
 package com.tutushubham.pokidex.core.engine
 
 import android.util.Log
+import com.tutushubham.pokidex.core.domain.entity.DomainFocusConfig
 import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.FocusStrategy
 import com.tutushubham.pokidex.core.domain.repository.DomainFocusConfigRepository
 import com.tutushubham.pokidex.core.domain.repository.FocusRepository
+import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -13,9 +15,15 @@ private const val TAG = "FocusResolver"
 
 open class FocusResolver(
     private val focusRepository: FocusRepository,
-    private val configRepository: DomainFocusConfigRepository
+    private val configRepository: DomainFocusConfigRepository,
+    private val overrideRepository: DailyFocusOverrideRepository
 ) {
     open suspend fun resolve(domain: Domain, date: LocalDate): Focus? {
+        overrideRepository.getOverride(domain, date)?.let { override ->
+            focusRepository.getFocusById(override.focusId)?.let { return it }
+            // Override exists but focus was deleted — fall through to normal strategy
+        }
+
         val focuses = focusRepository.getFocusesByDomain(domain)
         if (focuses.isEmpty()) return null
 
@@ -34,6 +42,24 @@ open class FocusResolver(
 
             is FocusStrategy.DeadlineDriven ->
                 resolveDeadline(focuses, date)
+        }
+    }
+
+    /**
+     * Resolves focus for a given config and focuses list without reading from repositories.
+     * Used for preview generation in the Focus flow.
+     */
+    open fun resolveWithConfig(
+        config: DomainFocusConfig,
+        focuses: List<Focus>,
+        date: LocalDate
+    ): Focus? {
+        if (focuses.isEmpty()) return null
+        return when (config.strategy) {
+            is FocusStrategy.Manual -> resolveManual(config, focuses)
+            is FocusStrategy.Rotation -> resolveRotation(config, focuses, date)
+            is FocusStrategy.Weighted -> resolveWeighted(config, focuses, date)
+            is FocusStrategy.DeadlineDriven -> resolveDeadline(focuses, date)
         }
     }
 

@@ -19,6 +19,10 @@ class FocusRepositoryImpl(
         return dao.getFocusesByDomain(domain).map { it.toDomain() }
     }
 
+    override suspend fun getAllFocuses(): List<Focus> {
+        return dao.getAllFocuses().map { it.toDomain() }
+    }
+
     override suspend fun insertFocus(focus: Focus) {
         dao.insert(focus.toEntity())
     }

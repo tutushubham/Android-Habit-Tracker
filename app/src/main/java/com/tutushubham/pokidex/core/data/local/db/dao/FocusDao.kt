@@ -16,6 +16,9 @@ interface FocusDao {
     @Query("SELECT * FROM focuses WHERE domain = :domain")
     suspend fun getFocusesByDomain(domain: Domain): List<FocusEntity>
 
+    @Query("SELECT * FROM focuses")
+    suspend fun getAllFocuses(): List<FocusEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(focus: FocusEntity)
 

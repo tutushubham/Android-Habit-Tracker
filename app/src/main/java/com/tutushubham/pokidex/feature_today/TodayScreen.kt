@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,9 +20,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,23 +38,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.entity.Session
 import com.tutushubham.pokidex.core.domain.model.DayBlock
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SessionStatus
 import com.tutushubham.pokidex.core.domain.model.SkipReason
 import com.tutushubham.pokidex.core.service.SessionTimerHelper
+import com.tutushubham.pokidex.ui.theme.PokidexTheme
 import java.time.Instant
 import java.time.LocalDate
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(
     viewModel: TodayViewModel,
-    onNavigateToSession: (String) -> Unit
+    onNavigateToSession: (String) -> Unit,
+    onOpenFocusSettings: ((Domain) -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.onEvent(TodayContract.TodayEvent.ScreenOpened)
+    }
 
     // Handle one-off effects
     LaunchedEffect(Unit) {
@@ -77,10 +92,55 @@ fun TodayScreen(
         }
     }
 
-    TodayContent(
-        state = state,
-        onEvent = viewModel::onEvent
-    )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+    ) {
+        onOpenFocusSettings?.let { openFocus ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = { openFocus(Domain.STUDIES) }) {
+                    Text("Focus (STUDIES)")
+                }
+            }
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            TodayContent(
+                state = state,
+                onEvent = viewModel::onEvent
+            )
+        }
+
+        if (state.pendingOverrideDomain != null) {
+            val domain = state.pendingOverrideDomain!!
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.onEvent(TodayContract.TodayEvent.CancelFocusOverride) },
+                sheetState = sheetState
+            ) {
+                FocusOverrideSheet(
+                    focuses = state.availableOverrideFocuses,
+                    onSelect = { focus ->
+                        viewModel.onEvent(
+                            TodayContract.TodayEvent.OverrideFocusForToday(
+                                domain = domain,
+                                focusId = focus.id
+                            )
+                        )
+                    },
+                    onDismiss = { viewModel.onEvent(TodayContract.TodayEvent.CancelFocusOverride) },
+                    onClearOverride = {
+                        viewModel.onEvent(TodayContract.TodayEvent.ClearOverrideForToday(domain))
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -102,10 +162,50 @@ fun TodayContent(
         }
 
         else -> {
-            SessionsList(
-                state = state,
-                onEvent = onEvent
-            )
+            Column(Modifier.fillMaxSize()) {
+                TodayFocusHeader(
+                    focusMap = state.activeFocusByDomain,
+                    onChangeFocus = { domain ->
+                        onEvent(TodayContract.TodayEvent.RequestFocusOverride(domain))
+                    }
+                )
+                Box(Modifier.weight(1f)) {
+                    SessionsList(
+                        state = state,
+                        onEvent = onEvent
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TodayFocusHeader(
+    focusMap: Map<Domain, Focus>,
+    onChangeFocus: (Domain) -> Unit
+) {
+    if (focusMap.isEmpty()) return
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Today's focus",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(8.dp))
+        focusMap.forEach { (domain, focus) ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("${domain.name}: ${focus.name}")
+                TextButton(onClick = { onChangeFocus(domain) }) {
+                    Text("Change")
+                }
+            }
         }
     }
 }
@@ -146,7 +246,10 @@ fun SessionsList(
                             state.elapsedMinutes
                         )
                     )
-                }
+                },
+                    onChangeFocusForToday = {
+                        onEvent(TodayContract.TodayEvent.RequestFocusOverride(session.domain))
+                    }
             )
         }
     }
@@ -159,7 +262,8 @@ fun SessionCard(
     elapsedMinutes: Int,
     onStart: () -> Unit,
     onSkip: (SkipReason) -> Unit,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onChangeFocusForToday: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -167,10 +271,19 @@ fun SessionCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            Text(
-                text = session.domain.name,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = session.domain.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                TextButton(onClick = onChangeFocusForToday) {
+                    Text("Change today")
+                }
+            }
 
             Text(
                 text = "${session.plannedMinutes} min planned",
@@ -216,6 +329,56 @@ fun SessionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun FocusOverrideSheet(
+    focuses: List<Focus>,
+    onSelect: (Focus) -> Unit,
+    onDismiss: () -> Unit,
+    onClearOverride: () -> Unit
+) {
+    Column(Modifier.padding(16.dp)) {
+        Text(
+            text = "Switch focus just for today",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(16.dp))
+        focuses.forEach { focus ->
+            ListItem(
+                headlineContent = { Text(focus.name) },
+                modifier = Modifier.clickable {
+                    onSelect(focus)
+                    onDismiss()
+                }
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        TextButton(onClick = {
+            onClearOverride()
+            onDismiss()
+        }) {
+            Text("Use automatic focus")
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FocusOverrideSheetPreview() {
+    PokidexTheme {
+        val sampleFocuses = listOf(
+            Focus("f1", Domain.STUDIES, "DSA", 1, null),
+            Focus("f2", Domain.STUDIES, "Android", 1, null),
+            Focus("f3", Domain.STUDIES, "Guitar", 1, LocalDate.of(2030, 2, 1))
+        )
+        FocusOverrideSheet(
+            focuses = sampleFocuses,
+            onSelect = { },
+            onDismiss = { },
+            onClearOverride = { }
+        )
     }
 }
 

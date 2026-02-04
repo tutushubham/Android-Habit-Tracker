@@ -5,7 +5,12 @@ import com.tutushubham.pokidex.core.domain.model.DayBlock
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SessionStatus
 import com.tutushubham.pokidex.core.domain.model.SkipReason
+import com.tutushubham.pokidex.core.domain.entity.DomainFocusConfig
+import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
+import com.tutushubham.pokidex.core.domain.repository.DomainFocusConfigRepository
+import com.tutushubham.pokidex.core.domain.repository.FocusRepository
 import com.tutushubham.pokidex.core.domain.repository.SessionRepository
+import com.tutushubham.pokidex.core.engine.FocusResolver
 import com.tutushubham.pokidex.core.engine.TodayEngine
 import com.tutushubham.pokidex.core.engine.TodayPlan
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +53,13 @@ class TodayViewModelTest {
         )
         val repo = FakeSessionRepository()
 
-        val vm = TodayViewModel(engine, repo)
+        val vm = TodayViewModel(
+            engine,
+            repo,
+            fakeFocusRepository(),
+            fakeDailyFocusOverrideRepository(),
+            fakeFocusResolver()
+        )
 
         vm.onEvent(TodayContract.TodayEvent.ScreenOpened)
         advanceUntilIdle()
@@ -66,7 +77,13 @@ class TodayViewModelTest {
         val engine = FakeTodayEngine(TodayPlan(listOf(session)))
         val repo = FakeSessionRepository()
 
-        val vm = TodayViewModel(engine, repo)
+        val vm = TodayViewModel(
+            engine,
+            repo,
+            fakeFocusRepository(),
+            fakeDailyFocusOverrideRepository(),
+            fakeFocusResolver()
+        )
 
         vm.onEvent(TodayContract.TodayEvent.ScreenOpened)
         advanceUntilIdle()
@@ -90,7 +107,13 @@ class TodayViewModelTest {
         val engine = FakeTodayEngine(TodayPlan(listOf(session)))
         val repo = FakeSessionRepository(listOf(session))
 
-        val vm = TodayViewModel(engine, repo)
+        val vm = TodayViewModel(
+            engine,
+            repo,
+            fakeFocusRepository(),
+            fakeDailyFocusOverrideRepository(),
+            fakeFocusResolver()
+        )
 
         vm.onEvent(TodayContract.TodayEvent.ScreenOpened)
         advanceUntilIdle()
@@ -119,7 +142,13 @@ class TodayViewModelTest {
         val engine = FakeTodayEngine(TodayPlan(listOf(session)))
         val repo = FakeSessionRepository(listOf(session))
 
-        val vm = TodayViewModel(engine, repo)
+        val vm = TodayViewModel(
+            engine,
+            repo,
+            fakeFocusRepository(),
+            fakeDailyFocusOverrideRepository(),
+            fakeFocusResolver()
+        )
 
         vm.onEvent(TodayContract.TodayEvent.ScreenOpened)
         advanceUntilIdle()
@@ -174,6 +203,7 @@ class FakeTodayEngine(
         object : com.tutushubham.pokidex.core.domain.repository.FocusRepository {
             override suspend fun getFocusById(id: String) = null
             override suspend fun getFocusesByDomain(domain: Domain) = emptyList<com.tutushubham.pokidex.core.domain.entity.Focus>()
+            override suspend fun getAllFocuses() = emptyList<com.tutushubham.pokidex.core.domain.entity.Focus>()
             override suspend fun insertFocus(focus: com.tutushubham.pokidex.core.domain.entity.Focus) {}
             override suspend fun updateFocus(focus: com.tutushubham.pokidex.core.domain.entity.Focus) {}
             override suspend fun deleteFocus(id: String) {}
@@ -181,6 +211,11 @@ class FakeTodayEngine(
         object : com.tutushubham.pokidex.core.domain.repository.DomainFocusConfigRepository {
             override suspend fun getConfig(domain: Domain) = null
             override suspend fun upsertConfig(config: com.tutushubham.pokidex.core.domain.entity.DomainFocusConfig) {}
+        },
+        object : com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository {
+            override suspend fun getOverride(domain: Domain, date: LocalDate) = null
+            override suspend fun setOverride(override: com.tutushubham.pokidex.core.domain.entity.DailyFocusOverride) {}
+            override suspend fun clearOverride(domain: Domain, date: LocalDate) {}
         }
     )
 ) {
@@ -211,6 +246,30 @@ class FakeSessionRepository(
         if (index >= 0) sessions[index] = session
     }
 }
+
+private fun fakeFocusRepository(): FocusRepository = object : FocusRepository {
+    override suspend fun getFocusById(id: String) = null
+    override suspend fun getFocusesByDomain(domain: Domain): List<com.tutushubham.pokidex.core.domain.entity.Focus> = emptyList()
+    override suspend fun getAllFocuses() = emptyList<com.tutushubham.pokidex.core.domain.entity.Focus>()
+    override suspend fun insertFocus(focus: com.tutushubham.pokidex.core.domain.entity.Focus) {}
+    override suspend fun updateFocus(focus: com.tutushubham.pokidex.core.domain.entity.Focus) {}
+    override suspend fun deleteFocus(id: String) {}
+}
+
+private fun fakeDailyFocusOverrideRepository(): DailyFocusOverrideRepository = object : DailyFocusOverrideRepository {
+    override suspend fun getOverride(domain: Domain, date: LocalDate) = null
+    override suspend fun setOverride(override: com.tutushubham.pokidex.core.domain.entity.DailyFocusOverride) {}
+    override suspend fun clearOverride(domain: Domain, date: LocalDate) {}
+}
+
+private fun fakeFocusResolver(): FocusResolver = FocusResolver(
+    fakeFocusRepository(),
+    object : DomainFocusConfigRepository {
+        override suspend fun getConfig(domain: Domain) = null
+        override suspend fun upsertConfig(config: DomainFocusConfig) {}
+    },
+    fakeDailyFocusOverrideRepository()
+)
 
 private fun sampleSession(
     id: String = "s1",
