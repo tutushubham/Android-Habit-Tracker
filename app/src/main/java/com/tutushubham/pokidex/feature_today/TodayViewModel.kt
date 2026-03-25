@@ -7,11 +7,12 @@ import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SessionStatus
 import com.tutushubham.pokidex.core.domain.model.SkipReason
+import com.tutushubham.pokidex.core.domain.repository.AppStateRepository
 import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
 import com.tutushubham.pokidex.core.domain.repository.FocusRepository
 import com.tutushubham.pokidex.core.domain.repository.SessionRepository
+import com.tutushubham.pokidex.core.domain.usecase.TodayPlannerUseCase
 import com.tutushubham.pokidex.core.engine.FocusResolver
-import com.tutushubham.pokidex.core.engine.TodayEngine
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +25,9 @@ import java.time.Instant
 import java.time.LocalDate
 
 class TodayViewModel(
-    private val todayEngine: TodayEngine,
+    private val todayPlannerUseCase: TodayPlannerUseCase,
     private val sessionRepository: SessionRepository,
+    private val appStateRepository: AppStateRepository,
     private val focusRepository: FocusRepository,
     private val dailyFocusOverrideRepository: DailyFocusOverrideRepository,
     private val focusResolver: FocusResolver,
@@ -74,11 +76,68 @@ class TodayViewModel(
     }
 
     private fun loadToday() = viewModelScope.launch {
+        _state.update { it.copy(isLoading = true, error = null) }
+
         val today = LocalDate.now(clock)
-        _state.update { it.copy(isLoading = true, error = null, date = today) }
+        _state.update { it.copy(date = today) }
 
         try {
-            val plan = todayEngine.generate(today)
+            val onboardingDone = appStateRepository.isOnboardingCompleted()
+
+            if (!onboardingDone) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        overloadedIntentIds = emptyList(),
+                        maxOverloadSeverity = null,
+                        progressList = emptyList(),
+                        emptyState = TodayContract.TodayEmptyState.OnboardingRequired
+                    )
+                }
+                return@launch
+            }
+
+            val plan = todayPlannerUseCase.planToday(today)
+
+            if (!plan.hasAnchors) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        overloadedIntentIds = emptyList(),
+                        maxOverloadSeverity = null,
+                        progressList = emptyList(),
+                        emptyState = TodayContract.TodayEmptyState.NoStructure
+                    )
+                }
+                return@launch
+            }
+
+            if (!plan.hasIntents) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        overloadedIntentIds = emptyList(),
+                        maxOverloadSeverity = null,
+                        progressList = emptyList(),
+                        emptyState = TodayContract.TodayEmptyState.NoIntent
+                    )
+                }
+                return@launch
+            }
+
+            if (plan.sessions.isEmpty()) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        sessions = emptyList(),
+                        overloadedIntentIds = emptyList(),
+                        maxOverloadSeverity = null,
+                        progressList = plan.progressList,
+                        emptyState = TodayContract.TodayEmptyState.NoSessionsToday
+                    )
+                }
+                return@launch
+            }
 
             val focusMap = buildMap<Domain, Focus> {
                 for (domain in plan.sessions.map { it.domain }.distinct()) {
@@ -91,7 +150,12 @@ class TodayViewModel(
                     isLoading = false,
                     sessions = plan.sessions,
                     activeFocusByDomain = focusMap,
-                    date = today
+                    hasAnchors = plan.hasAnchors,
+                    hasIntents = plan.hasIntents,
+                    overloadedIntentIds = plan.overloadedIntentIds,
+                    maxOverloadSeverity = plan.overloadDetails.maxOfOrNull { it.severity },
+                    progressList = plan.progressList,
+                    emptyState = TodayContract.TodayEmptyState.None
                 )
             }
         } catch (t: Throwable) {

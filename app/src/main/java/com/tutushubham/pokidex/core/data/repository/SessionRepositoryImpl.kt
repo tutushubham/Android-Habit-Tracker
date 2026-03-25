@@ -15,6 +15,26 @@ class SessionRepositoryImpl(
         return dao.getSessionsForDate(date).map { it.toDomain() }
     }
 
+    override suspend fun getCompletedUnitsForIntent(intentId: String): Int {
+        return dao.getCompletedUnitsForIntent(intentId)
+    }
+
+    override suspend fun getDistinctDaysWorkedForIntent(intentId: String): Int {
+        return dao.getDistinctDaysWorkedForIntent(intentId)
+    }
+
+    override suspend fun getTotalActualMinutesForIntent(intentId: String): Int {
+        return dao.getTotalActualMinutesForIntent(intentId)
+    }
+
+    override suspend fun getSkippedSessionCountForIntent(intentId: String): Int {
+        return dao.getSkippedSessionCountForIntent(intentId)
+    }
+
+    override suspend fun getRecentSessions(cutoffDate: LocalDate): List<Session> {
+        return dao.getSessionsSince(cutoffDate).map { it.toDomain() }
+    }
+
     override suspend fun insertSession(session: Session) {
         dao.insert(session.toEntity())
     }

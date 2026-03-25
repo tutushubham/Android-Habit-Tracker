@@ -11,7 +11,9 @@ fun IntentEntity.toDomain(): GoalIntent {
         targetCount = targetCount,
         startDate = startDate,
         endDate = endDate,
-        priority = priority
+        priority = priority,
+        estimatedMinutesPerUnit = estimatedMinutesPerUnit,
+        focusId = focusId
     )
 }
 
@@ -23,6 +25,8 @@ fun GoalIntent.toEntity(): IntentEntity {
         targetCount = targetCount,
         startDate = startDate,
         endDate = endDate,
-        priority = priority
+        priority = priority,
+        estimatedMinutesPerUnit = estimatedMinutesPerUnit,
+        focusId = focusId
     )
 }

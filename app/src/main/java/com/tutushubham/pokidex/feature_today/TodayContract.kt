@@ -4,6 +4,7 @@ import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.entity.Session
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SkipReason
+import com.tutushubham.pokidex.core.engine.IntentProgress
 import java.time.LocalDate
 
 /**
@@ -15,6 +16,14 @@ import java.time.LocalDate
  * - TodayEffect: Side effects (navigation, system interactions, UI feedback)
  */
 object TodayContract {
+
+    sealed interface TodayEmptyState {
+        data object None : TodayEmptyState
+        data object OnboardingRequired : TodayEmptyState
+        data object NoStructure : TodayEmptyState
+        data object NoIntent : TodayEmptyState
+        data object NoSessionsToday : TodayEmptyState
+    }
 
     /**
      * Sealed interface representing all possible events in the Today feature
@@ -73,7 +82,23 @@ object TodayContract {
 
         /** Pending focus override (domain + available focuses for selection) */
         val pendingOverrideDomain: Domain? = null,
-        val availableOverrideFocuses: List<Focus> = emptyList()
+        val availableOverrideFocuses: List<Focus> = emptyList(),
+
+        /** Derived: whether setup has anchors / intents (from last plan load) */
+        val hasAnchors: Boolean = false,
+        val hasIntents: Boolean = false,
+
+        /** Intent IDs whose required units today exceed daily capacity (under-allocated). */
+        val overloadedIntentIds: List<String> = emptyList(),
+
+        /** Max overload severity (needed / capacity) across overloaded intents; null if none. */
+        val maxOverloadSeverity: Double? = null,
+
+        /** Per-goal progress with execution-based pace, sorted by criticality. */
+        val progressList: List<IntentProgress> = emptyList(),
+
+        /** Derived empty state for empty-state UI */
+        val emptyState: TodayEmptyState = TodayEmptyState.None
     ) {
         /**
          * Computed property: Get the active session if any
@@ -82,6 +107,10 @@ object TodayContract {
             get() = activeSessionId?.let { id ->
                 sessions.firstOrNull { it.id == id }
             }
+
+        /** Derived: whether there are any sessions for today */
+        val hasSessions: Boolean
+            get() = sessions.isNotEmpty()
 
     }
 

@@ -16,15 +16,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -44,6 +47,7 @@ import com.tutushubham.pokidex.core.domain.model.DayBlock
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.SessionStatus
 import com.tutushubham.pokidex.core.domain.model.SkipReason
+import com.tutushubham.pokidex.core.engine.IntentProgress
 import com.tutushubham.pokidex.core.service.SessionTimerHelper
 import com.tutushubham.pokidex.ui.theme.PokidexTheme
 import java.time.Instant
@@ -54,7 +58,10 @@ import java.time.LocalDate
 fun TodayScreen(
     viewModel: TodayViewModel,
     onNavigateToSession: (String) -> Unit,
-    onOpenFocusSettings: ((Domain) -> Unit)? = null
+    onOpenFocusSettings: ((Domain) -> Unit)? = null,
+    onNavigateToOnboarding: () -> Unit = {},
+    onNavigateToStructureSettings: () -> Unit = {},
+    onNavigateToAddGoal: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -109,11 +116,81 @@ fun TodayScreen(
                 }
             }
         }
+        if (!state.isLoading && state.overloadedIntentIds.isNotEmpty()) {
+            val severity = state.maxOverloadSeverity ?: 1.0
+            val (message, containerColor, contentColor) = when {
+                severity >= 3.0 -> Triple(
+                    "Critical: your capacity is far below what's needed to meet deadlines.",
+                    MaterialTheme.colorScheme.errorContainer,
+                    MaterialTheme.colorScheme.onErrorContainer
+                )
+                severity >= 1.5 -> Triple(
+                    "Your current capacity cannot meet some deadlines.",
+                    MaterialTheme.colorScheme.errorContainer,
+                    MaterialTheme.colorScheme.onErrorContainer
+                )
+                else -> Triple(
+                    "Your current capacity may not meet some deadlines.",
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = containerColor,
+                tonalElevation = 1.dp
+            ) {
+                Text(
+                    text = message,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor
+                )
+            }
+        }
         Box(modifier = Modifier.weight(1f)) {
-            TodayContent(
-                state = state,
-                onEvent = viewModel::onEvent
-            )
+            when {
+                state.isLoading -> LoadingView()
+                else -> when (state.emptyState) {
+                    TodayContract.TodayEmptyState.OnboardingRequired ->
+                        EmptyCard(
+                            title = "Let's set up your system",
+                            message = "Complete onboarding to start planning.",
+                            buttonText = "Start setup",
+                            onClick = onNavigateToOnboarding
+                        )
+
+                    TodayContract.TodayEmptyState.NoStructure ->
+                        EmptyCard(
+                            title = "Design your day",
+                            message = "You haven't defined your daily structure yet.",
+                            buttonText = "Configure structure",
+                            onClick = onNavigateToStructureSettings
+                        )
+
+                    TodayContract.TodayEmptyState.NoIntent ->
+                        EmptyCard(
+                            title = "What are you working toward?",
+                            message = "Add at least one goal to generate sessions.",
+                            buttonText = "Add goal",
+                            onClick = onNavigateToAddGoal
+                        )
+
+                    TodayContract.TodayEmptyState.NoSessionsToday ->
+                        EmptyCard(
+                            title = "Your day is clear",
+                            message = "No sessions scheduled today. Take a rest or adjust your setup.",
+                            buttonText = "Refresh",
+                            onClick = { viewModel.onEvent(TodayContract.TodayEvent.Refresh) }
+                        )
+
+                    TodayContract.TodayEmptyState.None ->
+                        TodayContent(
+                            state = state,
+                            onEvent = viewModel::onEvent
+                        )
+                }
+            }
         }
 
         if (state.pendingOverrideDomain != null) {
@@ -148,33 +225,130 @@ fun TodayContent(
     state: TodayContract.TodayState,
     onEvent: (TodayContract.TodayEvent) -> Unit
 ) {
-    when {
-        state.isLoading -> {
-            LoadingView()
+    Column(Modifier.fillMaxSize()) {
+        TodayFocusHeader(
+            focusMap = state.activeFocusByDomain,
+            onChangeFocus = { domain ->
+                onEvent(TodayContract.TodayEvent.RequestFocusOverride(domain))
+            }
+        )
+        if (state.progressList.isNotEmpty()) {
+            ProgressSection(progressList = state.progressList)
         }
-
-        state.sessions.isEmpty() -> {
-            EmptyStateView(
-                onRefresh = {
-                    onEvent(TodayContract.TodayEvent.Refresh)
-                }
+        Box(Modifier.weight(1f)) {
+            SessionsList(
+                state = state,
+                onEvent = onEvent
             )
         }
+    }
+}
 
-        else -> {
-            Column(Modifier.fillMaxSize()) {
-                TodayFocusHeader(
-                    focusMap = state.activeFocusByDomain,
-                    onChangeFocus = { domain ->
-                        onEvent(TodayContract.TodayEvent.RequestFocusOverride(domain))
-                    }
+@Composable
+fun ProgressSection(progressList: List<IntentProgress>) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text("Goal progress", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        progressList.forEach { progress ->
+            ProgressCard(progress)
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun ProgressCard(progress: IntentProgress) {
+    val statusColor = when {
+        progress.isCritical -> MaterialTheme.colorScheme.error
+        progress.isBehind -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = progress.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
                 )
-                Box(Modifier.weight(1f)) {
-                    SessionsList(
-                        state = state,
-                        onEvent = onEvent
+                val statusText = when {
+                    progress.isCritical -> {
+                        val sev = progress.overloadSeverity
+                        if (sev != null) "Critical (%.1fx overload)".format(sev) else "Critical"
+                    }
+                    progress.isBehind -> "Behind by %.1f/day".format(progress.deficit)
+                    else -> "On track"
+                }
+                val chipColor = when {
+                    progress.isCritical -> MaterialTheme.colorScheme.errorContainer
+                    progress.isBehind -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    else -> MaterialTheme.colorScheme.primaryContainer
+                }
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = chipColor
+                ) {
+                    Text(
+                        text = statusText,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            progress.isCritical || progress.isBehind -> MaterialTheme.colorScheme.onErrorContainer
+                            else -> MaterialTheme.colorScheme.onPrimaryContainer
+                        }
                     )
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = { progress.progressFraction },
+                modifier = Modifier.fillMaxWidth(),
+                color = statusColor,
+                trackColor = statusColor.copy(alpha = 0.2f),
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "${progress.completedUnits} / ${progress.targetCount} done",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "${progress.daysRemaining} days left",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            if (progress.isBehind || progress.isCritical) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Need: %.1f/day  |  Doing: %.1f/day  |  Deficit: %.1f/day".format(
+                        progress.requiredUnitsPerDay,
+                        progress.currentPace,
+                        progress.deficit
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
@@ -393,6 +567,40 @@ fun LoadingView() {
 }
 
 @Composable
+fun EmptyCard(
+    title: String,
+    message: String,
+    buttonText: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = 3.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(8.dp))
+                Text(message, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onClick) {
+                    Text(buttonText)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun EmptyStateView(
     onRefresh: () -> Unit
 ) {
@@ -401,7 +609,7 @@ fun EmptyStateView(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("No sessions planned for today")
+            Text("Your day is clear. Take a rest or adjust your setup.")
             Spacer(Modifier.height(8.dp))
             Button(onClick = onRefresh) {
                 Text("Refresh")

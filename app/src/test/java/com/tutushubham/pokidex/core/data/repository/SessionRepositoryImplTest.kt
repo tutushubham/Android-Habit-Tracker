@@ -111,6 +111,23 @@ class FakeSessionDao(
         return sessions.filter { it.date == date }
     }
 
+    override suspend fun getCompletedUnitsForIntent(intentId: String): Int =
+        sessions.count { it.intentId == intentId && it.status == SessionStatus.COMPLETED }
+
+    override suspend fun getDistinctDaysWorkedForIntent(intentId: String): Int =
+        sessions.filter { it.intentId == intentId && it.status == SessionStatus.COMPLETED }
+            .map { it.date }.distinct().size
+
+    override suspend fun getTotalActualMinutesForIntent(intentId: String): Int =
+        sessions.filter { it.intentId == intentId && it.status == SessionStatus.COMPLETED }
+            .sumOf { it.actualMinutes ?: 0 }
+
+    override suspend fun getSkippedSessionCountForIntent(intentId: String): Int =
+        sessions.count { it.intentId == intentId && it.status == SessionStatus.SKIPPED }
+
+    override suspend fun getSessionsSince(cutoffDate: LocalDate): List<SessionEntity> =
+        sessions.filter { it.date >= cutoffDate }.sortedWith(compareBy<SessionEntity> { it.intentId }.thenByDescending { it.date })
+
     override suspend fun insert(session: SessionEntity) {
         insertedSessions.add(session)
         sessions.add(session)

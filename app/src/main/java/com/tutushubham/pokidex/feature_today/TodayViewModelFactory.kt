@@ -2,16 +2,18 @@ package com.tutushubham.pokidex.feature_today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.tutushubham.pokidex.core.domain.repository.AppStateRepository
 import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
 import com.tutushubham.pokidex.core.domain.repository.FocusRepository
 import com.tutushubham.pokidex.core.domain.repository.SessionRepository
+import com.tutushubham.pokidex.core.domain.usecase.TodayPlannerUseCase
 import com.tutushubham.pokidex.core.engine.FocusResolver
-import com.tutushubham.pokidex.core.engine.TodayEngine
 import java.time.Clock
 
 class TodayViewModelFactory(
-    private val engine: TodayEngine,
+    private val todayPlannerUseCase: TodayPlannerUseCase,
     private val sessionRepository: SessionRepository,
+    private val appStateRepository: AppStateRepository,
     private val focusRepository: FocusRepository,
     private val dailyOverrideRepository: DailyFocusOverrideRepository,
     private val focusResolver: FocusResolver,
@@ -20,8 +22,9 @@ class TodayViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return TodayViewModel(
-            todayEngine = engine,
+            todayPlannerUseCase = todayPlannerUseCase,
             sessionRepository = sessionRepository,
+            appStateRepository = appStateRepository,
             focusRepository = focusRepository,
             dailyFocusOverrideRepository = dailyOverrideRepository,
             focusResolver = focusResolver,

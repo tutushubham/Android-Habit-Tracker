@@ -5,6 +5,11 @@ import java.time.LocalDate
 
 interface SessionRepository {
     suspend fun getSessionsForDate(date: LocalDate): List<Session>
+    suspend fun getCompletedUnitsForIntent(intentId: String): Int
+    suspend fun getDistinctDaysWorkedForIntent(intentId: String): Int
+    suspend fun getTotalActualMinutesForIntent(intentId: String): Int
+    suspend fun getSkippedSessionCountForIntent(intentId: String): Int
+    suspend fun getRecentSessions(cutoffDate: LocalDate): List<Session>
     suspend fun insertSession(session: Session)
     suspend fun updateSession(session: Session)
 }

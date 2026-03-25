@@ -10,9 +10,11 @@ import java.time.LocalDate
 data class IntentEntity(
     @PrimaryKey val id: String,
     val domain: Domain,
-    val title: String,          // "Publish 12 guitar videos"
-    val targetCount: Int?,      // optional
+    val title: String,
+    val targetCount: Int?,
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val priority: Int           // 1 = highest
+    val priority: Int,
+    val estimatedMinutesPerUnit: Int? = null,
+    val focusId: String? = null
 )
