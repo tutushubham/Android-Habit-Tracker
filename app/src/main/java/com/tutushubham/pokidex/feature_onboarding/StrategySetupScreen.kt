@@ -9,21 +9,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.FocusStrategy
+import com.tutushubham.pokidex.ui.components.AppCard
+import com.tutushubham.pokidex.ui.components.PrimaryButton
+import com.tutushubham.pokidex.ui.components.SecondaryButton
+import com.tutushubham.pokidex.ui.components.SectionHeader
+import com.tutushubham.pokidex.ui.theme.AppShapes
+import com.tutushubham.pokidex.ui.theme.AppSpacing
 
 @Composable
 fun StrategySetupScreen(
@@ -36,22 +38,15 @@ fun StrategySetupScreen(
         modifier = Modifier
             .fillMaxSize()
             .systemBarsPadding()
-            .padding(16.dp)
+            .padding(AppSpacing.lg)
     ) {
-
-        Text(
-            text = "How should your focus rotate?",
-            style = MaterialTheme.typography.headlineMedium
+        SectionHeader(
+            overline = "SESSION CONFIGURATION",
+            title = "How should your focus rotate?",
+            subtitle = "Choose how each domain should behave."
         )
 
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "Choose how each domain should behave.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppSpacing.xxl))
 
         LazyColumn(
             modifier = Modifier.weight(1f)
@@ -73,22 +68,25 @@ fun StrategySetupScreen(
                         }
                     )
 
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(AppSpacing.xxl))
                 }
             }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.md)
         ) {
-            OutlinedButton(onClick = onBack) {
-                Text("Back")
-            }
-
-            Button(onClick = onNext) {
-                Text("Next")
-            }
+            SecondaryButton(
+                text = "Back",
+                onClick = onBack,
+                modifier = Modifier.weight(1f)
+            )
+            PrimaryButton(
+                text = "Next",
+                onClick = onNext,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -101,13 +99,13 @@ fun DomainStrategySection(
     onStrategySelected: (FocusStrategy) -> Unit
 ) {
     Column {
-
         Text(
             text = domain.displayName(),
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.sm))
 
         StrategyOption(
             title = "Manual",
@@ -151,7 +149,7 @@ fun DomainStrategySection(
             }
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(AppSpacing.md))
 
         if (selectedStrategy is FocusStrategy.Rotation) {
             RotationEditor(
@@ -186,22 +184,30 @@ fun StrategyOption(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = if (selected) 4.dp else 0.dp,
-        shape = RoundedCornerShape(12.dp),
+    AppCard(
+        modifier = Modifier.padding(vertical = AppSpacing.xs),
+        shape = AppShapes.medium,
+        containerColor = if (selected)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.surfaceContainerLow,
         onClick = onClick
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(description, style = MaterialTheme.typography.bodySmall)
-        }
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+            else MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(AppSpacing.xs))
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
-
-    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
@@ -211,10 +217,13 @@ fun RotationEditor(
     onOrderChanged: (List<String>) -> Unit
 ) {
     Column {
+        Text(
+            "Rotation order",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
 
-        Text("Rotation order", style = MaterialTheme.typography.labelMedium)
-
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.sm))
 
         focuses.forEach { focus ->
             Text("• $focus")
@@ -240,8 +249,12 @@ fun WeightedEditor(
     onWeightsChanged: (Map<String, Int>) -> Unit
 ) {
     Column {
-        Text("Set importance (1–5)", style = MaterialTheme.typography.labelMedium)
-        Spacer(Modifier.height(8.dp))
+        Text(
+            "Set importance (1–5)",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(AppSpacing.sm))
 
         focuses.forEach { focus ->
             val weight = (weights[focus] ?: 1).coerceIn(1, 5)
@@ -253,14 +266,17 @@ fun WeightedEditor(
                 Text(focus, modifier = Modifier.weight(1f))
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.xs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     WEIGHT_OPTIONS.forEach { value ->
-                        val selected = weight == value
+                        val isSelected = weight == value
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            tonalElevation = if (selected) 4.dp else 0.dp,
+                            shape = AppShapes.large,
+                            color = if (isSelected)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = {
                                 val updated = weights.toMutableMap()
                                 updated[focus] = value
@@ -269,8 +285,12 @@ fun WeightedEditor(
                         ) {
                             Text(
                                 text = "$value",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelLarge
+                                modifier = Modifier.padding(
+                                    horizontal = AppSpacing.md,
+                                    vertical = AppSpacing.sm
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                             )
                         }
                     }

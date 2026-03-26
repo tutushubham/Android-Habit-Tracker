@@ -10,6 +10,10 @@ class CaptureRepositoryImpl(
     private val dao: CaptureDao
 ) : CaptureRepository {
 
+    override suspend fun getAllCaptures(): List<Capture> {
+        return dao.getAllCaptures().map { it.toDomain() }
+    }
+
     override suspend fun getUnresolvedCaptures(): List<Capture> {
         return dao.getUnresolvedCaptures().map { it.toDomain() }
     }
@@ -20,6 +24,10 @@ class CaptureRepositoryImpl(
 
     override suspend fun updateCapture(capture: Capture) {
         dao.update(capture.toEntity())
+    }
+
+    override suspend fun deleteCapture(id: String) {
+        dao.deleteById(id)
     }
 
     override suspend fun getCaptureById(id: String): Capture? {

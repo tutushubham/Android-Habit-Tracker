@@ -11,8 +11,12 @@ import com.tutushubham.pokidex.core.domain.repository.AppStateRepository
 import com.tutushubham.pokidex.core.domain.repository.DailyFocusOverrideRepository
 import com.tutushubham.pokidex.core.domain.repository.FocusRepository
 import com.tutushubham.pokidex.core.domain.repository.SessionRepository
+import com.tutushubham.pokidex.core.domain.usecase.BehaviorProfileUseCase
+import com.tutushubham.pokidex.core.engine.CopyEngine
 import com.tutushubham.pokidex.core.domain.usecase.TodayPlannerUseCase
 import com.tutushubham.pokidex.core.engine.FocusResolver
+import com.tutushubham.pokidex.feature_settings.SettingsRepository
+import com.tutushubham.pokidex.feature_settings.SystemSettings
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,8 +35,37 @@ class TodayViewModel(
     private val focusRepository: FocusRepository,
     private val dailyFocusOverrideRepository: DailyFocusOverrideRepository,
     private val focusResolver: FocusResolver,
-    private val clock: Clock = java.time.Clock.systemDefaultZone()
+    private val settingsRepository: SettingsRepository? = null,
+    private val clock: Clock = java.time.Clock.systemDefaultZone(),
+    private val behaviorProfileUseCase: BehaviorProfileUseCase? = null
 ) : ViewModel() {
+
+    private var currentSettings = SystemSettings()
+    private var settingsInitialized = false
+
+    init {
+        settingsRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.settings.collect { settings ->
+                    val wasInitialized = settingsInitialized
+                    val oldSettings = currentSettings
+                    currentSettings = settings
+                    settingsInitialized = true
+
+                    if (wasInitialized && settings != oldSettings) {
+                        behaviorProfileUseCase?.invalidateCache()
+                        val changes = describeSettingsChanges(oldSettings, settings)
+                        if (changes.isNotEmpty()) {
+                            _state.update {
+                                it.copy(settingsChangeBanner = CopyEngine.settingsImpact(changes))
+                            }
+                        }
+                        loadToday()
+                    }
+                }
+            }
+        }
+    }
 
     private val _state = MutableStateFlow(
         TodayContract.TodayState(isLoading = true, date = LocalDate.now(clock))
@@ -58,6 +91,21 @@ class TodayViewModel(
 
             is TodayContract.TodayEvent.SessionTick ->
                 updateElapsed(event.elapsedMinutes)
+
+            is TodayContract.TodayEvent.PauseSession ->
+                pauseSession(event.sessionId)
+
+            is TodayContract.TodayEvent.ResumeSession ->
+                resumeSession(event.sessionId)
+
+            is TodayContract.TodayEvent.ExtendSession ->
+                extendSession(event.sessionId, event.additionalMinutes)
+
+            is TodayContract.TodayEvent.ShortenSession ->
+                shortenSession(event.sessionId, event.reduceMinutes)
+
+            is TodayContract.TodayEvent.RestartSession ->
+                restartSession(event.sessionId)
 
             is TodayContract.TodayEvent.OverrideFocusForToday ->
                 overrideFocus(event.domain, event.focusId)
@@ -97,7 +145,7 @@ class TodayViewModel(
                 return@launch
             }
 
-            val plan = todayPlannerUseCase.planToday(today)
+            val plan = todayPlannerUseCase.planToday(today, currentSettings)
 
             if (!plan.hasAnchors) {
                 _state.update {
@@ -246,10 +294,19 @@ class TodayViewModel(
             sessionRepository.updateSession(it)
         }
 
+        val allDone = updatedSessions.all {
+            it.status == SessionStatus.COMPLETED || it.status == SessionStatus.SKIPPED
+        }
+        val emptyWhenAllDone =
+            if (allDone && updatedSessions.isNotEmpty()) {
+                TodayContract.TodayEmptyState.AllCompleted
+            } else null
+
         _state.update {
             it.copy(
                 sessions = updatedSessions,
-                activeSessionId = if (wasActiveSession) null else it.activeSessionId
+                activeSessionId = if (wasActiveSession) null else it.activeSessionId,
+                emptyState = emptyWhenAllDone ?: it.emptyState
             )
         }
 
@@ -261,6 +318,7 @@ class TodayViewModel(
         _effect.send(
             TodayContract.TodayEffect.ShowMessage("Session skipped")
         )
+        behaviorProfileUseCase?.invalidateCache()
     }
 
     private fun completeSession(
@@ -281,18 +339,113 @@ class TodayViewModel(
             sessionRepository.updateSession(it)
         }
 
+        val allDone = updatedSessions.all {
+            it.status == SessionStatus.COMPLETED || it.status == SessionStatus.SKIPPED
+        }
+        val emptyWhenAllDone =
+            if (allDone && updatedSessions.isNotEmpty()) {
+                TodayContract.TodayEmptyState.AllCompleted
+            } else null
+
         _state.update {
             it.copy(
                 sessions = updatedSessions,
                 activeSessionId = null,
-                elapsedMinutes = 0
+                elapsedMinutes = 0,
+                emptyState = emptyWhenAllDone ?: it.emptyState
             )
         }
 
         _effect.send(TodayContract.TodayEffect.StopSessionTimer)
+        behaviorProfileUseCase?.invalidateCache()
+    }
+
+    private fun pauseSession(sessionId: String) = viewModelScope.launch {
+        if (_state.value.activeSessionId != sessionId) return@launch
+        _state.update { it.copy(isPaused = true) }
+        _effect.send(TodayContract.TodayEffect.StopSessionTimer)
+    }
+
+    private fun resumeSession(sessionId: String) = viewModelScope.launch {
+        if (_state.value.activeSessionId != sessionId) return@launch
+        val elapsed = _state.value.elapsedMinutes
+        _state.update { it.copy(isPaused = false) }
+        _effect.send(TodayContract.TodayEffect.ResumeSessionTimer(sessionId, elapsed))
+    }
+
+    private fun restartSession(sessionId: String) = viewModelScope.launch {
+        val updatedSessions = _state.value.sessions.map {
+            if (it.id == sessionId) {
+                it.copy(
+                    status = SessionStatus.PLANNED,
+                    actualMinutes = null,
+                    endedAt = null,
+                    startedAt = null,
+                    skipReason = null
+                )
+            } else it
+        }
+
+        updatedSessions.firstOrNull { it.id == sessionId }?.let {
+            sessionRepository.updateSession(it)
+        }
+
+        _state.update {
+            it.copy(
+                sessions = updatedSessions,
+                emptyState = TodayContract.TodayEmptyState.None
+            )
+        }
+        _effect.send(TodayContract.TodayEffect.ShowMessage("Session restarted"))
+    }
+
+    private fun extendSession(sessionId: String, additionalMinutes: Int) = viewModelScope.launch {
+        val updatedSessions = _state.value.sessions.map {
+            if (it.id == sessionId) {
+                it.copy(plannedMinutes = it.plannedMinutes + additionalMinutes)
+            } else it
+        }
+        updatedSessions.firstOrNull { it.id == sessionId }?.let {
+            sessionRepository.updateSession(it)
+        }
+        _state.update { it.copy(sessions = updatedSessions) }
+        _effect.send(TodayContract.TodayEffect.ShowMessage("Session extended by ${additionalMinutes}m"))
+    }
+
+    private fun shortenSession(sessionId: String, reduceMinutes: Int) = viewModelScope.launch {
+        val updatedSessions = _state.value.sessions.map {
+            if (it.id == sessionId) {
+                it.copy(plannedMinutes = (it.plannedMinutes - reduceMinutes).coerceAtLeast(5))
+            } else it
+        }
+        updatedSessions.firstOrNull { it.id == sessionId }?.let {
+            sessionRepository.updateSession(it)
+        }
+        _state.update { it.copy(sessions = updatedSessions) }
+        _effect.send(TodayContract.TodayEffect.ShowMessage("Session shortened by ${reduceMinutes}m"))
     }
 
     private fun updateElapsed(minutes: Int) {
         _state.update { it.copy(elapsedMinutes = minutes) }
+    }
+
+    private fun describeSettingsChanges(old: SystemSettings, new: SystemSettings): List<String> {
+        val changes = mutableListOf<String>()
+        if (old.adaptivePlanningEnabled != new.adaptivePlanningEnabled) {
+            changes += "Adaptive planning ${if (new.adaptivePlanningEnabled) "enabled" else "disabled"}"
+        }
+        if (old.planningStyle != new.planningStyle) {
+            changes += "Planning style → ${new.planningStyle.name.lowercase()}"
+        }
+        if (old.fatigueSensitivity != new.fatigueSensitivity) {
+            changes += "Fatigue sensitivity → ${new.fatigueSensitivity.name.lowercase()}"
+        }
+        if (old.learningEnabled != new.learningEnabled) {
+            changes += "Learning ${if (new.learningEnabled) "enabled" else "disabled"}"
+        }
+        if (old.themeMode != new.themeMode) {
+            changes += "Theme → ${new.themeMode.name.lowercase()}"
+        }
+        return changes
     }
 }

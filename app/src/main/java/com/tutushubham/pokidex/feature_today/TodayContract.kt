@@ -23,6 +23,7 @@ object TodayContract {
         data object NoStructure : TodayEmptyState
         data object NoIntent : TodayEmptyState
         data object NoSessionsToday : TodayEmptyState
+        data object AllCompleted : TodayEmptyState
     }
 
     /**
@@ -47,6 +48,15 @@ object TodayContract {
 
         /** System / time driven events */
         data class SessionTick(val elapsedMinutes: Int) : TodayEvent
+
+        /** Active session adaptation */
+        data class PauseSession(val sessionId: String) : TodayEvent
+        data class ResumeSession(val sessionId: String) : TodayEvent
+        data class ExtendSession(val sessionId: String, val additionalMinutes: Int) : TodayEvent
+        data class ShortenSession(val sessionId: String, val reduceMinutes: Int) : TodayEvent
+
+        /** Restart a completed or skipped session */
+        data class RestartSession(val sessionId: String) : TodayEvent
 
         /** Focus override for today */
         data class OverrideFocusForToday(
@@ -73,6 +83,7 @@ object TodayContract {
 
         /** Derived UI state */
         val elapsedMinutes: Int = 0,
+        val isPaused: Boolean = false,
 
         /** Resolved focus per domain for today (derived, not persisted) */
         val activeFocusByDomain: Map<Domain, Focus> = emptyMap(),
@@ -97,6 +108,9 @@ object TodayContract {
         /** Per-goal progress with execution-based pace, sorted by criticality. */
         val progressList: List<IntentProgress> = emptyList(),
 
+        /** Transient settings impact banner */
+        val settingsChangeBanner: String? = null,
+
         /** Derived empty state for empty-state UI */
         val emptyState: TodayEmptyState = TodayEmptyState.None
     ) {
@@ -112,6 +126,12 @@ object TodayContract {
         val hasSessions: Boolean
             get() = sessions.isNotEmpty()
 
+        val hasSevereOverload: Boolean
+            get() = (maxOverloadSeverity ?: 0.0) > 1.5
+
+        val hasCriticalGoals: Boolean
+            get() = progressList.any { it.isCritical }
+
     }
 
     /**
@@ -124,6 +144,7 @@ object TodayContract {
 
         /** System interaction effects */
         data class StartSessionTimer(val sessionId: String) : TodayEffect
+        data class ResumeSessionTimer(val sessionId: String, val elapsedMinutes: Int) : TodayEffect
         data object StopSessionTimer : TodayEffect
 
         /** UI feedback effects */

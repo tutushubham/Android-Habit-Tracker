@@ -42,15 +42,25 @@ class SessionTimerService : Service() {
         private const val CHANNEL_ID = "session_timer_channel"
         private const val NOTIFICATION_ID = 1
         const val ACTION_START = "com.tutushubham.pokidex.ACTION_START"
+        const val ACTION_RESUME = "com.tutushubham.pokidex.ACTION_RESUME"
         const val ACTION_STOP = "com.tutushubham.pokidex.ACTION_STOP"
         const val ACTION_TICK = "com.tutushubham.pokidex.ACTION_TICK"
         const val EXTRA_ELAPSED_MINUTES = "elapsed_minutes"
         const val EXTRA_SESSION_ID = "session_id"
+        const val EXTRA_ELAPSED_OFFSET = "elapsed_offset"
 
         fun createStartIntent(context: Context, sessionId: String): Intent {
             return Intent(context, SessionTimerService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_SESSION_ID, sessionId)
+            }
+        }
+
+        fun createResumeIntent(context: Context, sessionId: String, elapsedMinutes: Int): Intent {
+            return Intent(context, SessionTimerService::class.java).apply {
+                action = ACTION_RESUME
+                putExtra(EXTRA_SESSION_ID, sessionId)
+                putExtra(EXTRA_ELAPSED_OFFSET, elapsedMinutes)
             }
         }
 
@@ -76,9 +86,20 @@ class SessionTimerService : Service() {
             ACTION_START -> {
                 val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
                 sessionId?.let {
-                    // Explicit start - reset timer state
                     startTimeMillis = 0L
                     startTimer(it)
+                }
+            }
+            ACTION_RESUME -> {
+                val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
+                val elapsedOffset = intent.getIntExtra(EXTRA_ELAPSED_OFFSET, 0)
+                sessionId?.let {
+                    startTimeMillis = System.currentTimeMillis() - (elapsedOffset * 60_000L)
+                    activeSessionId = it
+                    serviceScope.launch {
+                        timerPreferences.saveTimerState(it, startTimeMillis)
+                    }
+                    startTimerFromExisting(it)
                 }
             }
             ACTION_STOP -> stopTimer()
@@ -120,17 +141,17 @@ class SessionTimerService : Service() {
     }
 
     private fun startTimer(sessionId: String) {
-        // If startTimeMillis is 0, this is a new timer start (not a restore)
-        // If startTimeMillis > 0, this is a restore from DataStore
         if (startTimeMillis == 0L) {
             startTimeMillis = System.currentTimeMillis()
             activeSessionId = sessionId
-            // Save to DataStore for persistence across process death
             serviceScope.launch {
                 timerPreferences.saveTimerState(sessionId, startTimeMillis)
             }
         }
+        startTimerFromExisting(sessionId)
+    }
 
+    private fun startTimerFromExisting(sessionId: String) {
         val initialElapsedMinutes = if (startTimeMillis > 0) {
             ((System.currentTimeMillis() - startTimeMillis) / 60000).toInt()
         } else {
@@ -148,7 +169,7 @@ class SessionTimerService : Service() {
                 sendTick(elapsedMinutes)
                 updateNotification(elapsedMinutes, sessionId)
 
-                delay(60_000) // 1 min tick
+                delay(60_000)
             }
         }
     }

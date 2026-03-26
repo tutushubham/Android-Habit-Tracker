@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - The Intelligent Planner</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-fixed": "#00452d",
+                        "surface-container": "#e5e9eb",
+                        "on-primary-fixed": "#000000",
+                        "tertiary": "#006947",
+                        "surface-bright": "#f5f7f9",
+                        "on-tertiary-fixed-variant": "#006544",
+                        "on-primary-fixed-variant": "#00207e",
+                        "on-tertiary": "#c8ffe0",
+                        "tertiary-dim": "#005c3d",
+                        "inverse-surface": "#0b0f10",
+                        "on-primary-container": "#001867",
+                        "surface-container-low": "#eef1f3",
+                        "secondary-fixed": "#d5e3fc",
+                        "outline-variant": "#abadaf",
+                        "on-error-container": "#510017",
+                        "primary": "#0846ed",
+                        "surface-container-high": "#dfe3e6",
+                        "surface": "#f5f7f9",
+                        "surface-variant": "#d9dde0",
+                        "primary-fixed": "#859aff",
+                        "on-background": "#2c2f31",
+                        "on-surface-variant": "#595c5e",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#58e7ab",
+                        "error-container": "#f74b6d",
+                        "tertiary-fixed": "#69f6b8",
+                        "on-secondary": "#edf3ff",
+                        "secondary": "#4e5c71",
+                        "on-secondary-container": "#455367",
+                        "inverse-on-surface": "#9a9d9f",
+                        "background": "#f5f7f9",
+                        "error-dim": "#a70138",
+                        "on-secondary-fixed-variant": "#4e5c71",
+                        "on-tertiary-container": "#005a3c",
+                        "on-secondary-fixed": "#324053",
+                        "tertiary-container": "#69f6b8",
+                        "primary-dim": "#003cd3",
+                        "surface-container-highest": "#d9dde0",
+                        "secondary-container": "#d5e3fc",
+                        "primary-container": "#859aff",
+                        "surface-tint": "#0846ed",
+                        "secondary-dim": "#435164",
+                        "inverse-primary": "#6d88ff",
+                        "error": "#b41340",
+                        "secondary-fixed-dim": "#c7d5ed",
+                        "on-error": "#ffefef",
+                        "primary-fixed-dim": "#718bff",
+                        "on-surface": "#2c2f31",
+                        "on-primary": "#f2f1ff",
+                        "outline": "#747779",
+                        "surface-dim": "#d0d5d8"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tonal-transition {
+            transition: background-color 0.3s ease;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface antialiased mb-24">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl no-border tonal-transition bg-surface-container-low flex justify-between items-center px-6 py-4 shadow-none">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close-up studio portrait of a professional man with a friendly expression, soft natural lighting, neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKjB_hrxNfClKw9R6i0wItWrFdA8zNLoVTYh5KWOko6MA6ULq3d3P_q9Hm1gt03nk10fOCyL3KOEkSTR8rtuoDuDwPBdjocweJK0uUTNCEggNDsOfRdW-zExFN9Q5VIZiT3fgWJgtpDQK_cF15gYcR2ppha_9gaPthF_k4YgRsf3jv3Ovdm3QGmjwFC1bouTIy2mes_t3abkwoonBx2aLUQEkgPxUa0bSAu9DX9vLnWJHaWRi3sSFOHMxJuza1rIOrlxCSsedOAXU"/>
+</div>
+<h1 class="font-manrope font-bold text-2xl tracking-tight text-slate-900 dark:text-slate-50">Settings</h1>
+</div>
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-blue-700 dark:text-blue-400">search</span>
+</button>
+</header>
+<main class="max-w-3xl mx-auto px-6 pt-8 pb-12 space-y-10">
+<!-- App Appearance Section -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-headline text-xs font-bold uppercase tracking-widest text-on-surface-variant">Appearance</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Theme Toggles -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col gap-4 shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">dark_mode</span>
+<span class="font-semibold">Visual Theme</span>
+</div>
+<div class="flex bg-surface-container-low p-1 rounded-full">
+<button class="flex-1 py-2 px-4 rounded-full bg-surface-container-lowest shadow-sm text-sm font-medium text-primary">Light</button>
+<button class="flex-1 py-2 px-4 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface">Dark</button>
+<button class="flex-1 py-2 px-4 rounded-full text-sm font-medium text-on-surface-variant hover:text-on-surface">System</button>
+</div>
+</div>
+<!-- Accent Color -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col gap-4 shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">palette</span>
+<span class="font-semibold">Accent Color</span>
+</div>
+<div class="flex gap-3">
+<button class="w-8 h-8 rounded-full bg-primary ring-2 ring-offset-2 ring-primary"></button>
+<button class="w-8 h-8 rounded-full bg-tertiary"></button>
+<button class="w-8 h-8 rounded-full bg-secondary"></button>
+<button class="w-8 h-8 rounded-full bg-error"></button>
+</div>
+</div>
+</div>
+</section>
+<!-- Goals & Planning Section -->
+<section class="space-y-4">
+<span class="font-headline text-xs font-bold uppercase tracking-widest text-on-surface-variant">Goals &amp; Planning</span>
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<!-- Goal Edit Item -->
+<button class="w-full flex items-center justify-between p-5 hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">track_changes</span>
+</div>
+<div class="text-left">
+<h3 class="font-semibold text-on-surface">Edit Active Goals</h3>
+<p class="text-sm text-on-surface-variant">Modify your current quarterly focus</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</button>
+<!-- Day Structure Item -->
+<button class="w-full flex items-center justify-between p-5 hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div class="text-left">
+<h3 class="font-semibold text-on-surface">Day Structure</h3>
+<p class="text-sm text-on-surface-variant">Working hours, breaks, and deep work slots</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-tertiary transition-colors">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Day Structure Details (Bento-style preview) -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="md:col-span-2 bg-surface-container-low p-6 rounded-xl flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-lg mb-2">Focus Schedule</h4>
+<p class="text-sm text-on-surface-variant mb-4">Your intelligent planner optimizes for these peaks.</p>
+</div>
+<div class="flex items-end gap-2 h-20">
+<div class="w-full bg-primary/20 h-[40%] rounded-t-lg"></div>
+<div class="w-full bg-primary h-[90%] rounded-t-lg"></div>
+<div class="w-full bg-primary/40 h-[60%] rounded-t-lg"></div>
+<div class="w-full bg-surface-container-highest h-[20%] rounded-t-lg"></div>
+<div class="w-full bg-primary h-[100%] rounded-t-lg"></div>
+<div class="w-full bg-primary/30 h-[50%] rounded-t-lg"></div>
+</div>
+</div>
+<div class="bg-primary p-6 rounded-xl text-on-primary flex flex-col justify-between">
+<span class="material-symbols-outlined text-3xl">bolt</span>
+<div>
+<span class="block text-2xl font-bold">08:00</span>
+<span class="text-xs uppercase tracking-widest opacity-80">Peak Start</span>
+</div>
+</div>
+</section>
+<!-- System & Recovery Section -->
+<section class="space-y-4">
+<span class="font-headline text-xs font-bold uppercase tracking-widest text-on-surface-variant">System</span>
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<!-- Notifications -->
+<div class="flex items-center justify-between p-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</div>
+<div>
+<h3 class="font-semibold">Push Notifications</h3>
+<p class="text-sm text-on-surface-variant">Daily summaries and goal nudges</p>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<!-- Reset Onboarding -->
+<button class="w-full flex items-center justify-between p-5 hover:bg-error/5 transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-error-container/20 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">restart_alt</span>
+</div>
+<div class="text-left">
+<h3 class="font-semibold text-error">Reset Onboarding</h3>
+<p class="text-sm text-on-surface-variant">Re-configure your initial preferences</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-error transition-colors">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Support Card -->
+<section class="bg-surface-container-high p-8 rounded-3xl relative overflow-hidden">
+<div class="relative z-10 space-y-4">
+<h2 class="font-headline text-2xl font-extrabold text-on-surface">Need assistance?</h2>
+<p class="text-on-surface-variant max-w-md">Our intelligence is growing, but our human support is always here to help you optimize your Sanctuary.</p>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:shadow-lg transition-all active:scale-95">
+                    Contact Support
+                    <span class="material-symbols-outlined text-sm">open_in_new</span>
+</button>
+</div>
+<div class="absolute -right-10 -bottom-10 w-48 h-48 bg-primary/10 rounded-full blur-3xl"></div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl no-border bg-surface-container-low shadow-[0_-4px_24px_rgba(0,0,0,0.04)] rounded-t-[24px]">
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-600 dark:hover:text-blue-300 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-wider mt-1">Today</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-600 dark:hover:text-blue-300 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-wider mt-1">Insights</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl px-5 py-1.5 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">tune</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-wider mt-1">Settings</span>
+</button>
+</nav>
+</body></html>

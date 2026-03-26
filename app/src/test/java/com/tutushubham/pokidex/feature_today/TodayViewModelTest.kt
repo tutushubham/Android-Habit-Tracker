@@ -18,6 +18,8 @@ import com.tutushubham.pokidex.core.domain.usecase.TodayPlannerUseCase
 import com.tutushubham.pokidex.core.engine.FocusResolver
 import com.tutushubham.pokidex.core.engine.IntentProgress
 import com.tutushubham.pokidex.core.engine.TodayPlan
+import com.tutushubham.pokidex.feature_settings.SettingsRepository
+import com.tutushubham.pokidex.feature_settings.SystemSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -215,6 +217,7 @@ class FakeTodayPlannerUseCase(
         override suspend fun getAnchorByBlockAndDomain(block: DayBlock, domain: Domain) = null
         override suspend fun insertAnchor(anchor: Anchor) {}
         override suspend fun updateAnchor(anchor: Anchor) {}
+        override suspend fun deleteAnchor(id: String) {}
     },
     focusResolver = FocusResolver(
         object : FocusRepository {
@@ -236,7 +239,7 @@ class FakeTodayPlannerUseCase(
         }
     )
 ) {
-    override suspend fun planToday(date: LocalDate): TodayPlan = plan
+    override suspend fun planToday(date: LocalDate, settings: SystemSettings): TodayPlan = plan
 }
 
 class FakeSessionRepository(

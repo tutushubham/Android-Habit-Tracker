@@ -11,16 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -31,11 +27,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import com.tutushubham.pokidex.core.domain.model.Domain
+import com.tutushubham.pokidex.ui.components.AppCard
+import com.tutushubham.pokidex.ui.components.AppChip
+import com.tutushubham.pokidex.ui.components.PrimaryButton
+import com.tutushubham.pokidex.ui.components.SecondaryButton
+import com.tutushubham.pokidex.ui.theme.AppShapes
+import com.tutushubham.pokidex.ui.theme.AppSpacing
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.UUID
+
+private data class GoalTemplate(
+    val title: String,
+    val domain: Domain,
+    val daysToDeadline: Long
+)
+
+private val goalTemplates = listOf(
+    GoalTemplate("Finish a course or certification", Domain.STUDIES, 90),
+    GoalTemplate("Run a 5K / build a fitness habit", Domain.FITNESS, 60),
+    GoalTemplate("Ship a side project", Domain.WORK, 45),
+    GoalTemplate("Learn guitar / creative practice", Domain.HOBBY, 120)
+)
 
 @Composable
 fun GoalsScreen(
@@ -45,30 +61,130 @@ fun GoalsScreen(
     onBack: () -> Unit
 ) {
     val canProceed = state.goals.isNotEmpty() && state.goals.all { it.isValid }
+    val today = LocalDate.now()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .systemBarsPadding()
-            .padding(16.dp)
+            .padding(AppSpacing.lg)
     ) {
         Text(
             text = "What are you working toward?",
             style = MaterialTheme.typography.headlineMedium
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.sm))
 
         Text(
             text = "Add the goals you want to finish in the next few months.",
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppSpacing.xxl))
+
+        Text(
+            text = "Start from a template",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(AppSpacing.sm))
+        Text(
+            text = "Tap to add — you can edit titles and deadlines anytime.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(AppSpacing.md))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)
+        ) {
+            goalTemplates.take(2).forEach { template ->
+                FilterChip(
+                    selected = false,
+                    onClick = {
+                        onEvent(
+                            OnboardingContract.Event.GoalAdded(
+                                OnboardingGoal(
+                                    id = UUID.randomUUID().toString(),
+                                    title = template.title,
+                                    domain = template.domain,
+                                    deadline = today.plusDays(template.daysToDeadline)
+                                )
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            template.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 2
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(Modifier.height(AppSpacing.sm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)
+        ) {
+            goalTemplates.drop(2).forEach { template ->
+                FilterChip(
+                    selected = false,
+                    onClick = {
+                        onEvent(
+                            OnboardingContract.Event.GoalAdded(
+                                OnboardingGoal(
+                                    id = UUID.randomUUID().toString(),
+                                    title = template.title,
+                                    domain = template.domain,
+                                    deadline = today.plusDays(template.daysToDeadline)
+                                )
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            template.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 2
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.xxl))
+
+        AppCard(
+            shape = AppShapes.medium,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Text(
+                text = "Milestone hints",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(AppSpacing.sm))
+            Text(
+                text = "• Set a deadline at least a few days ahead so the plan stays realistic.\n" +
+                    "• Add a measurable target when you care about counts (pages, songs, modules).\n" +
+                    "• One clear goal per card works best — split big goals into separate entries.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(Modifier.height(AppSpacing.lg))
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.md)
         ) {
             items(state.goals) { goal ->
                 GoalCard(
@@ -79,27 +195,30 @@ fun GoalsScreen(
             }
 
             item {
-                OutlinedButton(
-                    onClick = { onEvent(OnboardingContract.Event.AddGoalRequested) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("+ Add another goal")
-                }
+                SecondaryButton(
+                    text = "+ Add another goal",
+                    onClick = { onEvent(OnboardingContract.Event.AddGoalRequested) }
+                )
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppSpacing.lg))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.md)
         ) {
-            OutlinedButton(onClick = onBack) {
-                Text("Back")
-            }
-            Button(onClick = onNext, enabled = canProceed) {
-                Text("Next")
-            }
+            SecondaryButton(
+                text = "Back",
+                onClick = onBack,
+                modifier = Modifier.weight(1f)
+            )
+            PrimaryButton(
+                text = "Next",
+                onClick = onNext,
+                enabled = canProceed,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -114,12 +233,10 @@ fun GoalCard(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTargetCount by remember { mutableStateOf(goal.targetCount != null) }
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 2.dp,
+    AppCard(
+        shape = AppShapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -130,33 +247,34 @@ fun GoalCard(
                     onValueChange = { onUpdate(goal.copy(title = it)) },
                     label = { Text("Title") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    shape = AppShapes.medium
                 )
-                Spacer(Modifier.padding(8.dp))
+                Spacer(Modifier.padding(AppSpacing.sm))
                 TextButton(onClick = onRemove) {
                     Text("Remove", color = MaterialTheme.colorScheme.error)
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(AppSpacing.md))
 
             Text("Domain", style = MaterialTheme.typography.labelMedium)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(AppSpacing.xs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.sm)
             ) {
                 Domain.entries.forEach { domain ->
                     val selected = goal.domain == domain
-                    FilterChip(
+                    AppChip(
+                        label = domain.displayName(),
                         selected = selected,
-                        onClick = { onUpdate(goal.copy(domain = domain)) },
-                        label = { Text(domain.displayName()) }
+                        onClick = { onUpdate(goal.copy(domain = domain)) }
                     )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(AppSpacing.md))
 
             TextButton(
                 onClick = { showDatePicker = true },
@@ -194,7 +312,7 @@ fun GoalCard(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(AppSpacing.sm))
 
             if (showTargetCount) {
                 OutlinedTextField(
@@ -204,9 +322,10 @@ fun GoalCard(
                         onUpdate(goal.copy(targetCount = n))
                     },
                     label = { Text("Target count") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.medium
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(AppSpacing.sm))
                 OutlinedTextField(
                     value = goal.estimatedMinutesPerUnit?.toString() ?: "",
                     onValueChange = {
@@ -214,13 +333,13 @@ fun GoalCard(
                         onUpdate(goal.copy(estimatedMinutesPerUnit = n))
                     },
                     label = { Text("Est. min per unit (e.g. 25 for DSA, 180 for song)") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.medium
                 )
             } else {
                 TextButton(onClick = { showTargetCount = true }) {
                     Text("+ Add measurable target")
                 }
             }
-        }
     }
 }

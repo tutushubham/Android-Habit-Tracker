@@ -37,4 +37,9 @@ class BehaviorRepositoryImpl(
     override suspend fun saveDomainProfile(profile: DomainBehaviorProfile) {
         profileDao.upsert(profile.toEntity())
     }
+
+    override suspend fun clearAll() {
+        statsDao.deleteAll()
+        profileDao.deleteAll()
+    }
 }

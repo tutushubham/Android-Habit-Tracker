@@ -20,6 +20,15 @@ object SessionTimerHelper {
         }
     }
 
+    fun resumeTimer(context: Context, sessionId: String, elapsedMinutes: Int) {
+        val intent = SessionTimerService.createResumeIntent(context, sessionId, elapsedMinutes)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
+
     fun stopTimer(context: Context) {
         val intent = SessionTimerService.createStopIntent(context)
         context.stopService(intent)

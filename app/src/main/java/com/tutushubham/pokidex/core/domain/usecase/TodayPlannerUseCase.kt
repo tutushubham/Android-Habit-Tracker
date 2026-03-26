@@ -11,28 +11,28 @@ import com.tutushubham.pokidex.core.engine.DomainProfileCalculator
 import com.tutushubham.pokidex.core.engine.FocusResolver
 import com.tutushubham.pokidex.core.engine.TodayEngine
 import com.tutushubham.pokidex.core.engine.TodayPlan
+import com.tutushubham.pokidex.core.engine.UserBehaviorProfile
+import com.tutushubham.pokidex.core.domain.model.SystemSettings
 import java.time.LocalDate
 
-// TODO: split into smaller use cases when scaling (e.g. PlanUseCase, PersistUseCase)
 open class TodayPlannerUseCase(
     private val intentRepository: IntentRepository,
     private val sessionRepository: SessionRepository,
     private val anchorRepository: AnchorRepository,
     private val focusResolver: FocusResolver,
     private val behaviorRepository: BehaviorRepository? = null,
-    private val engine: TodayEngine = TodayEngine()
+    private val engine: TodayEngine = TodayEngine(),
+    private val behaviorProfileUseCase: BehaviorProfileUseCase? = null
 ) {
     companion object {
         private const val RECENT_DAYS_WINDOW = 30L
     }
 
-    open suspend fun planToday(date: LocalDate): TodayPlan {
+    open suspend fun planToday(date: LocalDate, settings: SystemSettings = SystemSettings()): TodayPlan {
         val anchors = anchorRepository.getAllAnchors()
         val intents = intentRepository.getIntentsForDateRange(date, date)
         val existingSessions = sessionRepository.getSessionsForDate(date)
 
-        // NOTE: O(N) queries per intent. Safe for small N (<=10).
-        // Future optimization: batch query (GROUP BY intentId) or caching layer.
         val completedUnitsMap = intents.associate {
             it.id to sessionRepository.getCompletedUnitsForIntent(it.id)
         }
@@ -44,7 +44,10 @@ open class TodayPlannerUseCase(
         val recentSessions = sessionRepository.getRecentSessions(cutoffDate)
         val sessionsByIntent = recentSessions.groupBy { it.intentId }
 
-        val behaviorMap = if (behaviorRepository != null) {
+        val profiles = behaviorProfileUseCase?.getProfiles(date, settings)
+        val behaviorMap = if (profiles != null) {
+            profiles.mapValues { (_, p) -> p.toBehaviorProfile() }
+        } else if (behaviorRepository != null) {
             val persistedStats = behaviorRepository.getAllIntentStats().associateBy { it.intentId }
             val domainProfiles = behaviorRepository.getAllDomainProfiles().associateBy { it.domain }
             BehaviorAggregator.aggregateWithPersisted(
@@ -75,7 +78,9 @@ open class TodayPlannerUseCase(
             getCompletedUnits = { completedUnitsMap[it] ?: 0 },
             getDaysWorked = { daysWorkedMap[it] ?: 0 },
             behaviorMap = behaviorMap,
-            lastPlannedDates = lastPlannedDates
+            lastPlannedDates = lastPlannedDates,
+            settings = settings,
+            profileMap = profiles ?: emptyMap()
         )
 
         if (behaviorRepository != null) {

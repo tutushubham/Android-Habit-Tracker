@@ -8,6 +8,9 @@ import com.tutushubham.pokidex.core.data.CaptureEntity
 
 @Dao
 interface CaptureDao {
+    @Query("SELECT * FROM captures")
+    suspend fun getAllCaptures(): List<CaptureEntity>
+
     @Query("SELECT * FROM captures WHERE resolved = 0")
     suspend fun getUnresolvedCaptures(): List<CaptureEntity>
 
@@ -19,4 +22,7 @@ interface CaptureDao {
 
     @Update
     suspend fun update(capture: CaptureEntity)
+
+    @Query("DELETE FROM captures WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

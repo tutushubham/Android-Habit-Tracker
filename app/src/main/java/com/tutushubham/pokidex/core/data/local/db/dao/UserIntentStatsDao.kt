@@ -16,4 +16,7 @@ interface UserIntentStatsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(stats: UserIntentStatsEntity)
+
+    @Query("DELETE FROM user_intent_stats")
+    suspend fun deleteAll()
 }

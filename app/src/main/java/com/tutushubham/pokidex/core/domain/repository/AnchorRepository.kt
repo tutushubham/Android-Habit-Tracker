@@ -9,4 +9,5 @@ interface AnchorRepository {
     suspend fun getAnchorByBlockAndDomain(block: DayBlock, domain: Domain): Anchor?
     suspend fun insertAnchor(anchor: Anchor)
     suspend fun updateAnchor(anchor: Anchor)
+    suspend fun deleteAnchor(id: String)
 }

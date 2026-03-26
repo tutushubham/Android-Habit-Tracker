@@ -80,8 +80,15 @@ fun FocusHost(
         composable(FocusRoute.List.route) {
             FocusListScreen(
                 focuses = state.focuses,
-                onAdd = { },
-                onEdit = { },
+                onAddFocus = { name, deadline ->
+                    focusViewModel.onEvent(FocusEvent.AddFocus(name, deadline))
+                },
+                onDeleteFocus = { id ->
+                    focusViewModel.onEvent(FocusEvent.DeleteFocus(id))
+                },
+                onUpdateFocusName = { id, newName ->
+                    focusViewModel.onEvent(FocusEvent.UpdateFocusName(id, newName))
+                },
                 onNext = {
                     focusViewModel.onEvent(FocusEvent.ListNextClicked)
                 }
@@ -95,6 +102,9 @@ fun FocusHost(
                 onStrategySelected = {
                     focusViewModel.onEvent(FocusEvent.StrategySelected(it))
                 },
+                onWeightsUpdated = { weights ->
+                    focusViewModel.onEvent(FocusEvent.WeightsUpdated(weights))
+                },
                 onNext = {
                     focusViewModel.onEvent(FocusEvent.StrategyNextClicked)
                 }
@@ -103,10 +113,14 @@ fun FocusHost(
 
         composable(FocusRoute.Confirm.route) {
             FocusConfirmScreen(
+                domain = state.domain,
+                strategy = state.strategy,
                 preview = state.preview,
+                currentFocusTitle = state.currentFocusTitle,
                 onConfirm = {
                     focusViewModel.onEvent(FocusEvent.ConfirmClicked)
-                }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
         }

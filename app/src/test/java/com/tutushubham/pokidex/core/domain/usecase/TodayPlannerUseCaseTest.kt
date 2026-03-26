@@ -123,6 +123,7 @@ class TodayPlannerUseCaseTest {
             override suspend fun getAnchorByBlockAndDomain(block: DayBlock, domain: Domain) = null
             override suspend fun insertAnchor(anchor: Anchor) {}
             override suspend fun updateAnchor(anchor: Anchor) {}
+            override suspend fun deleteAnchor(id: String) {}
         }
         val focusResolver = FocusResolver(
             object : FocusRepository {
@@ -185,4 +186,8 @@ private class FakeBehaviorRepository : BehaviorRepository {
     override suspend fun getDomainProfile(domain: Domain) = null
     override suspend fun getAllDomainProfiles() = emptyList<DomainBehaviorProfile>()
     override suspend fun saveDomainProfile(profile: DomainBehaviorProfile) { savedProfiles.add(profile) }
+    override suspend fun clearAll() {
+        savedStats.clear()
+        savedProfiles.clear()
+    }
 }

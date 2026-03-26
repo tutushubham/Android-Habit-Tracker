@@ -69,6 +69,7 @@ class FakeUserIntentStatsDao : UserIntentStatsDao {
     override suspend fun upsert(stats: UserIntentStatsEntity) {
         store[stats.intentId] = stats
     }
+    override suspend fun deleteAll() { store.clear() }
 }
 
 class FakeDomainBehaviorProfileDao : DomainBehaviorProfileDao {
@@ -79,4 +80,5 @@ class FakeDomainBehaviorProfileDao : DomainBehaviorProfileDao {
     override suspend fun upsert(profile: DomainBehaviorProfileEntity) {
         store[profile.domain] = profile
     }
+    override suspend fun deleteAll() { store.clear() }
 }

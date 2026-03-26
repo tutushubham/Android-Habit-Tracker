@@ -3,6 +3,7 @@ package com.tutushubham.pokidex.feature_focus
 import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.model.Domain
 import com.tutushubham.pokidex.core.domain.model.FocusStrategy
+import java.time.LocalDate
 
 data class FocusState(
     val domain: Domain,
@@ -10,6 +11,8 @@ data class FocusState(
     val strategy: FocusStrategy? = null,
     val manualOverrideFocusId: String? = null,
     val preview: List<String> = emptyList(),
+    val weeklyMomentum: List<Float> = emptyList(),
+    val currentFocusTitle: String? = null,
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -34,4 +37,8 @@ sealed interface FocusEvent {
     data class ManualFocusSelected(val focusId: String) : FocusEvent
     data class RotationOrderUpdated(val order: List<String>) : FocusEvent
     data class WeightsUpdated(val weights: Map<String, Int>) : FocusEvent
+
+    data class AddFocus(val name: String, val deadline: LocalDate?) : FocusEvent
+    data class DeleteFocus(val focusId: String) : FocusEvent
+    data class UpdateFocusName(val focusId: String, val newName: String) : FocusEvent
 }

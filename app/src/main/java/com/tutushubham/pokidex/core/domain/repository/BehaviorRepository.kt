@@ -11,4 +11,5 @@ interface BehaviorRepository {
     suspend fun getDomainProfile(domain: Domain): DomainBehaviorProfile?
     suspend fun getAllDomainProfiles(): List<DomainBehaviorProfile>
     suspend fun saveDomainProfile(profile: DomainBehaviorProfile)
+    suspend fun clearAll()
 }

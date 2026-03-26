@@ -17,4 +17,7 @@ interface DomainBehaviorProfileDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(profile: DomainBehaviorProfileEntity)
+
+    @Query("DELETE FROM domain_behavior_profiles")
+    suspend fun deleteAll()
 }

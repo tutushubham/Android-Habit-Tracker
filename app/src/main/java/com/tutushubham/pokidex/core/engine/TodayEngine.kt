@@ -5,6 +5,9 @@ import com.tutushubham.pokidex.core.domain.entity.Focus
 import com.tutushubham.pokidex.core.domain.entity.GoalIntent
 import com.tutushubham.pokidex.core.domain.entity.Session
 import com.tutushubham.pokidex.core.domain.model.Domain
+import com.tutushubham.pokidex.core.domain.model.FatigueSensitivity
+import com.tutushubham.pokidex.core.domain.model.PlanningStyle
+import com.tutushubham.pokidex.core.domain.model.SystemSettings
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.ceil
@@ -29,7 +32,9 @@ open class TodayEngine {
         getCompletedUnits: (String) -> Int = { 0 },
         getDaysWorked: (String) -> Int = { 0 },
         behaviorMap: Map<String, IntentBehaviorProfile> = emptyMap(),
-        lastPlannedDates: Map<String, LocalDate> = emptyMap()
+        lastPlannedDates: Map<String, LocalDate> = emptyMap(),
+        settings: SystemSettings = SystemSettings(),
+        profileMap: Map<String, UserBehaviorProfile> = emptyMap()
     ): TodayPlan {
         val progressList = computeProgressList(intents, date, getCompletedUnits, getDaysWorked)
         val progressMap = progressList.associateBy { it.intentId }
@@ -48,12 +53,16 @@ open class TodayEngine {
                 intents.filter { it.domain == anchor.domain }, focus
             )
 
+            val effectiveBehaviorMap = if (settings.adaptivePlanningEnabled) behaviorMap else emptyMap()
+
             val intent = selectIntentByUrgency(
                 candidateIntents, date, getCompletedUnits, allocatedUnitsToday,
-                progressMap, behaviorMap, lastPlannedDates
+                progressMap, effectiveBehaviorMap, lastPlannedDates, settings,
+                profileMap, anchor
             ) ?: continue
 
-            val effectivePerUnit = resolveEffectivePerUnit(intent, behaviorMap)
+            val effectivePerUnit = if (settings.learningEnabled) resolveEffectivePerUnit(intent, behaviorMap)
+                else intent.estimatedMinutesPerUnit
             val allocatedSoFar = allocatedUnitsToday[intent.id] ?: 0
             val minutes = computeCapacityAwareMinutes(
                 blockMinutes = anchor.defaultMinutes,
@@ -152,7 +161,10 @@ open class TodayEngine {
         getCompletedUnits: (String) -> Int,
         progressMap: Map<String, IntentProgress>,
         behaviorMap: Map<String, IntentBehaviorProfile>,
-        lastPlannedDates: Map<String, LocalDate>
+        lastPlannedDates: Map<String, LocalDate>,
+        settings: SystemSettings = SystemSettings(),
+        profileMap: Map<String, UserBehaviorProfile> = emptyMap(),
+        anchor: Anchor? = null
     ): Double {
         val target = intent.targetCount
         if (target == null || target <= 0) return 1.0 / intent.priority.coerceAtLeast(1)
@@ -166,23 +178,35 @@ open class TodayEngine {
         }
 
         val progress = progressMap[intent.id]
+        val styleMultiplier = when (settings.planningStyle) {
+            PlanningStyle.STRICT -> 1.3
+            PlanningStyle.BALANCED -> 1.0
+            PlanningStyle.FLEXIBLE -> 0.8
+        }
+
         val progressBoost = when {
-            progress?.isCritical == true -> 1.5
-            progress?.isBehind == true -> 1.2
+            progress?.isCritical == true -> 1.5 * styleMultiplier
+            progress?.isBehind == true -> 1.2 * styleMultiplier
             else -> 1.0
         }
 
         val behavior = behaviorMap[intent.id]
+        val profile = profileMap[intent.id]
 
         val momentumBoost = when {
             behavior?.momentum?.isConsistent == true -> 1.1
             else -> 1.0
         }
 
-        val fatigueDampening = when (behavior?.fatigue?.level) {
+        val baseFatigueDampening = when (behavior?.fatigue?.level) {
             FatigueLevel.HIGH -> 0.85
             FatigueLevel.MEDIUM -> 0.90
             else -> 1.0
+        }
+        val fatigueDampening = when (settings.fatigueSensitivity) {
+            FatigueSensitivity.HIGH -> baseFatigueDampening * 0.9
+            FatigueSensitivity.MEDIUM -> baseFatigueDampening
+            FatigueSensitivity.LOW -> 1.0 - (1.0 - baseFatigueDampening) * 0.5
         }
 
         val lastPlanned = lastPlannedDates[intent.id]
@@ -192,10 +216,25 @@ open class TodayEngine {
             else -> 1.0
         }
 
-        val preFatigueUrgency = baseUrgency * progressBoost * momentumBoost * starvationBoost
+        val consistencyBoost = if ((profile?.consistencyScore ?: 0.0) > 0.7) 1.05 else 1.0
+        val peakAlignment = if (anchor != null && isPeakHour(anchor, profile?.peakFocusHours)) 1.1 else 1.0
+
+        val preFatigueUrgency = baseUrgency * progressBoost * momentumBoost *
+            starvationBoost * consistencyBoost * peakAlignment
         val finalUrgency = preFatigueUrgency * fatigueDampening
 
         return finalUrgency.coerceAtLeast(baseUrgency * 0.7).coerceAtMost(maxUrgencyCap)
+    }
+
+    private fun isPeakHour(anchor: Anchor, peakHours: List<Int>?): Boolean {
+        if (peakHours.isNullOrEmpty()) return false
+        val blockHour = when (anchor.block) {
+            com.tutushubham.pokidex.core.domain.model.DayBlock.MORNING -> 8
+            com.tutushubham.pokidex.core.domain.model.DayBlock.DAY -> 13
+            com.tutushubham.pokidex.core.domain.model.DayBlock.EVENING -> 18
+            com.tutushubham.pokidex.core.domain.model.DayBlock.NIGHT -> 22
+        }
+        return blockHour in peakHours || (blockHour + 1) in peakHours
     }
 
     private fun selectIntentByUrgency(
@@ -205,7 +244,10 @@ open class TodayEngine {
         allocatedUnitsToday: Map<String, Int>,
         progressMap: Map<String, IntentProgress>,
         behaviorMap: Map<String, IntentBehaviorProfile>,
-        lastPlannedDates: Map<String, LocalDate>
+        lastPlannedDates: Map<String, LocalDate>,
+        settings: SystemSettings = SystemSettings(),
+        profileMap: Map<String, UserBehaviorProfile> = emptyMap(),
+        anchor: Anchor? = null
     ): GoalIntent? {
         if (intents.isEmpty()) return null
         val stillNeedingAllocation = intents.filter { intent ->
@@ -215,7 +257,10 @@ open class TodayEngine {
         if (stillNeedingAllocation.isEmpty()) return null
         return stillNeedingAllocation.maxWithOrNull(
             compareBy<GoalIntent> {
-                effectiveUrgency(it, date, getCompletedUnits, progressMap, behaviorMap, lastPlannedDates)
+                effectiveUrgency(
+                    it, date, getCompletedUnits, progressMap, behaviorMap,
+                    lastPlannedDates, settings, profileMap, anchor
+                )
             }.thenByDescending { it.priority }
         )
     }

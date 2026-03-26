@@ -27,4 +27,8 @@ class AnchorRepositoryImpl(
     override suspend fun updateAnchor(anchor: Anchor) {
         dao.update(anchor.toEntity())
     }
+
+    override suspend fun deleteAnchor(id: String) {
+        dao.deleteById(id)
+    }
 }

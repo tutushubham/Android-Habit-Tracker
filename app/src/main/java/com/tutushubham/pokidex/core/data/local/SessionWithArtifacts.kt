@@ -1,4 +1,4 @@
-package com.tutushubham.pokidex.core.domain
+package com.tutushubham.pokidex.core.data.local
 
 import androidx.room.Embedded
 import androidx.room.Relation

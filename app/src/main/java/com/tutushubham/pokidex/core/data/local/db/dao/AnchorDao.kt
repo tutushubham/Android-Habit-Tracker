@@ -21,4 +21,7 @@ interface AnchorDao {
 
     @Update
     suspend fun update(anchor: AnchorEntity)
+
+    @Query("DELETE FROM anchors WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

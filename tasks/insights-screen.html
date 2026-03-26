@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Insights - Intelligent Planner</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed": "#00452d",
+              "surface-container": "#e5e9eb",
+              "on-primary-fixed": "#000000",
+              "tertiary": "#006947",
+              "surface-bright": "#f5f7f9",
+              "on-tertiary-fixed-variant": "#006544",
+              "on-primary-fixed-variant": "#00207e",
+              "on-tertiary": "#c8ffe0",
+              "tertiary-dim": "#005c3d",
+              "inverse-surface": "#0b0f10",
+              "on-primary-container": "#001867",
+              "surface-container-low": "#eef1f3",
+              "secondary-fixed": "#d5e3fc",
+              "outline-variant": "#abadaf",
+              "on-error-container": "#510017",
+              "primary": "#0846ed",
+              "surface-container-high": "#dfe3e6",
+              "surface": "#f5f7f9",
+              "surface-variant": "#d9dde0",
+              "primary-fixed": "#859aff",
+              "on-background": "#2c2f31",
+              "on-surface-variant": "#595c5e",
+              "surface-container-lowest": "#ffffff",
+              "tertiary-fixed-dim": "#58e7ab",
+              "error-container": "#f74b6d",
+              "tertiary-fixed": "#69f6b8",
+              "on-secondary": "#edf3ff",
+              "secondary": "#4e5c71",
+              "on-secondary-container": "#455367",
+              "inverse-on-surface": "#9a9d9f",
+              "background": "#f5f7f9",
+              "error-dim": "#a70138",
+              "on-secondary-fixed-variant": "#4e5c71",
+              "on-tertiary-container": "#005a3c",
+              "on-secondary-fixed": "#324053",
+              "tertiary-container": "#69f6b8",
+              "primary-dim": "#003cd3",
+              "surface-container-highest": "#d9dde0",
+              "secondary-container": "#d5e3fc",
+              "primary-container": "#859aff",
+              "surface-tint": "#0846ed",
+              "secondary-dim": "#435164",
+              "inverse-primary": "#6d88ff",
+              "error": "#b41340",
+              "secondary-fixed-dim": "#c7d5ed",
+              "on-error": "#ffefef",
+              "primary-fixed-dim": "#718bff",
+              "on-surface": "#2c2f31",
+              "on-primary": "#f2f1ff",
+              "outline": "#747779",
+              "surface-dim": "#d0d5d8"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f5f7f9; color: #2c2f31; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl no-border tonal-transition bg-surface-container-low flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-surface-container-highest overflow-hidden">
+<img alt="User Profile" class="h-full w-full object-cover" data-alt="Professional headshot of a smiling man with clean lighting and a soft neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf4STUnSQOgzijD5tsm1DOgJtbOK3D4aau9hSR4PCAzBPmZCPykxH-o722EaDh31h3PoqFIeYBAsw30PPMbtZnwpZFmcB4H4YT1adLzKL62KEIGMD0O3GTfIxT1J0Egtw-av0_4fmkRDR0tCe-Lsq6XmNpprDfq5VZhuD2N8yMRyUlMudKX1uo1YnPTT33LHcs3VAvNlOW-p8qv6D494XRbmRmOnsHolGjZscOWfc4Uc_qOIijYpg-3g6tcUqspB_yFz0xyYdhYpI"/>
+</div>
+<h1 class="font-headline font-bold text-2xl tracking-tight text-slate-900 dark:text-slate-50">Insights</h1>
+</div>
+<button class="h-10 w-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95 duration-200 text-slate-500">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<main class="max-w-7xl mx-auto px-6 pt-4 pb-32 space-y-10">
+<!-- AI Behavior Summary / Hero Section -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 bg-gradient-to-br from-primary to-primary-dim p-8 rounded-[32px] text-white flex flex-col justify-between relative overflow-hidden shadow-xl shadow-primary/10">
+<div class="relative z-10">
+<span class="text-xs font-bold uppercase tracking-[0.2em] opacity-80 mb-2 block">AI Mindset Analysis</span>
+<h2 class="font-headline text-3xl font-extrabold mb-4 leading-tight">Focus peaks between 9 AM and 11 AM.</h2>
+<p class="text-primary-container font-medium max-w-md text-lg leading-relaxed">Your consistency in "Deep Work" sessions has increased by 14% this week. You're most likely to complete high-complexity tasks when they are scheduled immediately after your morning routine.</p>
+</div>
+<div class="mt-8 flex gap-4 relative z-10">
+<button class="bg-white text-primary font-bold px-6 py-3 rounded-full text-sm active:scale-95 transition-transform">Optimize Schedule</button>
+<button class="bg-primary-container/20 backdrop-blur-md text-white border border-white/10 font-bold px-6 py-3 rounded-full text-sm active:scale-95 transition-transform">View Habits</button>
+</div>
+<!-- Abstract Deco Shape -->
+<div class="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+</div>
+<!-- Streak Visualization -->
+<div class="bg-surface-container-lowest p-8 rounded-[32px] flex flex-col items-center justify-center text-center shadow-sm">
+<div class="relative w-40 h-40 flex items-center justify-center mb-6">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-highest" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" stroke-width="12"></circle>
+<circle class="text-primary" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" stroke-dasharray="440" stroke-dashoffset="88" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-4xl font-headline font-extrabold text-on-surface">12</span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Day Streak</span>
+</div>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline font-bold text-xl">Keep the momentum</h3>
+<p class="text-on-surface-variant text-sm">3 days away from your personal record.</p>
+</div>
+</div>
+</section>
+<!-- Weekly Performance Grid -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest text-primary mb-1 block">Activity Map</span>
+<h2 class="font-headline text-2xl font-extrabold">Weekly Overview</h2>
+</div>
+<div class="flex bg-surface-container-low p-1 rounded-xl">
+<button class="px-4 py-1.5 rounded-lg text-xs font-bold bg-white shadow-sm">This Week</button>
+<button class="px-4 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant">Last Week</button>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-[32px] shadow-sm">
+<div class="flex items-end justify-between h-48 gap-4 px-2">
+<!-- Bar Chart Items -->
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-primary-container/40 h-[60%] group-hover:bg-primary transition-colors"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Mon</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-primary-container/40 h-[40%] group-hover:bg-primary transition-colors"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Tue</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-primary h-[85%]"></div>
+</div>
+<span class="text-xs font-bold text-on-surface">Wed</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-primary-container/40 h-[55%] group-hover:bg-primary transition-colors"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Thu</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-primary-container/40 h-[70%] group-hover:bg-primary transition-colors"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Fri</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-surface-container-high h-[20%] group-hover:bg-primary transition-colors"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Sat</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-4 group">
+<div class="w-full bg-surface-container-low rounded-t-2xl relative flex items-end overflow-hidden h-32">
+<div class="w-full bg-surface-container-high h-[15%] group-hover:bg-primary transition-colors"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">Sun</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Goal Performance List (Bento-style Cards) -->
+<section class="space-y-6">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest text-primary mb-1 block">Goal Mastery</span>
+<h2 class="font-headline text-2xl font-extrabold">Completion Rates</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-[28px] shadow-sm flex flex-col justify-between h-44">
+<div class="flex justify-between items-start">
+<div class="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">menu_book</span>
+</div>
+<span class="text-xs font-bold text-tertiary bg-tertiary-container px-3 py-1 rounded-full">+12%</span>
+</div>
+<div>
+<h4 class="font-bold text-lg">Productivity Reading</h4>
+<div class="mt-3 flex items-center gap-3">
+<div class="flex-1 h-2 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[75%] rounded-full"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">75%</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-[28px] shadow-sm flex flex-col justify-between h-44">
+<div class="flex justify-between items-start">
+<div class="h-12 w-12 rounded-2xl bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">fitness_center</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant bg-surface-container-low px-3 py-1 rounded-full">Steady</span>
+</div>
+<div>
+<h4 class="font-bold text-lg">Morning Exercise</h4>
+<div class="mt-3 flex items-center gap-3">
+<div class="flex-1 h-2 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[92%] rounded-full"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">92%</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-[28px] shadow-sm flex flex-col justify-between h-44 border-2 border-primary/5">
+<div class="flex justify-between items-start">
+<div class="h-12 w-12 rounded-2xl bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">code</span>
+</div>
+<span class="text-xs font-bold text-error bg-error-container px-3 py-1 rounded-full">-5%</span>
+</div>
+<div>
+<h4 class="font-bold text-lg">App Development</h4>
+<div class="mt-3 flex items-center gap-3">
+<div class="flex-1 h-2 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-error w-[38%] rounded-full"></div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">38%</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Deep Insights Carousel -->
+<section class="space-y-6">
+<h2 class="font-headline text-2xl font-extrabold">Habit Archetype</h2>
+<div class="overflow-x-auto no-scrollbar pb-4 -mx-6 px-6">
+<div class="flex gap-6 min-w-max">
+<div class="w-80 bg-surface-container-low p-8 rounded-[32px]">
+<span class="material-symbols-outlined text-4xl text-primary mb-4" data-weight="fill">wb_sunny</span>
+<h3 class="font-bold text-xl mb-2">Early Bird</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">90% of your high-impact tasks are completed before noon. Lean into this by blocking out 'Monk Mode' early.</p>
+</div>
+<div class="w-80 bg-surface-container-high p-8 rounded-[32px]">
+<span class="material-symbols-outlined text-4xl text-secondary mb-4" data-weight="fill">bolt</span>
+<h3 class="font-bold text-xl mb-2">Sprint Finisher</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">You tend to batch tasks on Wednesdays. This results in 30% more efficiency than your daily average.</p>
+</div>
+<div class="w-80 bg-surface-container-low p-8 rounded-[32px]">
+<span class="material-symbols-outlined text-4xl text-tertiary mb-4" data-weight="fill">psychology</span>
+<h3 class="font-bold text-xl mb-2">Reflective Planner</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Evening review sessions increase your next-day success rate by 22%. Keep that routine!</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl no-border bg-surface-container-low shadow-[0_-4px_24px_rgba(0,0,0,0.04)] rounded-t-[24px]">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-600 dark:hover:text-blue-300 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-wider mt-1">Today</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl px-5 py-1.5 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-wider mt-1">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-600 dark:hover:text-blue-300 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">tune</span>
+<span class="font-inter text-[10px] font-semibold uppercase tracking-wider mt-1">Settings</span>
+</a>
+</nav>
+</body></html>
