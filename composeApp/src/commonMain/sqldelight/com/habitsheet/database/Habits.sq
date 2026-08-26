@@ -92,6 +92,9 @@ SET name = ?, category_id = ?, monthly_goal = ?, display_order = ?, active = ?,
     created_on = ?, archived_on = ?, updated_at = ?
 WHERE id = ?;
 
+updateDailyHabitOrder:
+UPDATE dailyHabitEntity SET display_order = ?, updated_at = ? WHERE id = ?;
+
 archiveDailyHabit:
 UPDATE dailyHabitEntity
 SET active = 0, archived_on = ?, updated_at = ?
@@ -126,6 +129,9 @@ UPDATE weeklyHabitEntity
 SET name = ?, category_id = ?, display_order = ?, active = ?,
     created_on = ?, archived_on = ?, updated_at = ?
 WHERE id = ?;
+
+updateWeeklyHabitOrder:
+UPDATE weeklyHabitEntity SET display_order = ?, updated_at = ? WHERE id = ?;
 
 archiveWeeklyHabit:
 UPDATE weeklyHabitEntity

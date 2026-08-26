@@ -125,6 +125,21 @@ class LocalHabitRepository(
         }
     }
 
+    override suspend fun updateDailyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
+        mutex.withLock {
+            database.transaction {
+                orders.forEach { (id, order) ->
+                    database.habitsQueries.updateDailyHabitOrder(
+                        display_order = order.toLong(),
+                        updated_at = updatedAtEpochMillis,
+                        id = id
+                    )
+                }
+            }
+            loadSnapshot()
+        }
+    }
+
     override suspend fun saveWeeklyHabit(habit: WeeklyHabit) {
         mutex.withLock {
             database.transaction {
@@ -178,6 +193,21 @@ class LocalHabitRepository(
     override suspend fun deleteWeeklyHabit(id: String) {
         mutex.withLock {
             database.habitsQueries.deleteWeeklyHabit(id)
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
+        mutex.withLock {
+            database.transaction {
+                orders.forEach { (id, order) ->
+                    database.habitsQueries.updateWeeklyHabitOrder(
+                        display_order = order.toLong(),
+                        updated_at = updatedAtEpochMillis,
+                        id = id
+                    )
+                }
+            }
             loadSnapshot()
         }
     }

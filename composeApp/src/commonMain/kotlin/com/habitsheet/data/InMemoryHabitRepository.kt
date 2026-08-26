@@ -67,6 +67,16 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         )
     }
 
+    override suspend fun updateDailyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
+                orders[habit.id]?.let { order -> 
+                    habit.copy(displayOrder = order, updatedAtEpochMillis = updatedAtEpochMillis)
+                } ?: habit
+            }
+        )
+    }
+
     override suspend fun saveWeeklyHabit(habit: WeeklyHabit) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyHabits = mutableSnapshot.value.weeklyHabits.upsert(habit) { it.id },
@@ -101,6 +111,16 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyHabits = mutableSnapshot.value.weeklyHabits.filterNot { it.id == id },
             weeklyCompletions = mutableSnapshot.value.weeklyCompletions.filterNot { it.weeklyHabitId == id },
+        )
+    }
+
+    override suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
+                orders[habit.id]?.let { order -> 
+                    habit.copy(displayOrder = order, updatedAtEpochMillis = updatedAtEpochMillis)
+                } ?: habit
+            }
         )
     }
 

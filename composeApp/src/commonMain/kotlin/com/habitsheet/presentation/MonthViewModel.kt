@@ -47,6 +47,7 @@ data class MonthUiState(
     val todaySummary: DailyShareSummary,
     val onboardingVisible: Boolean,
     val scrollToTodayTrigger: Long,
+    val todayMode: Boolean = false,
     val error: String? = null,
 ) {
     val isEmpty: Boolean get() = habits.isEmpty() && weeklyHabits.isEmpty()
@@ -60,6 +61,7 @@ class MonthViewModel(
     private val selectedMonth = MutableStateFlow(MonthKey.from(dateProvider.today()))
     private val onboardingVisible = MutableStateFlow(false)
     private val scrollToTodayTrigger = MutableStateFlow(0L)
+    private val todayMode = MutableStateFlow(false)
     private val error = MutableStateFlow<String?>(null)
     private val today = flow {
         while (true) {
@@ -84,6 +86,7 @@ class MonthViewModel(
         onboardingVisible,
         scrollToTodayTrigger,
         today,
+        todayMode,
         error
     ) { args: Array<Any?> ->
         val snapshot = args[0] as HabitSnapshot
@@ -91,13 +94,21 @@ class MonthViewModel(
         val onboarding = args[2] as Boolean
         val trigger = args[3] as Long
         val currentToday = args[4] as LocalDate
-        val currentError = args[5] as String?
-        snapshot.toUiState(month, currentToday, onboarding, trigger, currentError)
+        val mode = args[5] as Boolean
+        val currentError = args[6] as String?
+        snapshot.toUiState(month, currentToday, onboarding, trigger, mode, currentError)
     }.stateIn(
         scope = scope,
         started = SharingStarted.Eagerly,
-        initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today(), false, 0, null),
+        initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today(), false, 0, false, null),
     )
+
+    fun setTodayMode(enabled: Boolean) {
+        todayMode.value = enabled
+        if (enabled) {
+            selectedMonth.value = MonthKey.from(dateProvider.today())
+        }
+    }
 
     fun clearError() {
         error.value = null
@@ -168,6 +179,7 @@ private fun HabitSnapshot.toUiState(
     today: LocalDate, 
     onboardingVisible: Boolean,
     scrollToTodayTrigger: Long,
+    todayMode: Boolean,
     error: String?
 ): MonthUiState {
     val habitSummaries = HabitCalculations.habitSummaries(month, dailyHabits, dailyCompletions)
@@ -202,6 +214,7 @@ private fun HabitSnapshot.toUiState(
         todaySummary = HabitCalculations.dailyShareSummary(today, dailyHabits, categories, dailyCompletions),
         onboardingVisible = onboardingVisible,
         scrollToTodayTrigger = scrollToTodayTrigger,
+        todayMode = todayMode,
         error = error,
     )
 }

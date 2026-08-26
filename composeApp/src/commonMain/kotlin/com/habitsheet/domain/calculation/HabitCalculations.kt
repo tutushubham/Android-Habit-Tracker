@@ -62,6 +62,7 @@ data class WeeklyBlockSummary(
 }
 
 data class DailyShareHabit(
+    val id: String,
     val name: String,
     val categoryName: String?,
     val completed: Boolean
@@ -91,6 +92,7 @@ object HabitCalculations {
         val activeHabits = habits.filter { it.isActiveOn(date) }
         val shareHabits = activeHabits.map { habit ->
             DailyShareHabit(
+                id = habit.id,
                 name = habit.name,
                 categoryName = categories.find { it.id == habit.categoryId }?.name,
                 completed = habit.id in completedIds

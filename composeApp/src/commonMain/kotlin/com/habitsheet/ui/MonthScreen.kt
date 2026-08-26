@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,7 +35,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -77,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import com.habitsheet.domain.calculation.CategorySummary
 import com.habitsheet.domain.calculation.ProgressSummary
 import com.habitsheet.domain.model.Category
+import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.presentation.MonthUiState
 import com.habitsheet.presentation.MonthViewModel
 import kotlinx.datetime.LocalDate
@@ -90,14 +96,17 @@ fun MonthScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var showSharePreview by remember { mutableStateOf(false) }
+    var showMonthPicker by remember { mutableStateOf(false) }
     val targetPositions = remember { mutableStateMapOf<String, Rect>() }
 
     Surface(color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            if (maxWidth >= 840.dp) {
-                TabletMonthScreen(state, viewModel, onManage, onSettings, onPosition = { tag, rect -> targetPositions[tag] = rect })
+            if (state.todayMode) {
+                TodayModeScreen(state, viewModel, onSettings, onPosition = { tag, rect -> targetPositions[tag] = rect })
+            } else if (maxWidth >= 840.dp) {
+                TabletMonthScreen(state, viewModel, onManage, onSettings, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
             } else {
-                PhoneMonthScreen(state, viewModel, onManage, onSettings, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect })
+                PhoneMonthScreen(state, viewModel, onManage, onSettings, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
             }
 
             if (showSharePreview) {
@@ -108,6 +117,17 @@ fun MonthScreen(
                         showSharePreview = false
                     },
                     onClose = { showSharePreview = false }
+                )
+            }
+            
+            if (showMonthPicker) {
+                MonthYearPickerDialog(
+                    current = state.selectedMonth,
+                    onDismiss = { showMonthPicker = false },
+                    onSelect = {
+                        viewModel.selectMonth(it)
+                        showMonthPicker = false
+                    }
                 )
             }
             
@@ -150,9 +170,10 @@ private fun PhoneMonthScreen(
     onSettings: () -> Unit,
     onShare: () -> Unit,
     onPosition: (String, Rect) -> Unit = { _, _ -> },
+    onShowPicker: () -> Unit,
 ) {
     Scaffold(
-        topBar = { MonthTopBar(state, viewModel, compact = true, onShare = onShare, onSettings = onSettings, onPosition = onPosition) },
+        topBar = { MonthTopBar(state, viewModel, compact = true, onShare = onShare, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker) },
         bottomBar = { BottomNavigation(selectedTracker = true, onTracker = {}, onManage = onManage, onPosition = onPosition) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.background,
@@ -164,6 +185,7 @@ private fun PhoneMonthScreen(
                 .consumeWindowInsets(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            MonthSummaryStrip(state)
             DailyHabitGrid(
                 state = state,
                 viewModel = viewModel,
@@ -194,17 +216,19 @@ private fun TabletMonthScreen(
     onManage: () -> Unit,
     onSettings: () -> Unit,
     onPosition: (String, Rect) -> Unit = { _, _ -> },
+    onShowPicker: () -> Unit,
 ) {
     Row(Modifier.fillMaxSize().safeDrawingPadding()) {
         MonthSidebar(state, onManage, onSettings, onPosition)
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            MonthTopBar(state, viewModel, compact = false, onSettings = onSettings, onPosition = onPosition)
+            MonthTopBar(state, viewModel, compact = false, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker)
             Column(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 32.dp),
             ) {
+                MonthSummaryStrip(state, Modifier.padding(horizontal = 32.dp, vertical = 24.dp))
                 if (state.habits.isEmpty()) {
                     EmptyHabits(onManage)
                 } else {
@@ -239,6 +263,7 @@ private fun MonthTopBar(
     onShare: () -> Unit = {},
     onSettings: () -> Unit = {},
     onPosition: (String, Rect) -> Unit = { _, _ -> },
+    onShowPicker: () -> Unit = {},
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
     Row(
@@ -268,7 +293,16 @@ private fun MonthTopBar(
                 modifier = Modifier.clearAndSetSemantics { contentDescription = "Previous Month" }
             )
         }
-        Column(Modifier.weight(1f), horizontalAlignment = if (compact) Alignment.CenterHorizontally else Alignment.Start) {
+        Column(
+            Modifier
+                .weight(1f)
+                .clickable(onClick = onShowPicker)
+                .semantics(mergeDescendants = true) {
+                    role = Role.Button
+                    contentDescription = "Select month and year. Currently ${state.selectedMonth.monthName()} ${state.selectedMonth.year}"
+                }, 
+            horizontalAlignment = if (compact) Alignment.CenterHorizontally else Alignment.Start
+        ) {
             Text(
                 text = state.selectedMonth.yearLabel(),
                 style = MaterialTheme.typography.labelSmall,
@@ -291,19 +325,44 @@ private fun MonthTopBar(
                 modifier = Modifier.clearAndSetSemantics { contentDescription = "Next Month" }
             )
         }
-        TextButton(
-            onClick = onShare,
-            modifier = Modifier
-                .padding(end = 4.dp)
-                .tutorialTarget("share", onPosition)
-        ) {
-            Text("Share", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        
+        Row(Modifier.padding(start = 8.dp)) {
+            val modeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (state.todayMode) Color.Transparent else modeColor)
+                    .clickable { viewModel.setTodayMode(false) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("Month", style = MaterialTheme.typography.labelLarge, color = if (state.todayMode) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
+            }
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (state.todayMode) modeColor else Color.Transparent)
+                    .clickable { viewModel.setTodayMode(true) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("Today", style = MaterialTheme.typography.labelLarge, color = if (state.todayMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        TextButton(
-            onClick = viewModel::currentMonth,
-            modifier = Modifier.padding(end = 8.dp)
-        ) {
-            Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+
+        if (!compact) {
+            TextButton(
+                onClick = onShare,
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 4.dp)
+                    .tutorialTarget("share", onPosition)
+            ) {
+                Text("Share", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+            TextButton(
+                onClick = viewModel::currentMonth,
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
@@ -795,6 +854,168 @@ private fun SummaryValue(value: String, height: Dp) {
     ) {
         Text(value, style = MaterialTheme.typography.labelSmall)
     }
+}
+
+@Composable
+private fun MonthSummaryStrip(state: MonthUiState, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        SummaryItem("Daily", state.monthlyProgress.percentage.percentLabel())
+        SummaryItem("Weekly", state.weeklyProgress.percentage.percentLabel())
+        val onTarget = state.categorySummaries.count { it.percentage >= 0.8 }
+        SummaryItem("Categories", "$onTarget/${state.categorySummaries.size} on track")
+    }
+}
+
+@Composable
+private fun SummaryItem(label: String, value: String) {
+    Column {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun TodayModeScreen(
+    state: MonthUiState,
+    viewModel: MonthViewModel,
+    onSettings: () -> Unit,
+    onPosition: (String, Rect) -> Unit
+) {
+    Scaffold(
+        topBar = { MonthTopBar(state, viewModel, compact = true, onSettings = onSettings, onPosition = onPosition) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { innerPadding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                state.today.weekdayLabel().uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                "${state.today.day} ${state.selectedMonth.monthName()}",
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            val summary = state.todaySummary
+            Text(
+                "${summary.completedCount} / ${summary.totalCount} completed • ${summary.percentage.percentLabel()}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+            
+            SubtleProgress(summary.percentage, Modifier.widthIn(max = 200.dp).fillMaxWidth().padding(top = 16.dp))
+
+            if (summary.doneHabits.isNotEmpty()) {
+                SectionLabel("DONE", Modifier.align(Alignment.Start).padding(top = 48.dp, bottom = 16.dp))
+                summary.doneHabits.forEach { habit ->
+                    TodayHabitRow(habit.name, completed = true, onClick = { viewModel.toggleDaily(habit.id, state.today) })
+                }
+            }
+
+            if (summary.leftHabits.isNotEmpty()) {
+                SectionLabel("LEFT", Modifier.align(Alignment.Start).padding(top = 32.dp, bottom = 16.dp))
+                summary.leftHabits.forEach { habit ->
+                    TodayHabitRow(habit.name, completed = false, onClick = { viewModel.toggleDaily(habit.id, state.today) })
+                }
+            }
+            
+            if (state.weeklyBlocks.isNotEmpty()) {
+                SectionLabel("WEEKLY PROGRESS", Modifier.align(Alignment.Start).padding(top = 48.dp, bottom = 16.dp))
+                MetricPanel("Weekly Avg", state.weeklyProgress, Modifier.fillMaxWidth())
+            }
+            
+            Spacer(Modifier.height(48.dp))
+        }
+    }
+}
+
+@Composable
+private fun TodayHabitRow(name: String, completed: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (completed) MaterialTheme.colorScheme.primary else Color.Transparent)
+                .border(1.dp, if (completed) Color.Transparent else MaterialTheme.colorScheme.outline, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (completed) Text("✓", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(
+            name,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 16.dp),
+            color = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun MonthYearPickerDialog(
+    current: MonthKey,
+    onDismiss: () -> Unit,
+    onSelect: (MonthKey) -> Unit
+) {
+    var year by remember { mutableStateOf(current.year) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                IconButton(onClick = { year-- }) { Text("‹", fontSize = 24.sp) }
+                Text(year.toString(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp))
+                IconButton(onClick = { year++ }) { Text("›", fontSize = 24.sp) }
+            }
+        },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                val months = listOf(
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
+                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    months.forEachIndexed { index, name ->
+                        val m = index + 1
+                        val selected = current.year == year && current.month == m
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onSelect(MonthKey(year, m)) },
+                            label = { Text(name) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

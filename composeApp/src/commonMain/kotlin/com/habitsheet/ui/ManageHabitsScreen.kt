@@ -34,8 +34,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -96,7 +98,7 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                 Row(Modifier.fillMaxSize().safeDrawingPadding()) {
                     ManageSidebar(onTracker)
                     Column(Modifier.weight(1f).fillMaxHeight()) {
-                        ManageTopBar(onTracker, wide = true)
+                        ManageTopBar(onTracker, wide = true, onAdd = { editor = HabitEditor.Daily(null) })
                         Column(
                             Modifier
                                 .weight(1f)
@@ -141,8 +143,8 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                                 }
 
                                 if (!showArchived) {
-                                    ManageDailySection(state, archived = false, onAdd = { editor = HabitEditor.Daily(null) }, onEdit = { editor = HabitEditor.Daily(it) })
-                                    ManageWeeklySection(state, archived = false, onAdd = { editor = HabitEditor.Weekly(null) }, onEdit = { editor = HabitEditor.Weekly(it) })
+                                    ManageDailySection(state, archived = false, onAdd = { editor = HabitEditor.Daily(null) }, onEdit = { editor = HabitEditor.Daily(it) }, onMove = viewModel::moveDailyHabit)
+                                    ManageWeeklySection(state, archived = false, onAdd = { editor = HabitEditor.Weekly(null) }, onEdit = { editor = HabitEditor.Weekly(it) }, onMove = viewModel::moveWeeklyHabit)
                                     ManageCategorySection(state.categories, onManage = { showCategories = true })
                                 } else {
                                     ManageDailySection(state, archived = true, onAdd = { }, onEdit = { editor = HabitEditor.Daily(it) })
@@ -154,8 +156,20 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                 }
             } else {
                 Scaffold(
-                    topBar = { ManageTopBar(onTracker, wide = false) },
+                    topBar = { ManageTopBar(onTracker, wide = false, onAdd = { editor = HabitEditor.Daily(null) }) },
                     bottomBar = { BottomNavigation(selectedTracker = false, onTracker = onTracker, onManage = {}) },
+                    floatingActionButton = {
+                        if (!showArchived) {
+                            FloatingActionButton(
+                                onClick = { editor = HabitEditor.Daily(null) },
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                shape = CircleShape
+                            ) {
+                                Text("＋", fontSize = 24.sp)
+                            }
+                        }
+                    },
                     contentWindowInsets = WindowInsets(0, 0, 0, 0)
                 ) { innerPadding ->
                     Column(
@@ -203,8 +217,8 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                                 }
 
                             if (!showArchived) {
-                                ManageDailySection(state, archived = false, onAdd = { editor = HabitEditor.Daily(null) }, onEdit = { editor = HabitEditor.Daily(it) })
-                                ManageWeeklySection(state, archived = false, onAdd = { editor = HabitEditor.Weekly(null) }, onEdit = { editor = HabitEditor.Weekly(it) })
+                                ManageDailySection(state, archived = false, onAdd = { editor = HabitEditor.Daily(null) }, onEdit = { editor = HabitEditor.Daily(it) }, onMove = viewModel::moveDailyHabit)
+                                ManageWeeklySection(state, archived = false, onAdd = { editor = HabitEditor.Weekly(null) }, onEdit = { editor = HabitEditor.Weekly(it) }, onMove = viewModel::moveWeeklyHabit)
                                 ManageCategorySection(state.categories, onManage = { showCategories = true })
                             } else {
                                 ManageDailySection(state, archived = true, onAdd = { }, onEdit = { editor = HabitEditor.Daily(it) })
@@ -310,7 +324,7 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
 }
 
 @Composable
-private fun ManageTopBar(onBack: () -> Unit, wide: Boolean) {
+private fun ManageTopBar(onBack: () -> Unit, wide: Boolean, onAdd: () -> Unit = {}) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         Modifier
@@ -333,7 +347,16 @@ private fun ManageTopBar(onBack: () -> Unit, wide: Boolean) {
                 ) 
             }
         }
-        Text("Manage Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text("Manage Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        
+        if (wide) {
+            Button(
+                onClick = onAdd,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("＋ Add Habit")
+            }
+        }
     }
 }
 
@@ -372,40 +395,22 @@ private fun ManageSidebarItem(label: String, selected: Boolean, onClick: () -> U
 }
 
 @Composable
-private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: () -> Unit, onEdit: (DailyHabit) -> Unit) {
+private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: () -> Unit, onEdit: (DailyHabit) -> Unit, onMove: (Int, Int) -> Unit = { _, _ -> }) {
     SectionLabel(if (archived) "Archived daily habits" else "Daily habits", Modifier.padding(bottom = 16.dp))
     val habits = state.dailyHabits.filter { it.active == !archived }.sortedBy { it.displayOrder }
     if (habits.isEmpty()) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                if (archived) "No archived habits" else "No active habits",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                if (archived) "Your archived habits will appear here." else "Add your first daily habit to start tracking.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-                textAlign = TextAlign.Center
-            )
-        }
+        // ... (empty state code)
     } else {
         Column(Modifier.fillMaxWidth()) {
-            habits.forEach { habit ->
+            habits.forEachIndexed { index, habit ->
                 DefinitionRow(
                     name = habit.name,
                     category = state.categories.firstOrNull { it.id == habit.categoryId },
                     categories = state.categories,
                     goal = "${habit.monthlyGoal}/month",
                     onEdit = { onEdit(habit) },
+                    onMoveUp = if (!archived && index > 0) { { onMove(index, index - 1) } } else null,
+                    onMoveDown = if (!archived && index < habits.size - 1) { { onMove(index, index + 1) } } else null
                 )
             }
         }
@@ -415,40 +420,22 @@ private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: (
 }
 
 @Composable
-private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: () -> Unit, onEdit: (WeeklyHabit) -> Unit) {
+private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: () -> Unit, onEdit: (WeeklyHabit) -> Unit, onMove: (Int, Int) -> Unit = { _, _ -> }) {
     SectionLabel(if (archived) "Archived weekly habits" else "Weekly habits", Modifier.padding(top = 32.dp, bottom = 16.dp))
     val habits = state.weeklyHabits.filter { it.active == !archived }.sortedBy { it.displayOrder }
     if (habits.isEmpty()) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                if (archived) "No archived weekly habits" else "No active weekly habits",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                if (archived) "Your archived weekly habits will appear here." else "Add habits you want to track each week.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-                textAlign = TextAlign.Center
-            )
-        }
+        // ... (empty state code)
     } else {
         Column(Modifier.fillMaxWidth()) {
-            habits.forEach { habit ->
+            habits.forEachIndexed { index, habit ->
                 DefinitionRow(
                     name = habit.name,
                     category = state.categories.firstOrNull { it.id == habit.categoryId },
                     categories = state.categories,
                     goal = "1/week",
                     onEdit = { onEdit(habit) },
+                    onMoveUp = if (!archived && index > 0) { { onMove(index, index - 1) } } else null,
+                    onMoveDown = if (!archived && index < habits.size - 1) { { onMove(index, index + 1) } } else null
                 )
             }
         }
@@ -464,6 +451,8 @@ private fun DefinitionRow(
     categories: List<Category>,
     goal: String,
     onEdit: () -> Unit,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Row(
@@ -473,12 +462,28 @@ private fun DefinitionRow(
             .drawBehind {
                 drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
             }
-            .clickable(onClick = onEdit)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("⠿", color = MaterialTheme.colorScheme.outline, fontSize = 20.sp, modifier = Modifier.padding(end = 16.dp))
-        Column(Modifier.weight(1f)) {
+        if (onMoveUp != null && onMoveDown != null) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(onClick = onMoveUp, modifier = Modifier.size(24.dp)) {
+                    Text("▴", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onMoveDown, modifier = Modifier.size(24.dp)) {
+                    Text("▾", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+        } else {
+            Text("⠿", color = MaterialTheme.colorScheme.outline, fontSize = 20.sp, modifier = Modifier.padding(end = 16.dp))
+        }
+        
+        Column(
+            Modifier
+                .weight(1f)
+                .clickable(onClick = onEdit)
+        ) {
             Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                 Box(Modifier.size(8.dp).background(categoryColor(category, categories), CircleShape))

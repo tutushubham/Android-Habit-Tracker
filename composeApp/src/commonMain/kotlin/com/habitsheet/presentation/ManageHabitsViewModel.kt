@@ -137,6 +137,23 @@ class ManageHabitsViewModel(
         }
     }
 
+    fun moveDailyHabit(fromIndex: Int, toIndex: Int) {
+        val habits = state.value.dailyHabits.filter { it.active }.sortedBy { it.displayOrder }.toMutableList()
+        if (fromIndex !in habits.indices || toIndex !in habits.indices) return
+        
+        val habit = habits.removeAt(fromIndex)
+        habits.add(toIndex, habit)
+        
+        val newOrders = habits.mapIndexed { index, h -> h.id to index }.toMap()
+        scope.launch {
+            try {
+                repository.updateDailyHabitOrders(newOrders, dateProvider.nowEpochMillis())
+            } catch (e: Exception) {
+                _error.value = "Couldn't reorder habits."
+            }
+        }
+    }
+
     fun addWeeklyHabit(name: String, categoryId: String?) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
@@ -202,6 +219,23 @@ class ManageHabitsViewModel(
                 repository.deleteWeeklyHabit(id)
             } catch (e: Exception) {
                 _error.value = "Couldn't delete weekly habit."
+            }
+        }
+    }
+
+    fun moveWeeklyHabit(fromIndex: Int, toIndex: Int) {
+        val habits = state.value.weeklyHabits.filter { it.active }.sortedBy { it.displayOrder }.toMutableList()
+        if (fromIndex !in habits.indices || toIndex !in habits.indices) return
+        
+        val habit = habits.removeAt(fromIndex)
+        habits.add(toIndex, habit)
+        
+        val newOrders = habits.mapIndexed { index, h -> h.id to index }.toMap()
+        scope.launch {
+            try {
+                repository.updateWeeklyHabitOrders(newOrders, dateProvider.nowEpochMillis())
+            } catch (e: Exception) {
+                _error.value = "Couldn't reorder weekly habits."
             }
         }
     }

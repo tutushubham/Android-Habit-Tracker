@@ -19,10 +19,12 @@ interface HabitRepository {
     suspend fun archiveDailyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long)
     suspend fun restoreDailyHabit(id: String, updatedAtEpochMillis: Long)
     suspend fun deleteDailyHabit(id: String)
+    suspend fun updateDailyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long)
     suspend fun saveWeeklyHabit(habit: WeeklyHabit)
     suspend fun archiveWeeklyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long)
     suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long)
     suspend fun deleteWeeklyHabit(id: String)
+    suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long)
     suspend fun setDailyCompletion(completion: DailyHabitCompletion)
     suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion)
     suspend fun isOnboardingCompleted(): Boolean
