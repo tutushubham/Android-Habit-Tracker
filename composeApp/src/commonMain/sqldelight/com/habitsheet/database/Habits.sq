@@ -1,0 +1,124 @@
+PRAGMA foreign_keys = 1;
+
+CREATE TABLE categoryEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    display_order INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE dailyHabitEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    category_id TEXT REFERENCES categoryEntity(id) ON DELETE SET NULL,
+    monthly_goal INTEGER NOT NULL,
+    display_order INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_on TEXT NOT NULL,
+    archived_on TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE dailyCompletionEntity (
+    habit_id TEXT NOT NULL REFERENCES dailyHabitEntity(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    completed INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (habit_id, date)
+);
+
+CREATE TABLE weeklyHabitEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    category_id TEXT REFERENCES categoryEntity(id) ON DELETE SET NULL,
+    display_order INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_on TEXT NOT NULL,
+    archived_on TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE weeklyCompletionEntity (
+    weekly_habit_id TEXT NOT NULL REFERENCES weeklyHabitEntity(id) ON DELETE CASCADE,
+    week_start_date TEXT NOT NULL,
+    completed INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (weekly_habit_id, week_start_date)
+);
+
+CREATE INDEX dailyCompletionDateIndex ON dailyCompletionEntity(date);
+CREATE INDEX weeklyCompletionDateIndex ON weeklyCompletionEntity(week_start_date);
+CREATE INDEX dailyHabitCategoryIndex ON dailyHabitEntity(category_id);
+CREATE INDEX weeklyHabitCategoryIndex ON weeklyHabitEntity(category_id);
+
+selectAllCategories:
+SELECT * FROM categoryEntity ORDER BY display_order, id;
+
+selectCategoryCount:
+SELECT COUNT(*) FROM categoryEntity;
+
+insertCategory:
+INSERT OR IGNORE INTO categoryEntity(id, name, display_order, active, updated_at)
+VALUES (?, ?, ?, ?, ?);
+
+updateCategory:
+UPDATE categoryEntity
+SET name = ?, display_order = ?, active = ?, updated_at = ?
+WHERE id = ?;
+
+selectAllDailyHabits:
+SELECT * FROM dailyHabitEntity ORDER BY display_order, id;
+
+insertDailyHabit:
+INSERT OR IGNORE INTO dailyHabitEntity(
+    id, name, category_id, monthly_goal, display_order, active,
+    created_on, archived_on, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateDailyHabit:
+UPDATE dailyHabitEntity
+SET name = ?, category_id = ?, monthly_goal = ?, display_order = ?, active = ?,
+    created_on = ?, archived_on = ?, updated_at = ?
+WHERE id = ?;
+
+archiveDailyHabit:
+UPDATE dailyHabitEntity
+SET active = 0, archived_on = ?, updated_at = ?
+WHERE id = ?;
+
+selectAllDailyCompletions:
+SELECT * FROM dailyCompletionEntity ORDER BY date, habit_id;
+
+upsertDailyCompletion:
+INSERT OR REPLACE INTO dailyCompletionEntity(habit_id, date, completed, updated_at)
+VALUES (?, ?, ?, ?);
+
+selectAllWeeklyHabits:
+SELECT * FROM weeklyHabitEntity ORDER BY display_order, id;
+
+insertWeeklyHabit:
+INSERT OR IGNORE INTO weeklyHabitEntity(
+    id, name, category_id, display_order, active,
+    created_on, archived_on, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateWeeklyHabit:
+UPDATE weeklyHabitEntity
+SET name = ?, category_id = ?, display_order = ?, active = ?,
+    created_on = ?, archived_on = ?, updated_at = ?
+WHERE id = ?;
+
+archiveWeeklyHabit:
+UPDATE weeklyHabitEntity
+SET active = 0, archived_on = ?, updated_at = ?
+WHERE id = ?;
+
+selectAllWeeklyCompletions:
+SELECT * FROM weeklyCompletionEntity ORDER BY week_start_date, weekly_habit_id;
+
+upsertWeeklyCompletion:
+INSERT OR REPLACE INTO weeklyCompletionEntity(weekly_habit_id, week_start_date, completed, updated_at)
+VALUES (?, ?, ?, ?);

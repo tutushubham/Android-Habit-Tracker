@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Habit Tracker - Month View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2d3133",
+                        "primary-fixed-dim": "#8bd79b",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#d5e3fc",
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-surface-variant": "#404940",
+                        "tertiary-fixed": "#e3e1ec",
+                        "surface-container-highest": "#e0e3e5",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#004c22",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "inverse-primary": "#8bd79b",
+                        "outline": "#707a6f",
+                        "surface-tint": "#1f6c3a",
+                        "tertiary-container": "#575760",
+                        "on-surface": "#191c1e",
+                        "on-tertiary-fixed-variant": "#46464e",
+                        "surface": "#f7f9fb",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c6c5cf",
+                        "secondary": "#515f74",
+                        "surface-dim": "#d8dadc",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-high": "#e6e8ea",
+                        "on-background": "#191c1e",
+                        "on-tertiary-container": "#cecdd7",
+                        "outline-variant": "#bfc9bd",
+                        "secondary-container": "#d5e3fc",
+                        "on-secondary-container": "#57657a",
+                        "surface-container-low": "#f2f4f6",
+                        "on-primary-fixed": "#00210b",
+                        "primary-container": "#166534",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#005226",
+                        "tertiary": "#3f4048",
+                        "primary-fixed": "#a6f4b5",
+                        "surface-container": "#eceef0",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-tertiary-fixed": "#1a1b22",
+                        "on-primary-container": "#93e0a2",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "container-max": "1024px",
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "numeric-data": ["JetBrains Mono"],
+                        "display-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "numeric-data": ["14px", { "lineHeight": "14px", "fontWeight": "500" }],
+                        "display-sm": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .habit-grid { display: grid; grid-template-columns: 140px 1fr; }
+        .dates-grid { display: grid; grid-template-columns: repeat(31, 32px); gap: 4px; }
+    </style>
+<style data-stitch-css-vh="
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  ">
+    body {
+      min-height: max(884px, 884px);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-[884px] pb-24" data-stitch-vh="min-h-[884px]===min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-background dark:bg-background border-b border-outline-variant dark:border-outline flex justify-between items-center px-margin-mobile h-14">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors duration-200 rounded-full">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">August 2026</h1>
+<button class="px-3 h-10 flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors duration-200 rounded-lg">
+<span class="font-body-md font-medium">Today</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="pt-14 pb-4">
+<!-- Daily Habits Section -->
+<section class="mt-4 mb-6">
+<h2 class="px-margin-mobile font-body-sm font-semibold text-secondary mb-2 uppercase tracking-wider">Daily Habits</h2>
+<div class="habit-grid border-y border-outline-variant">
+<!-- Sticky Left Column (Labels) -->
+<div class="border-r border-outline-variant bg-surface sticky left-0 z-10 flex flex-col pt-8">
+<!-- Row 1 -->
+<div class="h-12 px-3 border-b border-outline-variant flex flex-col justify-center relative">
+<span class="font-body-sm text-on-surface truncate">Morning Run</span>
+<div class="flex justify-between items-center mt-0.5">
+<span class="font-label-caps text-label-caps text-secondary">Health</span>
+<span class="font-numeric-data text-numeric-data text-secondary text-[10px]">12/20</span>
+</div>
+<div class="absolute bottom-0 left-0 h-1 bg-primary w-[60%]"></div>
+</div>
+<!-- Row 2 -->
+<div class="h-12 px-3 border-b border-outline-variant flex flex-col justify-center relative">
+<span class="font-body-sm text-on-surface truncate">Reading</span>
+<div class="flex justify-between items-center mt-0.5">
+<span class="font-label-caps text-label-caps text-secondary">Growth</span>
+<span class="font-numeric-data text-numeric-data text-secondary text-[10px]">18/31</span>
+</div>
+<div class="absolute bottom-0 left-0 h-1 bg-primary w-[58%]"></div>
+</div>
+<!-- Row 3 -->
+<div class="h-12 px-3 border-b border-outline-variant flex flex-col justify-center relative">
+<span class="font-body-sm text-on-surface truncate">Meditation</span>
+<div class="flex justify-between items-center mt-0.5">
+<span class="font-label-caps text-label-caps text-secondary">Mind</span>
+<span class="font-numeric-data text-numeric-data text-secondary text-[10px]">8/15</span>
+</div>
+<div class="absolute bottom-0 left-0 h-1 bg-primary w-[53%]"></div>
+</div>
+</div>
+<!-- Scrollable Right Column (Dates & Cells) -->
+<div class="overflow-x-auto hide-scrollbar pl-2 pr-4 relative">
+<!-- Date Headers -->
+<div class="dates-grid h-8 items-end pb-1 border-b border-outline-variant">
+<!-- Abbreviated for spacing, representing days 22-26 -->
+<div class="flex flex-col items-center justify-end h-full"><span class="font-label-caps text-[9px] text-secondary">S</span><span class="font-numeric-data text-[11px] text-on-surface-variant">22</span></div>
+<div class="flex flex-col items-center justify-end h-full"><span class="font-label-caps text-[9px] text-secondary">S</span><span class="font-numeric-data text-[11px] text-on-surface-variant">23</span></div>
+<div class="flex flex-col items-center justify-end h-full"><span class="font-label-caps text-[9px] text-secondary">M</span><span class="font-numeric-data text-[11px] text-on-surface-variant">24</span></div>
+<div class="flex flex-col items-center justify-end h-full bg-surface-container-highest rounded-t"><span class="font-label-caps text-[9px] text-primary">T</span><span class="font-numeric-data text-[11px] text-primary font-bold">25</span></div>
+<div class="flex flex-col items-center justify-end h-full"><span class="font-label-caps text-[9px] text-secondary">W</span><span class="font-numeric-data text-[11px] text-on-surface-variant">26</span></div>
+<div class="flex flex-col items-center justify-end h-full"><span class="font-label-caps text-[9px] text-secondary">T</span><span class="font-numeric-data text-[11px] text-on-surface-variant">27</span></div>
+<div class="flex flex-col items-center justify-end h-full"><span class="font-label-caps text-[9px] text-secondary">F</span><span class="font-numeric-data text-[11px] text-on-surface-variant">28</span></div>
+</div>
+<!-- Row 1 Cells -->
+<div class="dates-grid h-12 items-center border-b border-outline-variant relative">
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-surface-variant border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-surface-variant border border-outline-variant rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+</div>
+<!-- Row 2 Cells -->
+<div class="dates-grid h-12 items-center border-b border-outline-variant relative">
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+</div>
+<!-- Row 3 Cells -->
+<div class="dates-grid h-12 items-center border-b border-outline-variant relative">
+<div class="w-6 h-6 mx-auto bg-surface-variant border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface-variant border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-primary rounded-sm"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+<div class="w-6 h-6 mx-auto bg-surface border border-outline-variant rounded-sm border-dashed"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline">
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold w-full h-full hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 duration-100">
+<span class="material-symbols-outlined mb-1" data-icon="calendar_today" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-caps text-label-caps">Tracker</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant w-full h-full hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-95 duration-100">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps">Manage</span>
+</button>
+</nav>
+
+</body></html>

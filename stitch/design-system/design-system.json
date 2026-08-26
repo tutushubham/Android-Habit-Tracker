@@ -1,0 +1,27 @@
+{
+  "projectId": "9817138956917854992",
+  "requestedId": "asset-stub-assets_ba07daa6bd724fc99d149032ec4b1f75",
+  "nodeId": "assets_ba07daa6bd724fc99d149032ec4b1f75",
+  "name": "Kinetic Utility",
+  "colors": {
+    "primary": "#166534",
+    "secondary": "#475569",
+    "tertiary": "#71717A",
+    "neutral": "#F8FAFC"
+  },
+  "typography": {
+    "headline": "Hanken Grotesk",
+    "body": "Inter",
+    "label": "JetBrains Mono"
+  },
+  "iconExamples": [
+    "search",
+    "home",
+    "person",
+    "edit",
+    "auto_fix_high",
+    "category",
+    "sell",
+    "delete"
+  ]
+}

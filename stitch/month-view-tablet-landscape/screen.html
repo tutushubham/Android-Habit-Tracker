@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Habit Tracker - Month View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500;600&amp;family=Hanken+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2d3133",
+                        "primary-fixed-dim": "#8bd79b",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#d5e3fc",
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary-fixed-dim": "#b9c7df",
+                        "on-secondary-fixed-variant": "#3a485b",
+                        "on-surface-variant": "#404940",
+                        "tertiary-fixed": "#e3e1ec",
+                        "surface-container-highest": "#e0e3e5",
+                        "background": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#004c22",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "inverse-primary": "#8bd79b",
+                        "outline": "#707a6f",
+                        "surface-tint": "#1f6c3a",
+                        "tertiary-container": "#575760",
+                        "on-surface": "#191c1e",
+                        "on-tertiary-fixed-variant": "#46464e",
+                        "surface": "#f7f9fb",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c6c5cf",
+                        "secondary": "#515f74",
+                        "surface-dim": "#d8dadc",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-high": "#e6e8ea",
+                        "on-background": "#191c1e",
+                        "on-tertiary-container": "#cecdd7",
+                        "outline-variant": "#bfc9bd",
+                        "secondary-container": "#d5e3fc",
+                        "on-secondary-container": "#57657a",
+                        "surface-container-low": "#f2f4f6",
+                        "on-primary-fixed": "#00210b",
+                        "primary-container": "#166534",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#005226",
+                        "tertiary": "#3f4048",
+                        "primary-fixed": "#a6f4b5",
+                        "surface-container": "#eceef0",
+                        "on-secondary-fixed": "#0d1c2e",
+                        "on-tertiary-fixed": "#1a1b22",
+                        "on-primary-container": "#93e0a2",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "container-max": "1024px",
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "numeric-data": ["JetBrains Mono"],
+                        "display-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "numeric-data": ["14px", { "lineHeight": "14px", "fontWeight": "500" }],
+                        "display-sm": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Base Grid Setup */
+        body {
+            background-color: #f7f9fb;
+            color: #191c1e;
+        }
+        
+        /* Thin scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f2f4f6;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bfc9bd;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #707a6f;
+        }
+
+        .habit-grid {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) 100px 80px repeat(31, minmax(28px, 1fr));
+            border-top: 1px solid #bfc9bd;
+            border-left: 1px solid #bfc9bd;
+        }
+
+        .habit-grid > div {
+            border-right: 1px solid #bfc9bd;
+            border-bottom: 1px solid #bfc9bd;
+            padding: 8px 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .habit-grid > div.row-header {
+            justify-content: flex-start;
+            padding-left: 12px;
+        }
+
+        /* Checkbox Styling */
+        input[type="checkbox"].habit-check {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 1px solid #707a6f;
+            border-radius: 0.125rem;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            background-color: transparent;
+            transition: all 0.2s ease;
+        }
+
+        input[type="checkbox"].habit-check:checked {
+            background-color: #004c22;
+            border-color: #004c22;
+        }
+
+        input[type="checkbox"].habit-check:checked::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 2px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        
+        input[type="checkbox"].habit-check:disabled {
+            border: 1px dashed #bfc9bd;
+            cursor: not-allowed;
+            background-color: #f2f4f6;
+        }
+
+        .today-column {
+            background-color: #eceef0;
+        }
+    </style>
+</head>
+<body class="font-body-md h-[1024px] w-screen overflow-hidden flex flex-col md:flex-row bg-background" data-stitch-vh="h-[1024px]===h-screen">
+<!-- TopAppBar (Visible on Mobile only, hidden on md+) -->
+<header class="md:hidden flex justify-between items-center w-full px-margin-mobile h-14 bg-background dark:bg-background border-b border-outline-variant dark:border-outline transition-colors duration-200">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-low dark:hover:bg-surface-container-highest p-2 rounded">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">chevron_left</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">August 2026</h1>
+</div>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest px-3 py-1.5 rounded text-sm font-medium">
+            Today
+        </button>
+</header>
+<!-- Side Navigation Shell (Web/Tablet Layout) -->
+<nav class="hidden md:flex flex-col w-64 bg-surface dark:bg-surface-dim border-r border-outline-variant h-full p-4 gap-6 shrink-0 z-10">
+<!-- Brand / Header -->
+<div class="flex items-center gap-3 px-2">
+<span class="material-symbols-outlined text-primary text-3xl">track_changes</span>
+<span class="font-display-sm text-display-sm text-primary">Tracker</span>
+</div>
+<!-- Navigation Links -->
+<div class="flex flex-col gap-1 mt-4">
+<a class="flex items-center gap-3 px-4 py-3 bg-surface-container-high rounded-lg text-primary font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-caps text-label-caps">Tracker</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low rounded-lg text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-label-caps">Manage</span>
+</a>
+</div>
+<!-- Left Sidebar Content: Progress Summary -->
+<div class="flex flex-col gap-6 mt-8 overflow-y-auto pr-2 pb-8">
+<!-- Overall Stats -->
+<div class="flex flex-col gap-2">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Monthly Completion</h2>
+<div class="flex items-end gap-2">
+<span class="font-display-sm text-display-sm text-primary">72%</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant pb-1">Target: 80%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1 bg-surface-container-high rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-primary" style="width: 72%;"></div>
+</div>
+</div>
+<hr class="border-outline-variant"/>
+<!-- Category Summary -->
+<div class="flex flex-col gap-4">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Categories</h2>
+<div class="flex flex-col gap-3">
+<!-- Health -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm font-medium">Health &amp; Fitness</span>
+<span class="font-numeric-data text-numeric-data text-on-surface-variant">85%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 85%;"></div>
+</div>
+</div>
+<!-- Work -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm font-medium">Deep Work</span>
+<span class="font-numeric-data text-numeric-data text-on-surface-variant">60%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 60%;"></div>
+</div>
+</div>
+<!-- Personal -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm font-medium">Personal Dev</span>
+<span class="font-numeric-data text-numeric-data text-on-surface-variant">92%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 92%;"></div>
+</div>
+</div>
+</div>
+</div>
+<hr class="border-outline-variant"/>
+<!-- Weekly Targets -->
+<div class="flex flex-col gap-3">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Weekly Targets (W33)</h2>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-sm">circle</span>
+<span class="font-body-sm text-body-sm text-on-surface">3x Cardio sessions (2/3)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface line-through text-outline">Read 1 book</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-sm">circle</span>
+<span class="font-body-sm text-body-sm text-on-surface">Zero Alcohol (5/7)</span>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full bg-surface-container-lowest overflow-hidden">
+<!-- Top Controls (Web Layout) -->
+<div class="hidden md:flex justify-between items-center px-8 py-4 border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">chevron_left</span>
+</button>
+<h1 class="font-display-sm text-display-sm text-on-surface">August 2026</h1>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-4 py-2 bg-surface-container-low hover:bg-surface-container-high rounded font-body-sm text-body-sm font-medium transition-colors border border-outline-variant">
+                    Today
+                </button>
+<div class="flex border border-outline-variant rounded overflow-hidden">
+<button class="px-3 py-1.5 bg-surface-container-highest font-body-sm text-body-sm font-medium border-r border-outline-variant">Month</button>
+<button class="px-3 py-1.5 bg-surface-container-lowest hover:bg-surface-container-low font-body-sm text-body-sm font-medium">Week</button>
+</div>
+</div>
+</div>
+<!-- The Habit Grid Container -->
+<div class="flex-1 overflow-auto p-4 md:p-8">
+<div class="min-w-max bg-surface-container-lowest">
+<!-- Grid Header -->
+<div class="habit-grid font-label-caps text-label-caps text-on-surface-variant bg-surface-container-low sticky top-0 z-10">
+<div class="row-header font-bold text-on-surface">Habit</div>
+<div class="font-bold">Category</div>
+<div class="font-bold">Goal</div>
+<!-- Days 1-31 -->
+<!-- Simulating a loop for brevity in HTML structure, manually expanding a few for structural integrity -->
+<div class="text-center">1</div><div class="text-center">2</div><div class="text-center">3</div><div class="text-center">4</div><div class="text-center">5</div><div class="text-center">6</div><div class="text-center">7</div><div class="text-center">8</div><div class="text-center">9</div><div class="text-center">10</div><div class="text-center">11</div><div class="text-center">12</div><div class="text-center today-column font-bold text-primary">13</div><div class="text-center">14</div><div class="text-center">15</div><div class="text-center">16</div><div class="text-center">17</div><div class="text-center">18</div><div class="text-center">19</div><div class="text-center">20</div><div class="text-center">21</div><div class="text-center">22</div><div class="text-center">23</div><div class="text-center">24</div><div class="text-center">25</div><div class="text-center">26</div><div class="text-center">27</div><div class="text-center">28</div><div class="text-center">29</div><div class="text-center">30</div><div class="text-center">31</div>
+</div>
+<!-- Habit Row 1 -->
+<div class="habit-grid hover:bg-surface-container-low transition-colors group">
+<div class="row-header font-body-sm text-body-sm text-on-surface font-medium truncate">Morning Run</div>
+<div class="font-body-sm text-body-sm text-secondary truncate px-2 text-center">Health</div>
+<div class="font-numeric-data text-numeric-data text-on-surface-variant">10/20</div>
+<!-- Checkboxes -->
+<div><input checked="" class="habit-check" type="checkbox"/></div>
+<div><input class="habit-check" type="checkbox"/></div>
+<div><input checked="" class="habit-check" type="checkbox"/></div>
+<div><input class="habit-check" type="checkbox"/></div>
+<div><input checked="" class="habit-check" type="checkbox"/></div>
+<div><input class="habit-check" type="checkbox"/></div>
+<div><input class="habit-check" type="checkbox"/></div>
+<div><input checked="" class="habit-check" type="checkbox"/></div>
+<div><input class="habit-check" type="checkbox"/></div>
+<div><input checked="" class="habit-check" type="checkbox"/></div>
+<div><input checked="" class="habit-check" type="checkbox"/></div>
+<div><input class="habit-check" type="checkbox"/></div>
+<div class="today-column"><input checked="" class="habit-check" type="checkbox"/></div>
+<!-- Future Days -->
+<div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div>
+</div>
+<!-- Habit Row 2 -->
+<div class="habit-grid hover:bg-surface-container-low transition-colors group">
+<div class="row-header font-body-sm text-body-sm text-on-surface font-medium truncate">Read 20 Pages</div>
+<div class="font-body-sm text-body-sm text-secondary truncate px-2 text-center">Personal</div>
+<div class="font-numeric-data text-numeric-data text-on-surface-variant">12/31</div>
+<!-- Checkboxes (Simulated complete run up to today) -->
+<div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div class="today-column"><input checked="" class="habit-check" type="checkbox"/></div>
+<!-- Future Days disabled -->
+<div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div>
+</div>
+<!-- Habit Row 3 -->
+<div class="habit-grid hover:bg-surface-container-low transition-colors group">
+<div class="row-header font-body-sm text-body-sm text-on-surface font-medium truncate">No Social Media</div>
+<div class="font-body-sm text-body-sm text-secondary truncate px-2 text-center">Work</div>
+<div class="font-numeric-data text-numeric-data text-on-surface-variant">5/31</div>
+<!-- Mixed Checkboxes -->
+<div><input class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div><input checked="" class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div><input class="habit-check" type="checkbox"/></div><div class="today-column"><input checked="" class="habit-check" type="checkbox"/></div>
+<!-- Future Days disabled -->
+<div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div><div><input class="habit-check" disabled="" type="checkbox"/></div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Visible on Mobile only, hidden on md+) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline">
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold scale-95 duration-100 hover:bg-surface-container-high dark:hover:bg-surface-container-highest w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-caps text-label-caps font-bold">Tracker</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant scale-95 duration-100 hover:bg-surface-container-high dark:hover:bg-surface-container-highest w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-label-caps text-label-caps font-bold">Manage</span>
+</a>
+</nav>
+
+</body></html>

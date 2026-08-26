@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Month View - Dark Mode</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Hanken+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-surface": "#2d3133",
+                    "primary-fixed-dim": "#8bd79b",
+                    "error": "#ba1a1a",
+                    "secondary-fixed": "#d5e3fc",
+                    "inverse-on-surface": "#eff1f3",
+                    "secondary-fixed-dim": "#b9c7df",
+                    "on-secondary-fixed-variant": "#3a485b",
+                    "on-surface-variant": "#404940",
+                    "tertiary-fixed": "#e3e1ec",
+                    "surface-container-highest": "#e0e3e5",
+                    "background": "#f7f9fb",
+                    "surface-container-lowest": "#ffffff",
+                    "primary": "#004c22",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#e0e3e5",
+                    "inverse-primary": "#8bd79b",
+                    "outline": "#707a6f",
+                    "surface-tint": "#1f6c3a",
+                    "tertiary-container": "#575760",
+                    "on-surface": "#191c1e",
+                    "on-tertiary-fixed-variant": "#46464e",
+                    "surface": "#f7f9fb",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#c6c5cf",
+                    "secondary": "#515f74",
+                    "surface-dim": "#d8dadc",
+                    "surface-bright": "#f7f9fb",
+                    "surface-container-high": "#e6e8ea",
+                    "on-background": "#191c1e",
+                    "on-tertiary-container": "#cecdd7",
+                    "outline-variant": "#bfc9bd",
+                    "secondary-container": "#d5e3fc",
+                    "on-secondary-container": "#57657a",
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary-fixed": "#00210b",
+                    "primary-container": "#166534",
+                    "on-primary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#005226",
+                    "tertiary": "#3f4048",
+                    "primary-fixed": "#a6f4b5",
+                    "surface-container": "#eceef0",
+                    "on-secondary-fixed": "#0d1c2e",
+                    "on-tertiary-fixed": "#1a1b22",
+                    "on-primary-container": "#93e0a2",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "12px",
+                    "container-max": "1024px",
+                    "margin-mobile": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "numeric-data": [
+                            "JetBrains Mono"
+                    ],
+                    "display-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "11px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "numeric-data": [
+                            "14px",
+                            {
+                                    "lineHeight": "14px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "display-sm": [
+                            "30px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "13px",
+                            {
+                                    "lineHeight": "18px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        /* Base styles for dark mode overrides not easily handled by Tailwind classes without complex setup */
+        .dark body {
+            background-color: #1a1c1e; /* Deep charcoal/black */
+            color: #eff1f3; /* Off-white text */
+        }
+        
+        .dark .bg-background { background-color: #1a1c1e; }
+        .dark .bg-surface { background-color: #2d3133; }
+        .dark .text-on-surface-variant { color: #bfc9bd; }
+        .dark .border-outline-variant { border-color: #404940; }
+        
+        /* Grid specific overrides for the strict dark mode requirements */
+        .dark .habit-grid-cell { border-color: #404940; }
+        .dark .habit-grid-cell.completed { background-color: #8bd79b; border-color: #8bd79b; }
+        .dark .habit-grid-cell.partial { background-color: rgba(139, 215, 155, 0.2); border-color: #8bd79b; }
+        
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+    </style>
+<style data-stitch-css-vh="
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  ">
+    body {
+      min-height: max(884px, 884px);
+    }
+  </style>
+  </head>
+<body class="bg-background dark:bg-background text-on-background dark:text-inverse-on-surface min-h-[884px] flex flex-col font-body-md overflow-x-hidden" data-stitch-vh="min-h-[884px]===min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-margin-mobile h-14 docked full-width top-0 bg-background dark:bg-background border-b border-outline-variant dark:border-outline flat no shadows transition-colors duration-200 sticky z-40">
+<button class="text-on-surface-variant dark:text-inverse-on-surface hover:bg-surface-container-low dark:hover:bg-surface-container-highest p-1 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined" style="font-size: 24px;">chevron_left</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">August 2026</h1>
+<button class="font-label-caps text-label-caps text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest px-3 py-1 rounded transition-colors duration-200">
+            Today
+        </button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow p-margin-mobile flex flex-col gap-margin-desktop mb-20">
+<!-- Summary Section -->
+<section class="flex flex-col gap-gutter">
+<div class="flex justify-between items-baseline border-b border-outline-variant dark:border-outline pb-unit">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Monthly Overview</h2>
+<span class="font-numeric-data text-numeric-data text-primary dark:text-primary-fixed-dim">68%</span>
+</div>
+<div class="grid grid-cols-2 gap-gutter">
+<div class="bg-surface dark:bg-surface border border-outline-variant dark:border-outline p-gutter rounded flex flex-col gap-unit">
+<span class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Consistency</span>
+<span class="font-display-sm text-display-sm">14<span class="text-headline-md text-on-surface-variant dark:text-on-surface-variant">d streak</span></span>
+</div>
+<div class="bg-surface dark:bg-surface border border-outline-variant dark:border-outline p-gutter rounded flex flex-col gap-unit">
+<span class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Top Habit</span>
+<span class="font-headline-md text-headline-md mt-auto">Meditation</span>
+</div>
+</div>
+</section>
+<!-- Habit Matrix (Bento style grid) -->
+<section class="flex flex-col gap-gutter">
+<div class="flex justify-between items-baseline border-b border-outline-variant dark:border-outline pb-unit">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Habit Matrix</h2>
+</div>
+<div class="bg-surface dark:bg-surface border border-outline-variant dark:border-outline rounded p-gutter overflow-x-auto">
+<!-- Grid Header (Days) -->
+<div class="flex gap-unit mb-unit ml-20">
+<!-- Generating dates 1-15 for mobile view density -->
+<script>
+                        for(let i=1; i<=15; i++) {
+                            document.write(`<div class="w-8 flex-shrink-0 text-center font-numeric-data text-label-caps text-on-surface-variant dark:text-on-surface-variant">${i}</div>`);
+                        }
+                    </script>
+</div>
+<!-- Habit Rows -->
+<div class="flex flex-col gap-unit">
+<!-- Habit 1 -->
+<div class="flex items-center gap-unit">
+<div class="w-16 flex-shrink-0 font-body-sm truncate text-on-background dark:text-inverse-on-surface pr-2">Meditation</div>
+<div class="flex gap-unit">
+<script>
+                                for(let i=1; i<=15; i++) {
+                                    let statusClass = "border border-outline-variant dark:border-outline border-dashed";
+                                    if(i <= 10) statusClass = "bg-primary-fixed-dim dark:bg-primary-fixed-dim border border-primary-fixed-dim dark:border-primary-fixed-dim"; // Completed
+                                    else if (i === 11) statusClass = "bg-primary-fixed-dim/20 border border-primary-fixed-dim dark:border-primary-fixed-dim"; // Partial
+                                    document.write(`<div class="w-8 h-8 flex-shrink-0 rounded-sm ${statusClass} habit-grid-cell"></div>`);
+                                }
+                            </script>
+</div>
+</div>
+<!-- Habit 2 -->
+<div class="flex items-center gap-unit">
+<div class="w-16 flex-shrink-0 font-body-sm truncate text-on-background dark:text-inverse-on-surface pr-2">Exercise</div>
+<div class="flex gap-unit">
+<script>
+                                for(let i=1; i<=15; i++) {
+                                    let statusClass = "border border-outline-variant dark:border-outline border-dashed";
+                                    if(i % 2 === 0 && i < 12) statusClass = "bg-primary-fixed-dim dark:bg-primary-fixed-dim border border-primary-fixed-dim dark:border-primary-fixed-dim";
+                                    document.write(`<div class="w-8 h-8 flex-shrink-0 rounded-sm ${statusClass} habit-grid-cell"></div>`);
+                                }
+                            </script>
+</div>
+</div>
+<!-- Habit 3 -->
+<div class="flex items-center gap-unit">
+<div class="w-16 flex-shrink-0 font-body-sm truncate text-on-background dark:text-inverse-on-surface pr-2">Reading</div>
+<div class="flex gap-unit">
+<script>
+                                for(let i=1; i<=15; i++) {
+                                    let statusClass = "border border-outline-variant dark:border-outline border-dashed";
+                                    if(i > 2 && i < 14 && i !== 7) statusClass = "bg-primary-fixed-dim dark:bg-primary-fixed-dim border border-primary-fixed-dim dark:border-primary-fixed-dim";
+                                    document.write(`<div class="w-8 h-8 flex-shrink-0 rounded-sm ${statusClass} habit-grid-cell"></div>`);
+                                }
+                            </script>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end gap-gutter mt-unit">
+<div class="flex items-center gap-1">
+<div class="w-3 h-3 rounded-sm border border-outline-variant dark:border-outline border-dashed"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Missed</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="w-3 h-3 rounded-sm bg-primary-fixed-dim/20 border border-primary-fixed-dim"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Partial</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="w-3 h-3 rounded-sm bg-primary-fixed-dim border border-primary-fixed-dim"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant">Done</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline flat no shadows md:hidden">
+<!-- Active Tab: Tracker (matching Intent) -->
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold scale-95 duration-100 hover:bg-surface-container-high dark:hover:bg-surface-container-highest w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-caps text-label-caps font-bold">Tracker</span>
+</a>
+<!-- Inactive Tab: Manage -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant scale-95 duration-100 hover:bg-surface-container-high dark:hover:bg-surface-container-highest w-full h-full" href="#">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-label-caps text-label-caps font-bold">Manage</span>
+</a>
+</nav>
+
+</body></html>
