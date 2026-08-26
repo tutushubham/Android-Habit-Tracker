@@ -4,17 +4,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Background Frame / Motif -->
     <path
+        android:pathData="M30,30h16v16h-16z M50,30h16v16h-16z M70,30h12v16h-12z M30,50h16v16h-16z M50,50h16v16h-16z M70,50h12v16h-12z M30,70h16v12h-16z M50,70h16v12h-16z M70,70h12v12h-12z"
         android:fillColor="#FFFFFF"
-        android:pathData="M31,54l15,15l31,-31"
-        android:strokeWidth="6"
+        android:fillAlpha="0.2" />
+
+    <!-- Main Checkmark -->
+    <path
+        android:pathData="M34,54l14,14l30,-30"
         android:strokeColor="#FFFFFF"
+        android:strokeWidth="10"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
+
+    <!-- Square Outline -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M25,25h58v58h-58z"
-        android:strokeWidth="4"
+        android:pathData="M24,24h60v60h-60z"
         android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
         android:strokeLineCap="round" />
 </vector>

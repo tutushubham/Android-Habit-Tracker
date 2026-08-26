@@ -24,6 +24,12 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         )
     }
 
+    override suspend fun deleteCategory(id: String) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            categories = mutableSnapshot.value.categories.filterNot { it.id == id },
+        )
+    }
+
     override suspend fun saveDailyHabit(habit: DailyHabit) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.upsert(habit) { it.id },
@@ -39,6 +45,25 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
                     updatedAtEpochMillis = updatedAtEpochMillis,
                 ) else habit
             },
+        )
+    }
+
+    override suspend fun restoreDailyHabit(id: String, updatedAtEpochMillis: Long) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
+                if (habit.id == id) habit.copy(
+                    active = true,
+                    archivedOn = null,
+                    updatedAtEpochMillis = updatedAtEpochMillis,
+                ) else habit
+            },
+        )
+    }
+
+    override suspend fun deleteDailyHabit(id: String) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            dailyHabits = mutableSnapshot.value.dailyHabits.filterNot { it.id == id },
+            dailyCompletions = mutableSnapshot.value.dailyCompletions.filterNot { it.habitId == id },
         )
     }
 
@@ -60,6 +85,25 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         )
     }
 
+    override suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
+                if (habit.id == id) habit.copy(
+                    active = true,
+                    archivedOn = null,
+                    updatedAtEpochMillis = updatedAtEpochMillis,
+                ) else habit
+            },
+        )
+    }
+
+    override suspend fun deleteWeeklyHabit(id: String) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(
+            weeklyHabits = mutableSnapshot.value.weeklyHabits.filterNot { it.id == id },
+            weeklyCompletions = mutableSnapshot.value.weeklyCompletions.filterNot { it.weeklyHabitId == id },
+        )
+    }
+
     override suspend fun setDailyCompletion(completion: DailyHabitCompletion) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyCompletions = mutableSnapshot.value.dailyCompletions.upsert(completion) {
@@ -74,6 +118,27 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
                 it.weeklyHabitId to it.weekStartDate
             },
         )
+    }
+
+    private var onboardingCompleted = false
+    override suspend fun isOnboardingCompleted(): Boolean = onboardingCompleted
+    override suspend fun setOnboardingCompleted(completed: Boolean) {
+        onboardingCompleted = completed
+    }
+
+    private var themeMode = 0
+    override suspend fun getThemeMode(): Int = themeMode
+    override suspend fun setThemeMode(mode: Int) {
+        themeMode = mode
+    }
+
+    override suspend fun clearAllData() {
+        mutableSnapshot.value = HabitSnapshot()
+        onboardingCompleted = false
+    }
+
+    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
+        mutableSnapshot.value = snapshot
     }
 }
 

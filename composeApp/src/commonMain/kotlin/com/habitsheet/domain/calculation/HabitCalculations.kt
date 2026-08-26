@@ -61,7 +61,55 @@ data class WeeklyBlockSummary(
     val percentage: Double get() = if (goal <= 0) 0.0 else completed.toDouble() / goal
 }
 
+data class DailyShareHabit(
+    val name: String,
+    val categoryName: String?,
+    val completed: Boolean
+)
+
+data class DailyShareSummary(
+    val date: LocalDate,
+    val completedCount: Int,
+    val totalCount: Int,
+    val percentage: Double,
+    val doneHabits: List<DailyShareHabit>,
+    val leftHabits: List<DailyShareHabit>
+)
+
 object HabitCalculations {
+    fun dailyShareSummary(
+        date: LocalDate,
+        habits: List<DailyHabit>,
+        categories: List<Category>,
+        completions: List<DailyHabitCompletion>
+    ): DailyShareSummary {
+        val completedIds = completions
+            .filter { it.date == date && it.completed }
+            .map { it.habitId }
+            .toSet()
+
+        val activeHabits = habits.filter { it.isActiveOn(date) }
+        val shareHabits = activeHabits.map { habit ->
+            DailyShareHabit(
+                name = habit.name,
+                categoryName = categories.find { it.id == habit.categoryId }?.name,
+                completed = habit.id in completedIds
+            )
+        }
+
+        val done = shareHabits.filter { it.completed }
+        val left = shareHabits.filter { !it.completed }
+
+        return DailyShareSummary(
+            date = date,
+            completedCount = done.size,
+            totalCount = shareHabits.size,
+            percentage = if (shareHabits.isEmpty()) 0.0 else done.size.toDouble() / shareHabits.size,
+            doneHabits = done,
+            leftHabits = left
+        )
+    }
+
     fun dailySummaries(
         month: MonthKey,
         habits: List<DailyHabit>,

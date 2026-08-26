@@ -13,9 +13,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        graph = AppGraph(AndroidDriverFactory(applicationContext))
+        val backupService = AndroidBackupService(this)
+        val versionProvider = AndroidVersionProvider(applicationContext)
+        graph = AppGraph(AndroidDriverFactory(applicationContext), backupService, versionProvider)
+        val shareService = AndroidShareService(this)
         setContent {
-            HabitSheetApp(graph.monthViewModel, graph.manageHabitsViewModel)
+            HabitSheetApp(
+                graph.monthViewModel,
+                graph.manageHabitsViewModel,
+                shareService,
+                graph.backupViewModel,
+                graph.settingsViewModel,
+                graph.versionProvider
+            )
         }
     }
 

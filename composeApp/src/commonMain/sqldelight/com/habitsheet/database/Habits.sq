@@ -49,6 +49,11 @@ CREATE TABLE weeklyCompletionEntity (
     PRIMARY KEY (weekly_habit_id, week_start_date)
 );
 
+CREATE TABLE settingsEntity (
+    key TEXT NOT NULL PRIMARY KEY,
+    value INTEGER NOT NULL
+);
+
 CREATE INDEX dailyCompletionDateIndex ON dailyCompletionEntity(date);
 CREATE INDEX weeklyCompletionDateIndex ON weeklyCompletionEntity(week_start_date);
 CREATE INDEX dailyHabitCategoryIndex ON dailyHabitEntity(category_id);
@@ -69,6 +74,9 @@ UPDATE categoryEntity
 SET name = ?, display_order = ?, active = ?, updated_at = ?
 WHERE id = ?;
 
+deleteCategory:
+DELETE FROM categoryEntity WHERE id = ?;
+
 selectAllDailyHabits:
 SELECT * FROM dailyHabitEntity ORDER BY display_order, id;
 
@@ -88,6 +96,14 @@ archiveDailyHabit:
 UPDATE dailyHabitEntity
 SET active = 0, archived_on = ?, updated_at = ?
 WHERE id = ?;
+
+restoreDailyHabit:
+UPDATE dailyHabitEntity
+SET active = 1, archived_on = NULL, updated_at = ?
+WHERE id = ?;
+
+deleteDailyHabit:
+DELETE FROM dailyHabitEntity WHERE id = ?;
 
 selectAllDailyCompletions:
 SELECT * FROM dailyCompletionEntity ORDER BY date, habit_id;
@@ -116,9 +132,30 @@ UPDATE weeklyHabitEntity
 SET active = 0, archived_on = ?, updated_at = ?
 WHERE id = ?;
 
+restoreWeeklyHabit:
+UPDATE weeklyHabitEntity
+SET active = 1, archived_on = NULL, updated_at = ?
+WHERE id = ?;
+
+deleteWeeklyHabit:
+DELETE FROM weeklyHabitEntity WHERE id = ?;
+
 selectAllWeeklyCompletions:
 SELECT * FROM weeklyCompletionEntity ORDER BY week_start_date, weekly_habit_id;
 
 upsertWeeklyCompletion:
 INSERT OR REPLACE INTO weeklyCompletionEntity(weekly_habit_id, week_start_date, completed, updated_at)
 VALUES (?, ?, ?, ?);
+
+clearAllData:
+DELETE FROM categoryEntity;
+DELETE FROM dailyHabitEntity;
+DELETE FROM dailyCompletionEntity;
+DELETE FROM weeklyHabitEntity;
+DELETE FROM weeklyCompletionEntity;
+
+getSetting:
+SELECT value FROM settingsEntity WHERE key = ?;
+
+setSetting:
+INSERT OR REPLACE INTO settingsEntity(key, value) VALUES (?, ?);

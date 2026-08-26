@@ -6,7 +6,9 @@ import com.habitsheet.domain.model.MonthKey
 import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 
-internal fun MonthKey.label(): String = "${monthNames[month - 1]} $year"
+internal fun MonthKey.label(): String = "${monthName()} $year"
+internal fun MonthKey.monthName(): String = monthNames[month - 1]
+internal fun MonthKey.yearLabel(): String = year.toString()
 internal fun LocalDate.weekdayLabel(): String = dayOfWeek.name.take(1)
 internal fun Double.percentLabel(): String = "${(this * 100).roundToInt()}%"
 

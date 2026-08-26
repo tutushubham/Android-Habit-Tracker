@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,15 +23,20 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,12 +44,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,14 +82,61 @@ import com.habitsheet.presentation.MonthViewModel
 import kotlinx.datetime.LocalDate
 
 @Composable
-fun MonthScreen(viewModel: MonthViewModel, onManage: () -> Unit) {
+fun MonthScreen(
+    viewModel: MonthViewModel,
+    onManage: () -> Unit,
+    onSettings: () -> Unit,
+    shareService: ShareService,
+) {
     val state by viewModel.state.collectAsState()
+    var showSharePreview by remember { mutableStateOf(false) }
+    val targetPositions = remember { mutableStateMapOf<String, Rect>() }
+
     Surface(color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             if (maxWidth >= 840.dp) {
-                TabletMonthScreen(state, viewModel, onManage)
+                TabletMonthScreen(state, viewModel, onManage, onSettings, onPosition = { tag, rect -> targetPositions[tag] = rect })
             } else {
-                PhoneMonthScreen(state, viewModel, onManage)
+                PhoneMonthScreen(state, viewModel, onManage, onSettings, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect })
+            }
+
+            if (showSharePreview) {
+                SharePreviewScreen(
+                    summary = state.todaySummary,
+                    onShare = {
+                        shareService.shareDailySummary(state.todaySummary)
+                        showSharePreview = false
+                    },
+                    onClose = { showSharePreview = false }
+                )
+            }
+            
+            if (state.onboardingVisible) {
+                TutorialOverlay(
+                    steps = listOf(
+                        TutorialStep("Set up your habits", "Add your daily and weekly habits, choose a category, and set your goals.", "manage"),
+                        TutorialStep("Track your day", "Tap a checkbox when you complete a habit. Your daily progress updates automatically.", "daily"),
+                        TutorialStep("Don't forget weekly habits", "Track habits that you want to complete once or more each week.", "weekly"),
+                        TutorialStep("See how you're doing", "Your daily, weekly, and category progress is calculated automatically.", "summary"),
+                        TutorialStep("Share your day", "Create a clean summary of what you completed and what is still left today.", "share", "Get Started")
+                    ),
+                    targetPositions = targetPositions,
+                    onComplete = viewModel::completeOnboarding,
+                    onSkip = viewModel::completeOnboarding
+                )
+            }
+
+            state.error?.let { msg ->
+                Snackbar(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                    action = {
+                        TextButton(onClick = viewModel::clearError) {
+                            Text("OK", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                ) {
+                    Text(msg)
+                }
             }
         }
     }
@@ -76,35 +147,42 @@ private fun PhoneMonthScreen(
     state: MonthUiState,
     viewModel: MonthViewModel,
     onManage: () -> Unit,
+    onSettings: () -> Unit,
+    onShare: () -> Unit,
+    onPosition: (String, Rect) -> Unit = { _, _ -> },
 ) {
     Scaffold(
-        topBar = { MonthTopBar(state, viewModel, compact = true) },
-        bottomBar = { BottomNavigation(selectedTracker = true, onTracker = {}, onManage = onManage) },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        topBar = { MonthTopBar(state, viewModel, compact = true, onShare = onShare, onSettings = onSettings, onPosition = onPosition) },
+        bottomBar = { BottomNavigation(selectedTracker = true, onTracker = {}, onManage = onManage, onPosition = onPosition) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
+                .verticalScroll(rememberScrollState()),
         ) {
-            SectionLabel("Daily habits", Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
-            if (state.habits.isEmpty()) {
-                EmptyHabits(onManage)
-            } else {
-                DailyHabitGrid(
-                    state = state,
-                    viewModel = viewModel,
-                    leftWidth = 140.dp,
-                    cellWidth = 36.dp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
-            WeeklySection(state, viewModel)
-            OverviewStrip(state)
+            DailyHabitGrid(
+                state = state,
+                viewModel = viewModel,
+                leftWidth = 136.dp,
+                cellWidth = 40.dp,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .tutorialTarget("daily", onPosition)
+            )
+            WeeklySection(
+                state = state, 
+                viewModel = viewModel, 
+                modifier = Modifier
+                    .padding(top = 24.dp)
+                    .tutorialTarget("weekly", onPosition)
+            )
+            OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
             CategorySection(state.categorySummaries)
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -114,11 +192,13 @@ private fun TabletMonthScreen(
     state: MonthUiState,
     viewModel: MonthViewModel,
     onManage: () -> Unit,
+    onSettings: () -> Unit,
+    onPosition: (String, Rect) -> Unit = { _, _ -> },
 ) {
     Row(Modifier.fillMaxSize().safeDrawingPadding()) {
-        MonthSidebar(state, onManage)
+        MonthSidebar(state, onManage, onSettings, onPosition)
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            MonthTopBar(state, viewModel, compact = false)
+            MonthTopBar(state, viewModel, compact = false, onSettings = onSettings, onPosition = onPosition)
             Column(
                 Modifier
                     .weight(1f)
@@ -133,40 +213,96 @@ private fun TabletMonthScreen(
                         viewModel = viewModel,
                         leftWidth = 290.dp,
                         cellWidth = 34.dp,
-                        modifier = Modifier.padding(horizontal = 32.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 32.dp)
+                            .tutorialTarget("daily", onPosition)
                     )
                 }
-                WeeklySection(state, viewModel, Modifier.padding(horizontal = 32.dp))
+                WeeklySection(
+                    state = state, 
+                    viewModel = viewModel, 
+                    modifier = Modifier
+                        .padding(horizontal = 32.dp)
+                        .tutorialTarget("weekly", onPosition)
+                )
+                OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
             }
         }
     }
 }
 
 @Composable
-private fun MonthTopBar(state: MonthUiState, viewModel: MonthViewModel, compact: Boolean) {
+private fun MonthTopBar(
+    state: MonthUiState,
+    viewModel: MonthViewModel,
+    compact: Boolean,
+    onShare: () -> Unit = {},
+    onSettings: () -> Unit = {},
+    onPosition: (String, Rect) -> Unit = { _, _ -> },
+) {
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
-            .height(if (compact) 56.dp else 80.dp)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
+            .height(if (compact) 64.dp else 88.dp)
+            .drawBehind {
+                drawLine(borderColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+            }
             .padding(horizontal = if (compact) 8.dp else 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = viewModel::previousMonth) {
-            Text("‹", fontSize = 28.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (compact) {
+            IconButton(onClick = onSettings) {
+                Text("⚙", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Text(
-            text = state.selectedMonth.label(),
-            style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f),
-            textAlign = if (compact) TextAlign.Center else TextAlign.Start,
-        )
-        TextButton(onClick = viewModel::nextMonth) {
-            Text("›", fontSize = 28.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton(
+            onClick = viewModel::previousMonth,
+            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+        ) {
+            Text(
+                "‹", 
+                fontSize = 32.sp, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics { contentDescription = "Previous Month" }
+            )
         }
-        TextButton(onClick = viewModel::currentMonth) {
+        Column(Modifier.weight(1f), horizontalAlignment = if (compact) Alignment.CenterHorizontally else Alignment.Start) {
+            Text(
+                text = state.selectedMonth.yearLabel(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = state.selectedMonth.monthName(),
+                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        TextButton(
+            onClick = viewModel::nextMonth,
+            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+        ) {
+            Text(
+                "›", 
+                fontSize = 32.sp, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics { contentDescription = "Next Month" }
+            )
+        }
+        TextButton(
+            onClick = onShare,
+            modifier = Modifier
+                .padding(end = 4.dp)
+                .tutorialTarget("share", onPosition)
+        ) {
+            Text("Share", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        }
+        TextButton(
+            onClick = viewModel::currentMonth,
+            modifier = Modifier.padding(end = 8.dp)
+        ) {
             Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         }
     }
@@ -175,19 +311,28 @@ private fun MonthTopBar(state: MonthUiState, viewModel: MonthViewModel, compact:
 @Composable
 private fun EmptyHabits(onManage: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 48.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 48.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("No daily habits yet", style = MaterialTheme.typography.titleMedium)
+        Text("No daily habits yet", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         Text(
-            "Add the habits and monthly goals you want to track.",
+            "Add your first daily habit from Manage.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 6.dp),
+            modifier = Modifier.padding(top = 8.dp),
             textAlign = TextAlign.Center,
         )
-        TextButton(onClick = onManage, modifier = Modifier.padding(top = 8.dp)) {
-            Text("＋ Add daily habit", color = MaterialTheme.colorScheme.primary)
+        Button(
+            onClick = onManage,
+            modifier = Modifier.padding(top = 24.dp),
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+        ) {
+            Text("Manage Habits")
         }
     }
 }
@@ -202,37 +347,39 @@ private fun DailyHabitGrid(
 ) {
     val scrollState = rememberScrollState()
     val dates = state.selectedMonth.dates().reversed()
-    LaunchedEffect(state.selectedMonth, state.today, scrollState.maxValue) {
+    val density = LocalDensity.current
+    
+    LaunchedEffect(state.selectedMonth, state.today, scrollState.maxValue, state.scrollToTodayTrigger) {
         if (state.today in dates) {
             val index = dates.indexOf(state.today)
-            val target = ((index - 1).coerceAtLeast(0) * cellWidth.value).toInt()
-            scrollState.scrollTo(target.coerceAtMost(scrollState.maxValue))
+            val cellWidthPx = with(density) { cellWidth.toPx() }
+            val target = ((index - 1).coerceAtLeast(0) * cellWidthPx).toInt()
+            
+            // Do not scroll if already reasonably visible
+            val currentScroll = scrollState.value
+            val isVisible = currentScroll <= target && currentScroll >= target - (cellWidthPx * 3)
+            
+            if (state.scrollToTodayTrigger > 0 || (scrollState.value == 0 && !isVisible)) {
+                 scrollState.animateScrollTo(target.coerceAtMost(scrollState.maxValue))
+            }
         }
     }
-    val rowHeight = 52.dp
-    val summaryHeight = 32.dp
-    Row(
-        modifier
-            .fillMaxWidth()
-            .border(
-                BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-            ),
-    ) {
+    val rowHeight = 60.dp
+    val headerHeight = 44.dp
+    val summaryHeight = 36.dp
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+
+    Row(modifier.fillMaxWidth()) {
         Column(
             Modifier
                 .width(leftWidth)
                 .background(MaterialTheme.colorScheme.surface)
-                .border(
-                    BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-                ),
+                .drawBehind {
+                    drawLine(dividerColor, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+                },
         ) {
-            Row(
-                Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Box(Modifier.fillMaxWidth().height(headerHeight).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
                 Text("HABIT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.weight(1f))
-                Text("PROGRESS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             state.habits.forEach { summary ->
                 val category = state.categories.firstOrNull { it.id == summary.habit.categoryId }
@@ -240,21 +387,24 @@ private fun DailyHabitGrid(
                     Modifier
                         .fillMaxWidth()
                         .height(rowHeight)
-                        .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .drawBehind {
+                            drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+                        }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         summary.habit.name,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                         Text(
-                            category?.name ?: "Uncategorized",
+                            category?.name?.uppercase() ?: "GENERAL",
                             style = MaterialTheme.typography.labelSmall,
-                            color = categoryColor(category, state.categories),
+                            color = categoryColor(category, state.categories).copy(alpha = 0.8f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -265,19 +415,25 @@ private fun DailyHabitGrid(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 3.dp))
+                    SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 6.dp))
                 }
             }
-            SummaryLabel("Completed", summaryHeight)
-            SummaryLabel("Not completed", summaryHeight)
-            SummaryLabel("Completion %", summaryHeight)
+            SummaryLabel("DONE", summaryHeight)
+            SummaryLabel("MISS", summaryHeight)
+            SummaryLabel("%", summaryHeight)
         }
         Column(Modifier.weight(1f).horizontalScroll(scrollState)) {
-            Row(Modifier.height(40.dp)) {
+            Row(Modifier.height(headerHeight)) {
                 dates.forEach { date -> DateHeader(date, date == state.today, cellWidth) }
             }
             state.habits.forEach { summary ->
-                Row(Modifier.height(rowHeight)) {
+                Row(
+                    Modifier
+                        .height(rowHeight)
+                        .drawBehind {
+                            drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+                        }
+                ) {
                     dates.forEach { date ->
                         CompletionCell(
                             completed = summary.habit.id to date in state.dailyCompletionKeys,
@@ -299,25 +455,46 @@ private fun DailyHabitGrid(
 
 @Composable
 private fun DateHeader(date: LocalDate, current: Boolean, width: Dp) {
+    val indicatorColor = MaterialTheme.colorScheme.primary
+    val dateDescription = if (current) "Today, ${date.dayOfWeek.name} ${date.day}" else "${date.dayOfWeek.name} ${date.day}"
+    
     Column(
         Modifier
             .width(width)
             .fillMaxHeight()
-            .background(if (current) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)),
+            .background(if (current) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else Color.Transparent)
+            .drawBehind {
+                if (current) {
+                    val indicatorHeight = 3.dp.toPx()
+                    drawRect(indicatorColor, Offset(0f, 0f), androidx.compose.ui.geometry.Size(size.width, indicatorHeight))
+                }
+            }
+            .semantics(mergeDescendants = true) {
+                contentDescription = dateDescription
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            date.weekdayLabel(),
+            date.weekdayLabel().uppercase(),
             style = MaterialTheme.typography.labelSmall,
             color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            date.day.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
-        )
+        Box(
+            modifier = if (current) Modifier
+                .padding(top = 2.dp)
+                .size(24.dp)
+                .background(MaterialTheme.colorScheme.primary, CircleShape)
+            else Modifier.padding(top = 2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                date.day.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
+                color = if (current) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -330,48 +507,67 @@ private fun CompletionCell(
     height: Dp,
     onClick: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
+    val statusDescription = when {
+        !enabled -> "Locked"
+        completed -> "Completed"
+        else -> "Incomplete"
+    }
+
     Box(
         Modifier
             .width(width)
             .height(height)
             .background(
                 when {
-                    !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    currentDay -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                    !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                    currentDay -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                     else -> Color.Transparent
                 },
             )
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
-            .clickable(enabled = enabled, onClick = onClick),
+            .semantics {
+                role = Role.Checkbox
+                stateDescription = statusDescription
+            }
+            .clickable(
+                enabled = enabled,
+                onClickLabel = if (completed) "Mark incomplete" else "Mark complete"
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Box(
             Modifier
-                .size(24.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(if (completed && enabled) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .size(22.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (completed && enabled) MaterialTheme.colorScheme.primary else Color.Transparent)
                 .border(
                     BorderStroke(
-                        1.dp,
-                        when {
-                            completed && enabled -> MaterialTheme.colorScheme.primaryContainer
-                            enabled -> MaterialTheme.colorScheme.outline
-                            else -> MaterialTheme.colorScheme.outlineVariant
-                        },
+                        if (completed && enabled) 0.dp else 1.dp,
+                        if (completed && enabled) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
                     ),
-                    RoundedCornerShape(2.dp),
+                    RoundedCornerShape(6.dp),
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            if (completed && enabled) Text("✓", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            if (completed && enabled) Text("✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun SummaryLabel(text: String, height: Dp) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Box(
-        Modifier.fillMaxWidth().height(height).border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)).padding(horizontal = 12.dp),
+        Modifier
+            .fillMaxWidth()
+            .height(height)
+            .drawBehind {
+                drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+            }
+            .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -380,28 +576,34 @@ private fun SummaryLabel(text: String, height: Dp) {
 
 @Composable
 private fun SummaryRow(values: List<String>, width: Dp, height: Dp) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Row(Modifier.height(height)) {
         values.forEach { value ->
             Box(
-                Modifier.width(width).fillMaxHeight().border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)),
+                Modifier
+                    .width(width)
+                    .fillMaxHeight()
+                    .drawBehind {
+                        drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+                    },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(value, style = MaterialTheme.typography.labelSmall)
+                Text(value, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
 }
 
 @Composable
-private fun OverviewStrip(state: MonthUiState) {
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
-        SectionLabel("Monthly overview")
+private fun OverviewStrip(state: MonthUiState, modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = 16.dp, vertical = 32.dp)) {
+        SectionLabel("Summary", Modifier.padding(bottom = 16.dp))
         Row(
-            Modifier.fillMaxWidth().padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            MetricPanel("Daily progress", state.monthlyProgress, Modifier.weight(1f))
-            MetricPanel("Weekly progress", state.weeklyProgress, Modifier.weight(1f))
+            MetricPanel("Daily Avg", state.monthlyProgress, Modifier.weight(1f))
+            MetricPanel("Weekly Avg", state.weeklyProgress, Modifier.weight(1f))
         }
     }
 }
@@ -409,35 +611,55 @@ private fun OverviewStrip(state: MonthUiState) {
 @Composable
 private fun MetricPanel(label: String, progress: ProgressSummary, modifier: Modifier = Modifier) {
     Column(
-        modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)).padding(12.dp),
+        modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .padding(16.dp),
     ) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            if (progress.hasGoal) progress.percentage.percentLabel() else "—",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 6.dp),
-        )
-        Text("${progress.completed} / ${progress.goal}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SubtleProgress(progress.percentage, Modifier.fillMaxWidth().padding(top = 8.dp))
+        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 8.dp)) {
+            Text(
+                if (progress.hasGoal) progress.percentage.percentLabel() else "0%",
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (progress.hasGoal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "${progress.completed}/${progress.goal}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
+        SubtleProgress(progress.percentage, Modifier.fillMaxWidth().padding(top = 12.dp))
     }
 }
 
 @Composable
 private fun CategorySection(categories: List<CategorySummary>) {
-    if (categories.isEmpty()) return
+    if (categories.isEmpty()) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
+            SectionLabel("Categories", Modifier.padding(bottom = 12.dp))
+            Text(
+                "Assign habits to categories to see progress.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        SectionLabel("Categories")
+        SectionLabel("Categories", Modifier.padding(bottom = 12.dp))
         categories.forEach { summary ->
-            Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+            Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(summary.category.name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    Text(summary.category.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Text(
-                        "${summary.completed}/${summary.goal}  ·  ${summary.remaining} left  ·  ${summary.percentage.percentLabel()}",
+                        summary.percentage.percentLabel(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 6.dp))
+                SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 8.dp))
             }
         }
     }
@@ -449,62 +671,98 @@ private fun WeeklySection(
     viewModel: MonthViewModel,
     modifier: Modifier = Modifier.padding(horizontal = 16.dp),
 ) {
-    Column(modifier.padding(top = 28.dp, bottom = 16.dp)) {
-        SectionLabel("Weekly habits")
+    Column(modifier) {
+        SectionLabel("Weekly Habits", Modifier.padding(bottom = 16.dp))
         if (state.weeklyHabits.isEmpty()) {
-            Text(
-                "No weekly habits configured.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 20.dp),
-            )
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "No weekly habits yet",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Add habits you want to track each week.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
             return@Column
         }
-        val nameWidth = 168.dp
-        val weekWidth = 72.dp
-        Row(
-            Modifier.fillMaxWidth().padding(top = 12.dp).border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)),
-        ) {
-            Column(Modifier.width(nameWidth)) {
-                Box(Modifier.fillMaxWidth().height(38.dp).padding(horizontal = 10.dp), contentAlignment = Alignment.CenterStart) {
+        val nameWidth = 160.dp
+        val weekWidth = 64.dp
+        val dividerColor = MaterialTheme.colorScheme.outlineVariant
+
+        Row(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .width(nameWidth)
+                    .drawBehind {
+                        drawLine(dividerColor, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+                    }
+            ) {
+                Box(Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
                     Text("HABIT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 state.weeklyHabits.forEach { habit ->
                     Box(
-                        Modifier.fillMaxWidth().height(46.dp).border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)).padding(horizontal = 10.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .drawBehind {
+                                drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+                            }
+                            .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text(habit.name, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(habit.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                SummaryLabel("Completed", 34.dp)
-                SummaryLabel("Goal", 34.dp)
-                SummaryLabel("Completion %", 34.dp)
+                SummaryLabel("DONE", 36.dp)
+                SummaryLabel("GOAL", 36.dp)
+                SummaryLabel("%", 36.dp)
             }
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                 state.weeklyBlocks.reversed().forEach { block ->
                     Column(Modifier.width(weekWidth)) {
                         Row(
-                            Modifier.fillMaxWidth().height(38.dp).padding(horizontal = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
+                            Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 6.dp),
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             DonutProgress(block.percentage, Modifier.size(20.dp))
-                            Text("W${block.index + 1}", style = MaterialTheme.typography.labelSmall)
+                            Text("W${block.index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         state.weeklyHabits.forEach { habit ->
-                            CompletionCell(
-                                completed = habit.id to block.weekStartDate in state.weeklyCompletionKeys,
-                                currentDay = state.today in state.selectedMonth.datesForWeek(block.index),
-                                enabled = habit.isActiveOn(block.weekStartDate),
-                                width = weekWidth,
-                                height = 46.dp,
-                                onClick = { viewModel.toggleWeekly(habit.id, block.weekStartDate) },
-                            )
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp)
+                                    .drawBehind {
+                                        drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CompletionCell(
+                                    completed = habit.id to block.weekStartDate in state.weeklyCompletionKeys,
+                                    currentDay = state.today in state.selectedMonth.datesForWeek(block.index),
+                                    enabled = habit.isActiveOn(block.weekStartDate),
+                                    width = weekWidth,
+                                    height = 46.dp,
+                                    onClick = { viewModel.toggleWeekly(habit.id, block.weekStartDate) },
+                                )
+                            }
                         }
-                        SummaryValue(block.completed.toString(), 34.dp)
-                        SummaryValue(block.goal.toString(), 34.dp)
-                        SummaryValue(block.percentage.percentLabel(), 34.dp)
+                        SummaryValue(block.completed.toString(), 36.dp)
+                        SummaryValue(block.goal.toString(), 36.dp)
+                        SummaryValue(block.percentage.percentLabel(), 36.dp)
                     }
                 }
             }
@@ -540,71 +798,64 @@ private fun SummaryValue(value: String, height: Dp) {
 }
 
 @Composable
-private fun MonthSidebar(state: MonthUiState, onManage: () -> Unit) {
+private fun MonthSidebar(
+    state: MonthUiState,
+    onManage: () -> Unit,
+    onSettings: () -> Unit,
+    onPosition: (String, Rect) -> Unit = { _, _ -> },
+) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Column(
         Modifier
-            .width(256.dp)
+            .width(280.dp)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surface)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
-            .padding(16.dp),
+            .drawBehind {
+                drawLine(dividerColor, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+            }
+            .padding(24.dp),
     ) {
         Text("◉ Tracker", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(48.dp))
         SidebarNavItem("▣  Tracker", selected = true, onClick = {})
-        SidebarNavItem("⚙  Manage", selected = false, onClick = onManage)
-        Spacer(Modifier.height(36.dp))
-        SectionLabel("Monthly completion")
-        Text(
-            if (state.monthlyProgress.hasGoal) state.monthlyProgress.percentage.percentLabel() else "—",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 10.dp),
+        SidebarNavItem(
+            "⚙  Manage", 
+            selected = false, 
+            onClick = onManage,
+            modifier = Modifier.tutorialTarget("manage", onPosition)
         )
-        Text(
-            "${state.monthlyProgress.completed} / ${state.monthlyProgress.goal}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        SubtleProgress(state.monthlyProgress.percentage, Modifier.fillMaxWidth().padding(top = 10.dp))
+        SidebarNavItem("⛃  Settings", selected = false, onClick = onSettings)
+        
         val sidebarCategories = state.categorySummaries.filter { it.goal > 0 }.take(6)
         if (sidebarCategories.isNotEmpty()) {
-            Spacer(Modifier.height(28.dp))
-            SectionLabel("Categories")
+            Spacer(Modifier.height(48.dp))
+            SectionLabel("Categories", Modifier.padding(bottom = 16.dp))
             sidebarCategories.forEach { summary ->
-                Column(Modifier.padding(top = 12.dp)) {
+                Column(Modifier.padding(vertical = 10.dp)) {
                     Row {
-                        Text(summary.category.name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f), maxLines = 1)
+                        Text(summary.category.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 1)
                         Text(summary.percentage.percentLabel(), style = MaterialTheme.typography.labelSmall)
                     }
-                    SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 4.dp))
+                    SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 8.dp))
                 }
             }
         }
-        Spacer(Modifier.height(28.dp))
-        SectionLabel("Weekly progress")
-        Text(
-            "${state.weeklyProgress.completed} / ${state.weeklyProgress.goal}",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 10.dp),
-        )
-        SubtleProgress(state.weeklyProgress.percentage, Modifier.fillMaxWidth().padding(top = 6.dp))
     }
 }
 
 @Composable
-private fun SidebarNavItem(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun SidebarNavItem(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -622,12 +873,20 @@ internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 internal fun SubtleProgress(progress: Double, modifier: Modifier = Modifier) {
-    Box(modifier.height(3.dp).background(MaterialTheme.colorScheme.surfaceVariant)) {
+    val progressValue = progress.toFloat().coerceIn(0f, 1f)
+    Box(
+        modifier
+            .height(2.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(1.dp))
+            .semantics {
+                progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(progressValue, 0f..1f)
+            }
+    ) {
         Box(
             Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(progress.toFloat().coerceIn(0f, 1f))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .fillMaxWidth(if (progressValue > 0f) progressValue else 0.01f)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(1.dp)),
         )
     }
 }
@@ -637,17 +896,27 @@ internal fun BottomNavigation(
     selectedTracker: Boolean,
     onTracker: () -> Unit,
     onManage: () -> Unit,
+    onPosition: (String, Rect) -> Unit = { _, _ -> },
 ) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
             .height(64.dp)
             .background(MaterialTheme.colorScheme.surface)
-            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)),
+            .drawBehind {
+                drawLine(dividerColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+            },
     ) {
         BottomNavItem("▣", "Tracker", selectedTracker, Modifier.weight(1f), onTracker)
-        BottomNavItem("⚙", "Manage", !selectedTracker, Modifier.weight(1f), onManage)
+        BottomNavItem(
+            "⚙", 
+            "Manage", 
+            !selectedTracker, 
+            Modifier.weight(1f).tutorialTarget("manage", onPosition), 
+            onManage
+        )
     }
 }
 

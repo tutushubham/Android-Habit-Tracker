@@ -1,7 +1,9 @@
 package com.habitsheet.domain.model
 
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Category(
     val id: String,
     val name: String,
@@ -10,6 +12,7 @@ data class Category(
     val updatedAtEpochMillis: Long,
 )
 
+@Serializable
 data class DailyHabit(
     val id: String,
     val name: String,
@@ -28,6 +31,7 @@ data class DailyHabit(
             (active || archivedOn != null)
 }
 
+@Serializable
 data class DailyHabitCompletion(
     val habitId: String,
     val date: LocalDate,
@@ -35,6 +39,7 @@ data class DailyHabitCompletion(
     val updatedAtEpochMillis: Long,
 )
 
+@Serializable
 data class WeeklyHabit(
     val id: String,
     val name: String,
@@ -52,6 +57,7 @@ data class WeeklyHabit(
             (active || archivedOn != null)
 }
 
+@Serializable
 data class WeeklyHabitCompletion(
     val weeklyHabitId: String,
     val weekStartDate: LocalDate,
@@ -59,6 +65,7 @@ data class WeeklyHabitCompletion(
     val updatedAtEpochMillis: Long,
 )
 
+@Serializable
 data class HabitSnapshot(
     val categories: List<Category> = emptyList(),
     val dailyHabits: List<DailyHabit> = emptyList(),

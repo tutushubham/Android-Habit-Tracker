@@ -58,6 +58,13 @@ class LocalHabitRepository(
         }
     }
 
+    override suspend fun deleteCategory(id: String) {
+        mutex.withLock {
+            database.habitsQueries.deleteCategory(id)
+            loadSnapshot()
+        }
+    }
+
     override suspend fun saveDailyHabit(habit: DailyHabit) {
         require(habit.monthlyGoal >= 0)
         mutex.withLock {
@@ -97,6 +104,23 @@ class LocalHabitRepository(
                 updated_at = updatedAtEpochMillis,
                 id = id,
             )
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun restoreDailyHabit(id: String, updatedAtEpochMillis: Long) {
+        mutex.withLock {
+            database.habitsQueries.restoreDailyHabit(
+                updated_at = updatedAtEpochMillis,
+                id = id,
+            )
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun deleteDailyHabit(id: String) {
+        mutex.withLock {
+            database.habitsQueries.deleteDailyHabit(id)
             loadSnapshot()
         }
     }
@@ -141,6 +165,23 @@ class LocalHabitRepository(
         }
     }
 
+    override suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long) {
+        mutex.withLock {
+            database.habitsQueries.restoreWeeklyHabit(
+                updated_at = updatedAtEpochMillis,
+                id = id,
+            )
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun deleteWeeklyHabit(id: String) {
+        mutex.withLock {
+            database.habitsQueries.deleteWeeklyHabit(id)
+            loadSnapshot()
+        }
+    }
+
     override suspend fun setDailyCompletion(completion: DailyHabitCompletion) {
         mutex.withLock {
             database.habitsQueries.upsertDailyCompletion(
@@ -161,6 +202,106 @@ class LocalHabitRepository(
                 completed = completion.completed.toDbLong(),
                 updated_at = completion.updatedAtEpochMillis,
             )
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun isOnboardingCompleted(): Boolean {
+        return mutex.withLock {
+            database.habitsQueries.getSetting("onboarding_completed").executeAsOneOrNull() == 1L
+        }
+    }
+
+    override suspend fun setOnboardingCompleted(completed: Boolean) {
+        mutex.withLock {
+            database.habitsQueries.setSetting("onboarding_completed", if (completed) 1L else 0L)
+        }
+    }
+
+    override suspend fun getThemeMode(): Int {
+        return mutex.withLock {
+            database.habitsQueries.getSetting("theme_mode").executeAsOneOrNull()?.toInt() ?: 0
+        }
+    }
+
+    override suspend fun setThemeMode(mode: Int) {
+        mutex.withLock {
+            database.habitsQueries.setSetting("theme_mode", mode.toLong())
+        }
+    }
+
+    override suspend fun clearAllData() {
+        mutex.withLock {
+            database.transaction {
+                database.habitsQueries.clearAllData()
+                database.habitsQueries.setSetting("onboarding_completed", 0L)
+            }
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
+        mutex.withLock {
+            database.transaction {
+                database.habitsQueries.clearAllData()
+                
+                snapshot.categories.forEach { category ->
+                    database.habitsQueries.insertCategory(
+                        id = category.id,
+                        name = category.name,
+                        display_order = category.displayOrder.toLong(),
+                        active = category.active.toDbLong(),
+                        updated_at = category.updatedAtEpochMillis,
+                    )
+                }
+                
+                snapshot.dailyHabits.forEach { habit ->
+                    database.habitsQueries.insertDailyHabit(
+                        id = habit.id,
+                        name = habit.name,
+                        category_id = habit.categoryId,
+                        monthly_goal = habit.monthlyGoal.toLong(),
+                        display_order = habit.displayOrder.toLong(),
+                        active = habit.active.toDbLong(),
+                        created_on = habit.createdOn.toString(),
+                        archived_on = habit.archivedOn?.toString(),
+                        created_at = habit.createdAtEpochMillis,
+                        updated_at = habit.updatedAtEpochMillis,
+                    )
+                }
+                
+                snapshot.dailyCompletions.forEach { completion ->
+                    database.habitsQueries.upsertDailyCompletion(
+                        habit_id = completion.habitId,
+                        date = completion.date.toString(),
+                        completed = completion.completed.toDbLong(),
+                        updated_at = completion.updatedAtEpochMillis,
+                    )
+                }
+                
+                snapshot.weeklyHabits.forEach { habit ->
+                    database.habitsQueries.insertWeeklyHabit(
+                        id = habit.id,
+                        name = habit.name,
+                        category_id = habit.categoryId,
+                        display_order = habit.displayOrder.toLong(),
+                        active = habit.active.toDbLong(),
+                        created_on = habit.createdOn.toString(),
+                        archived_on = habit.archivedOn?.toString(),
+                        created_at = habit.createdAtEpochMillis,
+                        updated_at = habit.updatedAtEpochMillis,
+                    )
+                }
+                
+                snapshot.weeklyCompletions.forEach { completion ->
+                    database.habitsQueries.upsertWeeklyCompletion(
+                        weekly_habit_id = completion.weeklyHabitId,
+                        week_start_date = completion.weekStartDate.toString(),
+                        completed = completion.completed.toDbLong(),
+                        updated_at = completion.updatedAtEpochMillis,
+                    )
+                }
+            }
             loadSnapshot()
         }
     }

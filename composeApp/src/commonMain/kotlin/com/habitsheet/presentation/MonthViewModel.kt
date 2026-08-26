@@ -1,6 +1,7 @@
 package com.habitsheet.presentation
 
 import com.habitsheet.domain.calculation.CategorySummary
+import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.domain.calculation.DailySummary
 import com.habitsheet.domain.calculation.DailyWeekSummary
 import com.habitsheet.domain.calculation.HabitCalculations
@@ -22,7 +23,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
@@ -40,6 +44,10 @@ data class MonthUiState(
     val weeklyProgress: ProgressSummary,
     val dailyCompletionKeys: Set<Pair<String, LocalDate>>,
     val weeklyCompletionKeys: Set<Pair<String, LocalDate>>,
+    val todaySummary: DailyShareSummary,
+    val onboardingVisible: Boolean,
+    val scrollToTodayTrigger: Long,
+    val error: String? = null,
 ) {
     val isEmpty: Boolean get() = habits.isEmpty() && weeklyHabits.isEmpty()
 }
@@ -50,14 +58,61 @@ class MonthViewModel(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val selectedMonth = MutableStateFlow(MonthKey.from(dateProvider.today()))
+    private val onboardingVisible = MutableStateFlow(false)
+    private val scrollToTodayTrigger = MutableStateFlow(0L)
+    private val error = MutableStateFlow<String?>(null)
+    private val today = flow {
+        while (true) {
+            emit(dateProvider.today())
+            delay(1.minutes) // Refresh today's date every minute
+        }
+    }
 
-    val state: StateFlow<MonthUiState> = combine(repository.snapshot, selectedMonth) { snapshot, month ->
-        snapshot.toUiState(month, dateProvider.today())
+    init {
+        scope.launch {
+            try {
+                onboardingVisible.value = !repository.isOnboardingCompleted()
+            } catch (e: Exception) {
+                error.value = "Couldn't load app settings."
+            }
+        }
+    }
+
+    val state: StateFlow<MonthUiState> = combine(
+        repository.snapshot,
+        selectedMonth,
+        onboardingVisible,
+        scrollToTodayTrigger,
+        today,
+        error
+    ) { args: Array<Any?> ->
+        val snapshot = args[0] as HabitSnapshot
+        val month = args[1] as MonthKey
+        val onboarding = args[2] as Boolean
+        val trigger = args[3] as Long
+        val currentToday = args[4] as LocalDate
+        val currentError = args[5] as String?
+        snapshot.toUiState(month, currentToday, onboarding, trigger, currentError)
     }.stateIn(
         scope = scope,
         started = SharingStarted.Eagerly,
-        initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today()),
+        initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today(), false, 0, null),
     )
+
+    fun clearError() {
+        error.value = null
+    }
+
+    fun completeOnboarding() {
+        onboardingVisible.value = false
+        scope.launch {
+            try {
+                repository.setOnboardingCompleted(true)
+            } catch (e: Exception) {
+                // Not critical, but we can log or ignore
+            }
+        }
+    }
 
     fun previousMonth() {
         selectedMonth.value = selectedMonth.value.previous()
@@ -68,7 +123,9 @@ class MonthViewModel(
     }
 
     fun currentMonth() {
-        selectedMonth.value = MonthKey.from(dateProvider.today())
+        val today = dateProvider.today()
+        selectedMonth.value = MonthKey.from(today)
+        scrollToTodayTrigger.value = dateProvider.nowEpochMillis()
     }
 
     fun selectMonth(month: MonthKey) {
@@ -78,18 +135,26 @@ class MonthViewModel(
     fun toggleDaily(habitId: String, date: LocalDate) {
         val completed = habitId to date !in state.value.dailyCompletionKeys
         scope.launch {
-            repository.setDailyCompletion(
-                DailyHabitCompletion(habitId, date, completed, dateProvider.nowEpochMillis()),
-            )
+            try {
+                repository.setDailyCompletion(
+                    DailyHabitCompletion(habitId, date, completed, dateProvider.nowEpochMillis()),
+                )
+            } catch (e: Exception) {
+                error.value = "Couldn't update habit. Please try again."
+            }
         }
     }
 
     fun toggleWeekly(habitId: String, weekStartDate: LocalDate) {
         val completed = habitId to weekStartDate !in state.value.weeklyCompletionKeys
         scope.launch {
-            repository.setWeeklyCompletion(
-                WeeklyHabitCompletion(habitId, weekStartDate, completed, dateProvider.nowEpochMillis()),
-            )
+            try {
+                repository.setWeeklyCompletion(
+                    WeeklyHabitCompletion(habitId, weekStartDate, completed, dateProvider.nowEpochMillis()),
+                )
+            } catch (e: Exception) {
+                error.value = "Couldn't update weekly habit. Please try again."
+            }
         }
     }
 
@@ -98,7 +163,13 @@ class MonthViewModel(
     }
 }
 
-private fun HabitSnapshot.toUiState(month: MonthKey, today: LocalDate): MonthUiState {
+private fun HabitSnapshot.toUiState(
+    month: MonthKey, 
+    today: LocalDate, 
+    onboardingVisible: Boolean,
+    scrollToTodayTrigger: Long,
+    error: String?
+): MonthUiState {
     val habitSummaries = HabitCalculations.habitSummaries(month, dailyHabits, dailyCompletions)
     val dailySummaries = HabitCalculations.dailySummaries(month, dailyHabits, dailyCompletions)
     val weekly = HabitCalculations.weeklyBlockSummaries(month, weeklyHabits, weeklyCompletions)
@@ -128,5 +199,9 @@ private fun HabitSnapshot.toUiState(month: MonthKey, today: LocalDate): MonthUiS
             .filter { it.completed && it.weekStartDate in weekStarts }
             .map { it.weeklyHabitId to it.weekStartDate }
             .toSet(),
+        todaySummary = HabitCalculations.dailyShareSummary(today, dailyHabits, categories, dailyCompletions),
+        onboardingVisible = onboardingVisible,
+        scrollToTodayTrigger = scrollToTodayTrigger,
+        error = error,
     )
 }
