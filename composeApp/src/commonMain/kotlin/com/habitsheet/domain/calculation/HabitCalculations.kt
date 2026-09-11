@@ -59,6 +59,7 @@ data class WeeklyBlockSummary(
     val goal: Int,
 ) {
     val percentage: Double get() = if (goal <= 0) 0.0 else completed.toDouble() / goal
+    val notCompleted: Int get() = goal - completed
 }
 
 data class DailyShareHabit(
@@ -199,7 +200,8 @@ object HabitCalculations {
             .toSet()
 
         return month.weekStarts().mapIndexed { index, weekStart ->
-            val active = habits.filter { it.isActiveOn(weekStart) }
+            val weekDates = month.datesForWeek(index)
+            val active = habits.filter { habit -> weekDates.any(habit::isActiveOn) }
             val completed = active.count { habit -> habit.id to weekStart in completionKeys }
                 .coerceAtMost(active.size)
             WeeklyBlockSummary(index, weekStart, completed, active.size)

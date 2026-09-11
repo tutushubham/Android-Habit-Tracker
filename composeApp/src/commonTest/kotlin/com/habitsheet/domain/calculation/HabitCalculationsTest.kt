@@ -124,6 +124,15 @@ class HabitCalculationsTest {
     }
 
     @Test
+    fun weeklyHabitCreatedMidWeekBelongsToThatWeek() {
+        val habit = weekly("new").copy(createdOn = LocalDate(2026, 8, 11))
+        val blocks = HabitCalculations.weeklyBlockSummaries(august, listOf(habit), emptyList())
+
+        assertEquals(0, blocks[0].goal)
+        assertEquals(1, blocks[1].goal)
+    }
+
+    @Test
     fun historyRespectsCreationAndArchiveDates() {
         val createdInSeptember = daily("new", 10).copy(createdOn = LocalDate(2026, 9, 1))
         val archivedAtSeptember = daily("old", 10).copy(

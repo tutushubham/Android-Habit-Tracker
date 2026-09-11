@@ -1,5 +1,6 @@
 package com.habitsheet.domain.model
 
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -27,5 +28,14 @@ class MonthEngineTest {
     fun navigationCrossesYearBoundariesWithoutCopyingState() {
         assertEquals(MonthKey(2025, 12), MonthKey(2026, 1).previous())
         assertEquals(MonthKey(2027, 1), MonthKey(2026, 12).next())
+    }
+
+    @Test
+    fun resolvesWorkbookWeekForAnyDateInMonth() {
+        val september = MonthKey(2026, 9)
+        assertEquals(LocalDate(2026, 9, 1), september.weekStartFor(LocalDate(2026, 9, 7)))
+        assertEquals(LocalDate(2026, 9, 8), september.weekStartFor(LocalDate(2026, 9, 8)))
+        assertEquals(LocalDate(2026, 9, 29), september.weekStartFor(LocalDate(2026, 9, 30)))
+        assertEquals(null, september.weekStartFor(LocalDate(2026, 10, 1)))
     }
 }

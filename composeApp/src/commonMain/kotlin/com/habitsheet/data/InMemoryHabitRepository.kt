@@ -1,5 +1,6 @@
 package com.habitsheet.data
 
+import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
@@ -27,6 +28,12 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun deleteCategory(id: String) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             categories = mutableSnapshot.value.categories.filterNot { it.id == id },
+            dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
+                if (habit.categoryId == id) habit.copy(categoryId = null) else habit
+            },
+            weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
+                if (habit.categoryId == id) habit.copy(categoryId = null) else habit
+            },
         )
     }
 
@@ -125,6 +132,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun setDailyCompletion(completion: DailyHabitCompletion) {
+        require(mutableSnapshot.value.dailyHabits.any { it.id == completion.habitId }) { "Unknown daily habit" }
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyCompletions = mutableSnapshot.value.dailyCompletions.upsert(completion) {
                 it.habitId to it.date
@@ -133,6 +141,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion) {
+        require(mutableSnapshot.value.weeklyHabits.any { it.id == completion.weeklyHabitId }) { "Unknown weekly habit" }
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyCompletions = mutableSnapshot.value.weeklyCompletions.upsert(completion) {
                 it.weeklyHabitId to it.weekStartDate
@@ -158,6 +167,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
+        BackupValidator.validate(snapshot)
         mutableSnapshot.value = snapshot
     }
 }

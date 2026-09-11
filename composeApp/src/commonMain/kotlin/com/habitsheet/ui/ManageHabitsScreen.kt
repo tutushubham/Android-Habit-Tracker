@@ -399,7 +399,12 @@ private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: (
     SectionLabel(if (archived) "Archived daily habits" else "Daily habits", Modifier.padding(bottom = 16.dp))
     val habits = state.dailyHabits.filter { it.active == !archived }.sortedBy { it.displayOrder }
     if (habits.isEmpty()) {
-        // ... (empty state code)
+        Text(
+            if (archived) "No archived daily habits." else "No daily habits yet.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
     } else {
         Column(Modifier.fillMaxWidth()) {
             habits.forEachIndexed { index, habit ->
@@ -424,7 +429,12 @@ private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: 
     SectionLabel(if (archived) "Archived weekly habits" else "Weekly habits", Modifier.padding(top = 32.dp, bottom = 16.dp))
     val habits = state.weeklyHabits.filter { it.active == !archived }.sortedBy { it.displayOrder }
     if (habits.isEmpty()) {
-        // ... (empty state code)
+        Text(
+            if (archived) "No archived weekly habits." else "No weekly habits yet.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
     } else {
         Column(Modifier.fillMaxWidth()) {
             habits.forEachIndexed { index, habit ->
@@ -465,12 +475,12 @@ private fun DefinitionRow(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onMoveUp != null && onMoveDown != null) {
+        if (onMoveUp != null || onMoveDown != null) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = onMoveUp, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = { onMoveUp?.invoke() }, enabled = onMoveUp != null, modifier = Modifier.size(24.dp)) {
                     Text("▴", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onMoveDown, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = { onMoveDown?.invoke() }, enabled = onMoveDown != null, modifier = Modifier.size(24.dp)) {
                     Text("▾", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

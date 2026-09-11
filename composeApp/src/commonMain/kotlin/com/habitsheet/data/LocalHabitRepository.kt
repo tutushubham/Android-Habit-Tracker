@@ -1,6 +1,7 @@
 package com.habitsheet.data
 
 import com.habitsheet.database.HabitsDatabase
+import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
@@ -271,6 +272,9 @@ class LocalHabitRepository(
     }
 
     override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
+        // Validate before opening the replacement transaction so corrupt or inconsistent
+        // backups can never clear the user's current data.
+        BackupValidator.validate(snapshot)
         mutex.withLock {
             database.transaction {
                 database.habitsQueries.clearAllData()
@@ -341,18 +345,24 @@ class LocalHabitRepository(
     }
 
     private fun seedDefaultsIfEmpty() {
-        if (database.habitsQueries.selectCategoryCount().executeAsOne() != 0L) return
-        val now = Clock.System.now().toEpochMilliseconds()
+        val defaultsAlreadySeeded = database.habitsQueries
+            .getSetting("defaults_seeded")
+            .executeAsOneOrNull() == 1L
+        if (defaultsAlreadySeeded) return
         database.transaction {
-            DefaultData.categories(now).forEach { category ->
-                database.habitsQueries.insertCategory(
-                    id = category.id,
-                    name = category.name,
-                    display_order = category.displayOrder.toLong(),
-                    active = category.active.toDbLong(),
-                    updated_at = category.updatedAtEpochMillis,
-                )
+            if (database.habitsQueries.selectCategoryCount().executeAsOne() == 0L) {
+                val now = Clock.System.now().toEpochMilliseconds()
+                DefaultData.categories(now).forEach { category ->
+                    database.habitsQueries.insertCategory(
+                        id = category.id,
+                        name = category.name,
+                        display_order = category.displayOrder.toLong(),
+                        active = category.active.toDbLong(),
+                        updated_at = category.updatedAtEpochMillis,
+                    )
+                }
             }
+            database.habitsQueries.setSetting("defaults_seeded", 1L)
         }
     }
 

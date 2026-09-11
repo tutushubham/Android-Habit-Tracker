@@ -1,33 +1,41 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.habitsheet.app
 
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.uikit.LocalUIViewController
 import androidx.compose.ui.window.ComposeUIViewController
 import com.habitsheet.AppGraph
-import com.habitsheet.domain.calculation.DailyShareSummary
-import com.habitsheet.ui.BackupService
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.ShareService
+import com.habitsheet.domain.calculation.DailyShareSummary
+import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIViewController
+import platform.UIKit.popoverPresentationController
 
 fun MainViewController() = ComposeUIViewController {
-    val backupService = remember {
-        object : BackupService {
-            override fun exportBackup(json: String) {
-                // Not implemented for iOS yet
-            }
-            override fun exportCsv(csv: String) {
-                // Not implemented for iOS yet
-            }
-            override fun importBackup(onImport: (String) -> Unit) {
-                // Not implemented for iOS yet
-            }
-        }
-    }
-    val graph = remember { AppGraph(IosDriverFactory(), backupService, IosVersionProvider()) }
-    val shareService = remember {
+    val graph = remember { AppGraph(IosDriverFactory()) }
+    val hostController = LocalUIViewController.current
+    val shareService = remember(hostController) {
         object : ShareService {
             override fun shareDailySummary(summary: DailyShareSummary) {
-                // Not implemented for iOS yet
+                val text = buildString {
+                    append("Habit Sheet — ${summary.date}\n")
+                    append("${summary.completedCount}/${summary.totalCount} completed (${(summary.percentage * 100).toInt()}%)\n")
+                    summary.doneHabits.forEach { append("✓ ${it.name}\n") }
+                    summary.leftHabits.forEach { append("○ ${it.name}\n") }
+                }
+                val presenter = topViewController(hostController)
+                if (presenter != null) {
+                    val activity = UIActivityViewController(listOf(text), null)
+                    activity.popoverPresentationController?.apply {
+                        sourceView = presenter.view
+                        sourceRect = presenter.view.bounds
+                        permittedArrowDirections = 0uL
+                    }
+                    presenter.presentViewController(activity, true, null)
+                }
             }
         }
     }
@@ -38,8 +46,14 @@ fun MainViewController() = ComposeUIViewController {
         graph.monthViewModel,
         graph.manageHabitsViewModel,
         shareService,
-        graph.backupViewModel,
         graph.settingsViewModel,
-        graph.versionProvider
     )
+}
+
+private fun topViewController(controller: UIViewController?): UIViewController? {
+    var current = controller ?: return null
+    while (true) {
+        current = current.presentedViewController ?: break
+    }
+    return current
 }

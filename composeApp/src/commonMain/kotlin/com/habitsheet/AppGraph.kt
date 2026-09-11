@@ -3,28 +3,21 @@ package com.habitsheet
 import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.DriverFactory
 import com.habitsheet.data.LocalHabitRepository
-import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
-import com.habitsheet.presentation.VersionProvider
-import com.habitsheet.ui.BackupService
 
 class AppGraph(
-    driverFactory: DriverFactory, 
-    backupService: BackupService,
-    val versionProvider: VersionProvider
+    driverFactory: DriverFactory,
 ) {
     val repository = LocalHabitRepository(driverFactory)
     val monthViewModel = MonthViewModel(repository)
     val manageHabitsViewModel = ManageHabitsViewModel(repository, DefaultIdGenerator())
-    val backupViewModel = BackupViewModel(repository, backupService)
     val settingsViewModel = SettingsViewModel(repository)
 
     fun close() {
         monthViewModel.close()
         manageHabitsViewModel.close()
-        backupViewModel.close()
         settingsViewModel.close()
         repository.close()
     }

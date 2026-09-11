@@ -18,6 +18,13 @@ data class MonthKey(val year: Int, val month: Int) : Comparable<MonthKey> {
     fun weekStarts(): List<LocalDate> =
         (1..daysInMonth step 7).map { day -> LocalDate(year, month, day) }
 
+    /** Returns the workbook-style week bucket (1, 8, 15, 22, or 29) for a date in this month. */
+    fun weekStartFor(date: LocalDate): LocalDate? {
+        if (from(date) != this) return null
+        val startDay = ((date.day - 1) / 7) * 7 + 1
+        return LocalDate(year, month, startDay)
+    }
+
     fun datesForWeek(index: Int): List<LocalDate> {
         require(index in 0..4)
         val first = index * 7 + 1

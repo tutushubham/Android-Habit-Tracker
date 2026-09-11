@@ -2,6 +2,7 @@
   "images" : [
     {
       "idiom" : "universal",
+      "filename" : "AppIcon-1024.png",
       "platform" : "ios",
       "size" : "1024x1024"
     }

@@ -67,7 +67,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
@@ -91,8 +90,8 @@ import kotlinx.datetime.LocalDate
 fun MonthScreen(
     viewModel: MonthViewModel,
     onManage: () -> Unit,
-    onSettings: () -> Unit,
-    shareService: ShareService,
+    onSettings: () -> Unit = {},
+    shareService: ShareService? = null,
 ) {
     val state by viewModel.state.collectAsState()
     var showSharePreview by remember { mutableStateOf(false) }
@@ -101,25 +100,18 @@ fun MonthScreen(
 
     Surface(color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            if (state.todayMode) {
-                TodayModeScreen(state, viewModel, onSettings, onPosition = { tag, rect -> targetPositions[tag] = rect })
-            } else if (maxWidth >= 840.dp) {
-                TabletMonthScreen(state, viewModel, onManage, onSettings, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
+            // iPad portrait is 834dp wide. Treat it (and similarly sized Android
+            // tablets) as an expanded layout instead of stretching phone chrome.
+            if (maxWidth >= 720.dp) {
+                TabletMonthScreen(state, viewModel, onManage, onSettings, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
             } else {
                 PhoneMonthScreen(state, viewModel, onManage, onSettings, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
             }
 
-            if (showSharePreview) {
-                SharePreviewScreen(
-                    summary = state.todaySummary,
-                    onShare = {
-                        shareService.shareDailySummary(state.todaySummary)
-                        showSharePreview = false
-                    },
-                    onClose = { showSharePreview = false }
-                )
+            if (showSharePreview && shareService != null) {
+                SharePreviewScreen(state.todaySummary, onShare = { shareService.shareDailySummary(state.todaySummary); showSharePreview = false }, onClose = { showSharePreview = false })
             }
-            
+
             if (showMonthPicker) {
                 MonthYearPickerDialog(
                     current = state.selectedMonth,
@@ -131,21 +123,6 @@ fun MonthScreen(
                 )
             }
             
-            if (state.onboardingVisible) {
-                TutorialOverlay(
-                    steps = listOf(
-                        TutorialStep("Set up your habits", "Add your daily and weekly habits, choose a category, and set your goals.", "manage"),
-                        TutorialStep("Track your day", "Tap a checkbox when you complete a habit. Your daily progress updates automatically.", "daily"),
-                        TutorialStep("Don't forget weekly habits", "Track habits that you want to complete once or more each week.", "weekly"),
-                        TutorialStep("See how you're doing", "Your daily, weekly, and category progress is calculated automatically.", "summary"),
-                        TutorialStep("Share your day", "Create a clean summary of what you completed and what is still left today.", "share", "Get Started")
-                    ),
-                    targetPositions = targetPositions,
-                    onComplete = viewModel::completeOnboarding,
-                    onSkip = viewModel::completeOnboarding
-                )
-            }
-
             state.error?.let { msg ->
                 Snackbar(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
@@ -185,26 +162,39 @@ private fun PhoneMonthScreen(
                 .consumeWindowInsets(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            MonthSummaryStrip(state)
-            DailyHabitGrid(
-                state = state,
-                viewModel = viewModel,
-                leftWidth = 136.dp,
-                cellWidth = 40.dp,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .tutorialTarget("daily", onPosition)
-            )
-            WeeklySection(
+            if (state.todayMode) {
+                TodayModeContent(
+                    state = state,
+                    viewModel = viewModel,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            } else {
+                MonthSummaryStrip(state, onCurrentMonth = viewModel::currentMonth)
+                if (state.habits.isEmpty()) {
+                    EmptyHabits(onManage)
+                } else {
+                    DailyHabitGrid(
+                        state = state,
+                        viewModel = viewModel,
+                        leftWidth = 136.dp,
+                        cellWidth = 40.dp,
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .tutorialTarget("daily", onPosition),
+                    )
+                }
+                DailyWeeksSection(state.dailyWeeks)
+                WeeklySection(
                 state = state, 
                 viewModel = viewModel, 
                 modifier = Modifier
                     .padding(top = 24.dp)
                     .tutorialTarget("weekly", onPosition)
-            )
-            OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
-            CategorySection(state.categorySummaries)
-            Spacer(Modifier.height(32.dp))
+                )
+                OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
+                CategorySection(state.categorySummaries)
+                Spacer(Modifier.height(32.dp))
+            }
         }
     }
 }
@@ -215,23 +205,34 @@ private fun TabletMonthScreen(
     viewModel: MonthViewModel,
     onManage: () -> Unit,
     onSettings: () -> Unit,
+    onShare: () -> Unit,
     onPosition: (String, Rect) -> Unit = { _, _ -> },
     onShowPicker: () -> Unit,
 ) {
     Row(Modifier.fillMaxSize().safeDrawingPadding()) {
         MonthSidebar(state, onManage, onSettings, onPosition)
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            MonthTopBar(state, viewModel, compact = false, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker)
+            MonthTopBar(state, viewModel, compact = false, onShare = onShare, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker)
             Column(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 32.dp),
             ) {
-                MonthSummaryStrip(state, Modifier.padding(horizontal = 32.dp, vertical = 24.dp))
-                if (state.habits.isEmpty()) {
-                    EmptyHabits(onManage)
+                if (state.todayMode) {
+                    TodayModeContent(
+                        state = state,
+                        viewModel = viewModel,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .widthIn(max = 760.dp)
+                            .padding(horizontal = 32.dp),
+                    )
                 } else {
+                    MonthSummaryStrip(state, Modifier.padding(horizontal = 32.dp, vertical = 24.dp), viewModel::currentMonth)
+                    if (state.habits.isEmpty()) {
+                    EmptyHabits(onManage)
+                    } else {
                     DailyHabitGrid(
                         state = state,
                         viewModel = viewModel,
@@ -241,15 +242,17 @@ private fun TabletMonthScreen(
                             .padding(horizontal = 32.dp)
                             .tutorialTarget("daily", onPosition)
                     )
-                }
-                WeeklySection(
+                    }
+                    DailyWeeksSection(state.dailyWeeks, Modifier.padding(horizontal = 32.dp))
+                    WeeklySection(
                     state = state, 
                     viewModel = viewModel, 
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
                         .tutorialTarget("weekly", onPosition)
-                )
-                OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
+                    )
+                    OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
+                }
             }
         }
     }
@@ -266,103 +269,161 @@ private fun MonthTopBar(
     onShowPicker: () -> Unit = {},
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
-            .height(if (compact) 64.dp else 88.dp)
+            .height(if (compact) 112.dp else 88.dp)
             .drawBehind {
                 drawLine(borderColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
             }
             .padding(horizontal = if (compact) 8.dp else 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.Center,
     ) {
-        if (compact) {
-            IconButton(onClick = onSettings) {
-                Text("⚙", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.fillMaxWidth().height(if (compact) 56.dp else 64.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (compact) {
+                IconButton(
+                    onClick = onSettings,
+                    modifier = Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics { contentDescription = "Settings" },
+                ) {
+                    HabitIcon(
+                        HabitIconGlyph.Settings,
+                        Modifier.size(22.dp),
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }
-        TextButton(
-            onClick = viewModel::previousMonth,
-            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-        ) {
-            Text(
-                "‹", 
-                fontSize = 32.sp, 
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clearAndSetSemantics { contentDescription = "Previous Month" }
+            DateNavigationButton(
+                previous = true,
+                dayMode = state.todayMode,
+                onClick = if (state.todayMode) viewModel::previousDay else viewModel::previousMonth,
             )
-        }
-        Column(
-            Modifier
-                .weight(1f)
-                .clickable(onClick = onShowPicker)
-                .semantics(mergeDescendants = true) {
-                    role = Role.Button
-                    contentDescription = "Select month and year. Currently ${state.selectedMonth.monthName()} ${state.selectedMonth.year}"
-                }, 
-            horizontalAlignment = if (compact) Alignment.CenterHorizontally else Alignment.Start
-        ) {
-            Text(
-                text = state.selectedMonth.yearLabel(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = state.selectedMonth.monthName(),
-                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        TextButton(
-            onClick = viewModel::nextMonth,
-            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-        ) {
-            Text(
-                "›", 
-                fontSize = 32.sp, 
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clearAndSetSemantics { contentDescription = "Next Month" }
-            )
-        }
-        
-        Row(Modifier.padding(start = 8.dp)) {
-            val modeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            Box(
+            Column(
                 Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (state.todayMode) Color.Transparent else modeColor)
-                    .clickable { viewModel.setTodayMode(false) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .weight(1f)
+                    .then(
+                        if (state.todayMode) Modifier
+                        else Modifier
+                            .clickable(onClick = onShowPicker)
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Button
+                                contentDescription = "Select month and year. Currently ${state.selectedMonth.monthName()} ${state.selectedMonth.year}"
+                            }
+                    ),
+                horizontalAlignment = if (compact) Alignment.CenterHorizontally else Alignment.Start,
             ) {
-                Text("Month", style = MaterialTheme.typography.labelLarge, color = if (state.todayMode) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
+                Text(
+                    text = state.selectedMonth.yearLabel(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = state.selectedMonth.monthName(),
+                    style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (state.todayMode) modeColor else Color.Transparent)
-                    .clickable { viewModel.setTodayMode(true) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text("Today", style = MaterialTheme.typography.labelLarge, color = if (state.todayMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            DateNavigationButton(
+                previous = false,
+                dayMode = state.todayMode,
+                onClick = if (state.todayMode) viewModel::nextDay else viewModel::nextMonth,
+            )
+            if (!compact) {
+                ModeSwitcher(state.todayMode, viewModel)
             }
-        }
-
-        if (!compact) {
             TextButton(
                 onClick = onShare,
                 modifier = Modifier
-                    .padding(start = 16.dp, end = 4.dp)
-                    .tutorialTarget("share", onPosition)
+                    .sizeIn(minWidth = 56.dp, minHeight = 48.dp)
+                    .tutorialTarget("share", onPosition),
             ) {
-                Text("Share", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text("Share", color = MaterialTheme.colorScheme.primary)
             }
-            TextButton(
-                onClick = viewModel::currentMonth,
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Text("Today", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            }
+        }
+        if (compact) {
+            ModeSwitcher(
+                todayMode = state.todayMode,
+                viewModel = viewModel,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DateNavigationButton(previous: Boolean, dayMode: Boolean, onClick: () -> Unit) {
+    val direction = if (previous) "Previous" else "Next"
+    val unit = if (dayMode) "day" else "month"
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .semantics { contentDescription = "$direction $unit" },
+    ) {
+        HabitIcon(
+            if (previous) HabitIconGlyph.Back else HabitIconGlyph.Forward,
+            Modifier.size(22.dp),
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ModeSwitcher(
+    todayMode: Boolean,
+    viewModel: MonthViewModel,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .height(40.dp)
+            .width(208.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+            .padding(3.dp),
+    ) {
+        ModeSwitcherItem(
+            label = "Month",
+            selected = !todayMode,
+            onClick = { viewModel.setTodayMode(false) },
+            modifier = Modifier.weight(1f),
+        )
+        ModeSwitcherItem(
+            label = "Today",
+            selected = todayMode,
+            onClick = { viewModel.setTodayMode(true) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun ModeSwitcherItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxHeight(),
+        shape = RoundedCornerShape(9.dp),
+        color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+        shadowElevation = if (selected) 1.dp else 0.dp,
+        onClick = onClick,
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -405,7 +466,9 @@ private fun DailyHabitGrid(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    val dates = state.selectedMonth.dates().reversed()
+    // Keep the same left-to-right day order as the workbook: day 1 through the
+    // last real day of the selected month.
+    val dates = state.selectedMonth.dates()
     val density = LocalDensity.current
     
     LaunchedEffect(state.selectedMonth, state.today, scrollState.maxValue, state.scrollToTodayTrigger) {
@@ -498,6 +561,7 @@ private fun DailyHabitGrid(
                             completed = summary.habit.id to date in state.dailyCompletionKeys,
                             currentDay = date == state.today,
                             enabled = summary.habit.isActiveOn(date),
+                            description = "${summary.habit.name}, ${date.dayOfWeek.name.lowercase()}, ${date.day} ${state.selectedMonth.monthName()}",
                             width = cellWidth,
                             height = rowHeight,
                             onClick = { viewModel.toggleDaily(summary.habit.id, date) },
@@ -505,9 +569,9 @@ private fun DailyHabitGrid(
                     }
                 }
             }
-            SummaryRow(state.daily.map { it.completed.toString() }.reversed(), cellWidth, summaryHeight)
-            SummaryRow(state.daily.map { it.notCompleted.toString() }.reversed(), cellWidth, summaryHeight)
-            SummaryRow(state.daily.map { it.percentage.percentLabel() }.reversed(), cellWidth, summaryHeight)
+            SummaryRow(state.daily.map { it.completed.toString() }, cellWidth, summaryHeight)
+            SummaryRow(state.daily.map { it.notCompleted.toString() }, cellWidth, summaryHeight)
+            SummaryRow(state.daily.map { it.percentage.percentLabel() }, cellWidth, summaryHeight)
         }
     }
 }
@@ -562,6 +626,7 @@ private fun CompletionCell(
     completed: Boolean,
     currentDay: Boolean,
     enabled: Boolean = true,
+    description: String,
     width: Dp,
     height: Dp,
     onClick: () -> Unit,
@@ -586,6 +651,7 @@ private fun CompletionCell(
             )
             .semantics {
                 role = Role.Checkbox
+                contentDescription = description
                 stateDescription = statusDescription
             }
             .clickable(
@@ -661,8 +727,44 @@ private fun OverviewStrip(state: MonthUiState, modifier: Modifier = Modifier) {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            MetricPanel("Daily Avg", state.monthlyProgress, Modifier.weight(1f))
-            MetricPanel("Weekly Avg", state.weeklyProgress, Modifier.weight(1f))
+            MetricPanel("Monthly daily", state.monthlyProgress, Modifier.weight(1f))
+            MetricPanel("Weekly habits", state.weeklyProgress, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun DailyWeeksSection(
+    weeks: List<com.habitsheet.domain.calculation.DailyWeekSummary>,
+    modifier: Modifier = Modifier.padding(horizontal = 16.dp),
+) {
+    if (weeks.isEmpty()) return
+    Column(modifier.padding(top = 8.dp)) {
+        SectionLabel("Daily week totals", Modifier.padding(bottom = 12.dp))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            weeks.forEach { week ->
+                Row(
+                    Modifier
+                        .width(116.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DonutProgress(week.percentage, Modifier.size(24.dp))
+                    Column {
+                        Text("W${week.index + 1}", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            "${week.completed}/${week.goal}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -677,7 +779,7 @@ private fun MetricPanel(label: String, progress: ProgressSummary, modifier: Modi
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 8.dp)) {
             Text(
-                if (progress.hasGoal) progress.percentage.percentLabel() else "0%",
+                if (progress.hasGoal) progress.percentage.percentLabel() else "—",
                 style = MaterialTheme.typography.headlineMedium,
                 color = if (progress.hasGoal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -713,7 +815,7 @@ private fun CategorySection(categories: List<CategorySummary>) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(summary.category.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Text(
-                        summary.percentage.percentLabel(),
+                        "${summary.completed}/${summary.goal} · ${summary.remaining} left · ${summary.percentage.percentLabel()}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -785,11 +887,12 @@ private fun WeeklySection(
                     }
                 }
                 SummaryLabel("DONE", 36.dp)
+                SummaryLabel("LEFT", 36.dp)
                 SummaryLabel("GOAL", 36.dp)
                 SummaryLabel("%", 36.dp)
             }
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
-                state.weeklyBlocks.reversed().forEach { block ->
+                state.weeklyBlocks.forEach { block ->
                     Column(Modifier.width(weekWidth)) {
                         Row(
                             Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 6.dp),
@@ -812,7 +915,8 @@ private fun WeeklySection(
                                 CompletionCell(
                                     completed = habit.id to block.weekStartDate in state.weeklyCompletionKeys,
                                     currentDay = state.today in state.selectedMonth.datesForWeek(block.index),
-                                    enabled = habit.isActiveOn(block.weekStartDate),
+                                    enabled = state.selectedMonth.datesForWeek(block.index).any(habit::isActiveOn),
+                                    description = "${habit.name}, week ${block.index + 1} of ${state.selectedMonth.monthName()}",
                                     width = weekWidth,
                                     height = 46.dp,
                                     onClick = { viewModel.toggleWeekly(habit.id, block.weekStartDate) },
@@ -820,6 +924,7 @@ private fun WeeklySection(
                             }
                         }
                         SummaryValue(block.completed.toString(), 36.dp)
+                        SummaryValue(block.notCompleted.toString(), 36.dp)
                         SummaryValue(block.goal.toString(), 36.dp)
                         SummaryValue(block.percentage.percentLabel(), 36.dp)
                     }
@@ -857,7 +962,11 @@ private fun SummaryValue(value: String, height: Dp) {
 }
 
 @Composable
-private fun MonthSummaryStrip(state: MonthUiState, modifier: Modifier = Modifier) {
+private fun MonthSummaryStrip(
+    state: MonthUiState,
+    modifier: Modifier = Modifier,
+    onCurrentMonth: (() -> Unit)? = null,
+) {
     Row(
         modifier
             .fillMaxWidth()
@@ -866,8 +975,12 @@ private fun MonthSummaryStrip(state: MonthUiState, modifier: Modifier = Modifier
     ) {
         SummaryItem("Daily", state.monthlyProgress.percentage.percentLabel())
         SummaryItem("Weekly", state.weeklyProgress.percentage.percentLabel())
-        val onTarget = state.categorySummaries.count { it.percentage >= 0.8 }
-        SummaryItem("Categories", "$onTarget/${state.categorySummaries.size} on track")
+        Spacer(Modifier.weight(1f))
+        if (onCurrentMonth != null && state.selectedMonth != MonthKey.from(state.today)) {
+            TextButton(onClick = onCurrentMonth) {
+                Text("Current month", color = MaterialTheme.colorScheme.primary)
+            }
+        }
     }
 }
 
@@ -880,76 +993,113 @@ private fun SummaryItem(label: String, value: String) {
 }
 
 @Composable
-private fun TodayModeScreen(
+private fun TodayModeContent(
     state: MonthUiState,
     viewModel: MonthViewModel,
-    onSettings: () -> Unit,
-    onPosition: (String, Rect) -> Unit
+    modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        topBar = { MonthTopBar(state, viewModel, compact = true, onSettings = onSettings, onPosition = onPosition) },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { innerPadding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                state.today.weekdayLabel().uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "${state.today.day} ${state.selectedMonth.monthName()}",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp, bottom = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            state.selectedDay.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() },
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            "${state.selectedDay.day} ${state.selectedMonth.monthName()}",
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (state.selectedDay != state.today) {
+            TextButton(
+                onClick = viewModel::currentDay,
+                modifier = Modifier.padding(top = 4.dp).sizeIn(minHeight = 48.dp),
+            ) {
+                Text("Back to today")
+            }
+        }
 
-            val summary = state.todaySummary
+        val summary = state.todaySummary
+        Row(
+            Modifier.padding(top = if (state.selectedDay == state.today) 20.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            DonutProgress(summary.percentage, Modifier.size(52.dp))
             Text(
                 "${summary.completedCount} / ${summary.totalCount} completed • ${summary.percentage.percentLabel()}",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 16.dp)
             )
-            
-            SubtleProgress(summary.percentage, Modifier.widthIn(max = 200.dp).fillMaxWidth().padding(top = 16.dp))
-
-            if (summary.doneHabits.isNotEmpty()) {
-                SectionLabel("DONE", Modifier.align(Alignment.Start).padding(top = 48.dp, bottom = 16.dp))
-                summary.doneHabits.forEach { habit ->
-                    TodayHabitRow(habit.name, completed = true, onClick = { viewModel.toggleDaily(habit.id, state.today) })
-                }
-            }
-
-            if (summary.leftHabits.isNotEmpty()) {
-                SectionLabel("LEFT", Modifier.align(Alignment.Start).padding(top = 32.dp, bottom = 16.dp))
-                summary.leftHabits.forEach { habit ->
-                    TodayHabitRow(habit.name, completed = false, onClick = { viewModel.toggleDaily(habit.id, state.today) })
-                }
-            }
-            
-            if (state.weeklyBlocks.isNotEmpty()) {
-                SectionLabel("WEEKLY PROGRESS", Modifier.align(Alignment.Start).padding(top = 48.dp, bottom = 16.dp))
-                MetricPanel("Weekly Avg", state.weeklyProgress, Modifier.fillMaxWidth())
-            }
-            
-            Spacer(Modifier.height(48.dp))
         }
+
+        SubtleProgress(summary.percentage, Modifier.widthIn(max = 320.dp).fillMaxWidth().padding(top = 16.dp))
+
+        if (summary.totalCount == 0) {
+            Text(
+                "No daily habits are scheduled for this date.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 40.dp),
+            )
+        }
+
+        if (summary.leftHabits.isNotEmpty()) {
+            SectionLabel("TO DO", Modifier.align(Alignment.Start).padding(top = 40.dp, bottom = 8.dp))
+            summary.leftHabits.forEach { habit ->
+                TodayHabitRow(habit.name, completed = false, onClick = { viewModel.toggleDaily(habit.id, state.selectedDay) })
+            }
+        }
+
+        if (summary.doneHabits.isNotEmpty()) {
+            SectionLabel("DONE", Modifier.align(Alignment.Start).padding(top = 32.dp, bottom = 8.dp))
+            summary.doneHabits.forEach { habit ->
+                TodayHabitRow(habit.name, completed = true, onClick = { viewModel.toggleDaily(habit.id, state.selectedDay) })
+            }
+        }
+
+        val currentWeekStart = state.selectedMonth.weekStartFor(state.selectedDay)
+        val weeklyHabits = currentWeekStart?.let {
+            state.weeklyHabits.filter { habit -> habit.isActiveOn(state.selectedDay) }
+        }.orEmpty()
+        if (currentWeekStart != null && weeklyHabits.isNotEmpty()) {
+            SectionLabel("THIS WEEK", Modifier.align(Alignment.Start).padding(top = 40.dp, bottom = 8.dp))
+            weeklyHabits.sortedBy { it.displayOrder }.forEach { habit ->
+                val completed = habit.id to currentWeekStart in state.weeklyCompletionKeys
+                TodayHabitRow(
+                    name = habit.name,
+                    completed = completed,
+                    onClick = { viewModel.toggleWeekly(habit.id, currentWeekStart) },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
 private fun TodayHabitRow(name: String, completed: Boolean, onClick: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .semantics {
+                role = Role.Checkbox
+                contentDescription = name
+                stateDescription = if (completed) "Completed" else "Incomplete"
+            }
+            .clickable(onClickLabel = if (completed) "Mark incomplete" else "Mark complete") {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
+            .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -983,9 +1133,13 @@ private fun MonthYearPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { year-- }) { Text("‹", fontSize = 24.sp) }
+                IconButton(onClick = { year-- }, modifier = Modifier.semantics { contentDescription = "Previous year" }) {
+                    HabitIcon(HabitIconGlyph.Back, Modifier.size(20.dp))
+                }
                 Text(year.toString(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp))
-                IconButton(onClick = { year++ }) { Text("›", fontSize = 24.sp) }
+                IconButton(onClick = { year++ }, modifier = Modifier.semantics { contentDescription = "Next year" }) {
+                    HabitIcon(HabitIconGlyph.Forward, Modifier.size(20.dp))
+                }
             }
         },
         text = {
@@ -1036,16 +1190,20 @@ private fun MonthSidebar(
             }
             .padding(24.dp),
     ) {
-        Text("◉ Tracker", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HabitIcon(HabitIconGlyph.Tracker, Modifier.size(24.dp), MaterialTheme.colorScheme.primary)
+            Text("Habit Sheet", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        }
         Spacer(Modifier.height(48.dp))
-        SidebarNavItem("▣  Tracker", selected = true, onClick = {})
+        SidebarNavItem(HabitIconGlyph.Tracker, "Tracker", selected = true, onClick = {})
         SidebarNavItem(
-            "⚙  Manage", 
+            HabitIconGlyph.Manage,
+            "Manage",
             selected = false, 
             onClick = onManage,
             modifier = Modifier.tutorialTarget("manage", onPosition)
         )
-        SidebarNavItem("⛃  Settings", selected = false, onClick = onSettings)
+        SidebarNavItem(HabitIconGlyph.Settings, "Settings", selected = false, onClick = onSettings)
         
         val sidebarCategories = state.categorySummaries.filter { it.goal > 0 }.take(6)
         if (sidebarCategories.isNotEmpty()) {
@@ -1065,15 +1223,22 @@ private fun MonthSidebar(
 }
 
 @Composable
-private fun SidebarNavItem(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
+private fun SidebarNavItem(icon: HabitIconGlyph, label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick, role = Role.Button)
             .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        HabitIcon(
+            icon,
+            Modifier.size(20.dp),
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
@@ -1106,7 +1271,7 @@ internal fun SubtleProgress(progress: Double, modifier: Modifier = Modifier) {
         Box(
             Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(if (progressValue > 0f) progressValue else 0.01f)
+                .fillMaxWidth(progressValue)
                 .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(1.dp)),
         )
     }
@@ -1130,9 +1295,9 @@ internal fun BottomNavigation(
                 drawLine(dividerColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
             },
     ) {
-        BottomNavItem("▣", "Tracker", selectedTracker, Modifier.weight(1f), onTracker)
+        BottomNavItem(HabitIconGlyph.Tracker, "Tracker", selectedTracker, Modifier.weight(1f), onTracker)
         BottomNavItem(
-            "⚙", 
+            HabitIconGlyph.Manage,
             "Manage", 
             !selectedTracker, 
             Modifier.weight(1f).tutorialTarget("manage", onPosition), 
@@ -1142,13 +1307,17 @@ internal fun BottomNavigation(
 }
 
 @Composable
-private fun BottomNavItem(icon: String, label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun BottomNavItem(icon: HabitIconGlyph, label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Column(
         modifier.fillMaxHeight().clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(icon, fontSize = 19.sp, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        HabitIcon(
+            icon,
+            Modifier.size(21.dp),
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             label,
             style = MaterialTheme.typography.labelSmall,
