@@ -155,7 +155,7 @@ internal object PlanReconciler {
                 candidates.size == 1 -> candidates.single()
                 candidates.size > 1 && owner != null && candidates.any { it.id == owner.id } -> owner
                 candidates.size > 1 -> {
-                    skippedByName.merge(row.habit, 1, Int::plus)
+                    skippedByName[row.habit] = (skippedByName[row.habit] ?: 0) + 1
                     continue
                 }
                 else -> DailyHabit(

@@ -12,11 +12,19 @@ Read this at the start of every plan session. It is the shared memory for all pl
   1. **The owner** — uses it with his OND 2026 plan and own data on his own phone + iPad.
   2. **Everyone else** — a neutral app with none of the owner's data, plan, names or credentials.
 
+## Status (updated 2026-10-03)
+
+- **P0-A done**: no personal data/seed in shared code; neutral first run; personal files in gitignored `personal/`. Audit finding P0-1 below is **resolved**.
+- **P0-B done**: sync split into `SheetsApi` / `PlanTable` / `PlanReconciler` / `SheetSync` + `SyncScheduler` + `SerializingTokenProvider`; atomic apply, explicit pending flag (migration `4.sqm`), typed errors, retries, offline auto-retry, Disconnect. Audit finding P0-5 is **resolved**.
+- Still open: P0-2 release config, P0-3 iOS gaps, P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, and every P1/P2 item.
+- Verification state: 196 JVM tests green, `assembleDebug` OK, iOS klib compile OK on Windows; device checks owed (see `PROGRESS.md`).
+- Branching: work happens directly on `master` from here.
+
 ## Tech snapshot (verified in repo)
 
 - Kotlin Multiplatform: Kotlin 2.3.20, Compose Multiplatform 1.11.1, AGP 8.9.1, Gradle 8.14.4, SQLDelight 2.3.2, Ktor 3.3.3, kotlinx-datetime 0.8.0, kotlinx-serialization 1.8.0. Android min 23 / target+compile 35; iOS deployment target 15; JVM 17.
-- One module `:composeApp` (+ `iosApp` SwiftUI host, GoogleSignIn via SPM). ~10.8k lines Kotlin, 83 `@Test`.
-- Layers: `domain` (models, `HabitCalculations`, `PlanResolver`, backup) → `data` (`LocalHabitRepository`, `InMemoryHabitRepository`, `OndSeedData`) → `presentation` (plain-class ViewModels with own scopes) → `ui` (shared Compose) ; `sync/SheetSync.kt`; `androidMain` (driver, token provider, backup, share, widget) ; `iosMain`.
+- One module `:composeApp` (+ `iosApp` SwiftUI host, GoogleSignIn via SPM). ~13k lines Kotlin, 196 JVM tests (was 83 at audit time), 4 SQLDelight migrations (`1.sqm`–`4.sqm`).
+- Layers: `domain` (models, `HabitCalculations`, `PlanResolver`, backup) → `data` (`LocalHabitRepository`, `InMemoryHabitRepository`, `OndSeedData`) → `presentation` (plain-class ViewModels with own scopes) → `ui` (shared Compose) ; `sync/` (`SheetsApi`, `PlanTable`, `PlanReconciler`, `SheetSync`, `SyncScheduler`, `SyncError`, `SerializingTokenProvider`); `androidMain` (driver, token provider, backup, share, widget) ; `iosMain`.
 - Wiring: `AppGraph` (hand-rolled DI). Navigation: a single `enum Destination` in `ui/HabitSheetApp.kt`.
 - Docs already in repo: `README.md`, `ARCHITECTURE.md`, `SHEET_SYNC.md`, `WORKBOOK_MAPPING.md`.
 - A knowledge graph exists in `graphify-out/` (if present) — use `GRAPH_REPORT.md` / `graph.json` to navigate; refresh with `graphify update .`.
@@ -25,14 +33,14 @@ Read this at the start of every plan session. It is the shared memory for all pl
 
 - `HabitSnapshot.plannedHabitsOn(date)` (domain/model/PlanResolver.kt) is the single resolver: dated `DayPlan` rows → weekly `WeeklyPlan` → every-day only for habits with no schedule (`datedOnly`/sheet-managed habits never fall through).
 - Completions: daily keyed `(planId, date)`; weekly `(weeklyHabitId, weekStart)`. Month is a derived window.
-- Sheet `Plan` tab columns: `ID, Date, Habit, Session, Done, Skip` (or 8-column OND layout `ID, Date, Area, Habit, Session, Done, Skip, Source`). Sheet wins on conflicts; local check-offs newer than last sync are uploaded.
+- Sheet `Plan` tab columns: `ID, Date, Habit, Session, Done, Skip` (or 8-column OND layout `ID, Date, Area, Habit, Session, Done, Skip, Source`). Sheet wins on conflicts, except local check-offs flagged *pending upload* (explicit per-completion flag, no clock comparison), which are uploaded first.
 
 ## Audit findings (the source for every plan)
 
 Legend: **V** = verified by reading code/config; **I** = inferred.
 
 ### P0 — blockers
-1. **Personal data/plan in shared code (V).**
+1. **Personal data/plan in shared code (V). — RESOLVED in P0-A.**
    - `data/OndSeedData.kt` (859 lines) — the personal Oct–Dec 2026 plan.
    - `LocalHabitRepository.kt` constructor (`seedOndPlan = true`) runs `seedOndPlanIfNeeded` (l.482), `seedWinterArcRoutinesIfNeeded` (l.554), `ensureWinterArcHabitsAreDatedOnly` (l.590) at every startup; settings flags `ond_2026_seeded`, `winter_arc_routines_seeded`, `winter_arc_dated_only`. Hard-coded habit names/category IDs (`category-4`, …).
    - `sync/SheetSync.kt` hard-codes `"run","workout","android","dsa","sde"` (l.115, 164), the `"Plan in OND sheet"` placeholder (l.195, 208), and the window `2026-10-01..2026-12-31` in `ondRowsFor` (l.203–204).
@@ -40,7 +48,7 @@ Legend: **V** = verified by reading code/config; **I** = inferred.
 2. **No Android release config (V).** `composeApp/build.gradle.kts` has no `buildTypes`, signing, R8/ProGuard; version hard-coded (`versionCode = 6`, `versionName = "1.1.3"`) and duplicated in `iosApp/iosApp/Info.plist` and `project.pbxproj` (`MARKETING_VERSION = 1.1.3`).
 3. **iOS gaps (V).** No `PrivacyInfo.xcprivacy`, no entitlements file; `DEVELOPMENT_TEAM = G5VX9GMK76` checked in; deployment target 15.0; GoogleSignIn via SPM only.
 4. **OAuth readiness (V per SHEET_SYNC.md).** Consent screen in Testing; Android client registered with the debug SHA-1; scope `spreadsheets` (sensitive).
-5. **Sync correctness (V).** Habits matched by lowercase name; duplicate names abort sync (`require` in SheetSync l.~104); multi-step local writes are not transactional; every local toggle triggers a full `sync()` (`AppGraph.monthViewModel(onLocalChange=…)`) that re-reads `Plan!A:H`; pending detection uses `updatedAt > lastSync` (device clocks); last-upload-wins; `HttpClient()` with no timeouts/retry; parse errors reported by `error()` strings.
+5. **Sync correctness (V). — RESOLVED in P0-B.** Habits matched by lowercase name; duplicate names abort sync (`require` in SheetSync l.~104); multi-step local writes are not transactional; every local toggle triggers a full `sync()` (`AppGraph.monthViewModel(onLocalChange=…)`) that re-reads `Plan!A:H`; pending detection uses `updatedAt > lastSync` (device clocks); last-upload-wins; `HttpClient()` with no timeouts/retry; parse errors reported by `error()` strings.
 6. **No CI (V).** No `.github/`.
 7. **No privacy policy / store listing assets (I).**
 

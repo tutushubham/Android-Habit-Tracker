@@ -3,7 +3,7 @@
 **Goal:** the Sheet-as-backend loop is correct, safe against partial failure, quiet on the network, and understandable to a non-technical user. Phone and iPad can both write without corrupting each other's data in realistic use.
 
 **Depends on:** P0-A (OND rules removed).
-**Branch:** `prod/p0-b-sync`
+**Branch:** `prod/p0-b-sync` (merged into `master`; further work continues on `master`)
 **Out of scope:** real-time collaboration, merge UIs, conflict history, new sync features. Keep "last upload wins" semantics but make them deterministic and honest.
 
 ## 1. Code analysis
@@ -74,13 +74,15 @@ Run the whole plan: execute P0-B steps 1-11 in order, one commit per step, run a
 Manual with your own sheet on two devices: (1) toggle 20 checkboxes quickly → network log shows one coalesced sync; (2) airplane mode, toggle, reconnect → uploaded; (3) edit a session text in the sheet → appears after sync; (4) rename a habit in sheet → no duplicate silent habit (follows the chosen identity rule); (5) revoke app access in Google Account → clear message, local data intact.
 
 ## 5. Definition of done
-- [ ] `SheetSync` split into API / table / reconciler / orchestrator; reconciler is pure and tested.
-- [ ] Local apply is one transaction with one snapshot reload; mid-failure test passes.
-- [ ] Sync is coalesced; no sync-per-tap.
-- [ ] Pending uploads tracked by explicit flag (migration + migration test).
-- [ ] Typed errors + timeouts + retry/backoff; friendly messages; offline is not an error.
-- [ ] Existing/foreign `Plan` tab and other tabs are never overwritten (tests).
-- [ ] `SHEET_SYNC.md` updated; tests green; `PROGRESS.md` ticked.
+- [x] `SheetSync` split into API / table / reconciler / orchestrator; reconciler is pure and tested.
+- [x] Local apply is one transaction with one snapshot reload; mid-failure test passes.
+- [x] Sync is coalesced; no sync-per-tap.
+- [x] Pending uploads tracked by explicit flag (migration + migration test).
+- [x] Typed errors + timeouts + retry/backoff; friendly messages; offline is not an error.
+- [x] Existing/foreign `Plan` tab and other tabs are never overwritten (tests).
+- [x] `SHEET_SYNC.md` updated; tests green; `PROGRESS.md` ticked.
+
+Status 2026-10-03: all boxes met in code and automated tests (196 JVM tests; iOS klib compile passes). The manual two-device checks in section 4 are still owed and tracked in `PROGRESS.md`. Added during the completion review: automatic retry while offline with pending check-offs (`SyncScheduler.shouldRetry`).
 
 ## 6. Handoff
 P0-C needs: no changes to sync, but needs the client IDs/scope moved to config. P1-1 will add logging hooks into the new `SyncError` paths.

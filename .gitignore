@@ -12,3 +12,6 @@ node_modules/
 
 # Personal files (owner-only plan data); never commit
 personal/
+
+# Derived knowledge graph (rebuild with: python -m graphify update .)
+graphify-out/

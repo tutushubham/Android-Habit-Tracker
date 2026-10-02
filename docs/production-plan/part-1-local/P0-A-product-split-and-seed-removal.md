@@ -3,7 +3,8 @@
 **Goal:** the shared app contains **no personal data, plan, names or hard-coded habits**. A fresh install is neutral. Your own plan lives in your Google Sheet. Your existing installs keep working with their data untouched.
 
 **Depends on:** decisions D1 (default A) and D2 in `00-context/DECISIONS.md`.
-**Branch:** `prod/p0-a-product-split`
+**Branch:** `prod/p0-a-product-split` (merged into `master` as PR #1)
+**Status 2026-10-03:** steps 2–8 complete and verified by the completion review; step 9 (manual check on your own device) is still owed — see `PROGRESS.md`.
 **Out of scope:** changing sync algorithm (P0-B), build/signing (P0-C), new features.
 
 ## 1. Code analysis (what is wrong today)

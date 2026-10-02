@@ -61,7 +61,7 @@ What that means in practice:
 
 | Situation | What you see | What the app does |
 | --- | --- | --- |
-| No connection, DNS failure or timeouts | "Will sync when online." (not shown as an error) | Retries a few times with backoff; your check-offs stay marked pending and upload on the next sync (next check-off, app foreground, or **Connect & sync**) |
+| No connection, DNS failure or timeouts | "Will sync when online." (not shown as an error) | Retries a few times with backoff; your check-offs stay marked pending. While the app is open it tries again by itself after 30 s, then 60 s, doubling up to 5 min, and also on the next check-off, app foreground or **Connect & sync** |
 | Google session ended, access revoked, sign-in cancelled | "Google sign-in needed. Tap Connect & sync to sign in again." | No data is changed; sign in again |
 | 403, no edit access | "No access to this sheet. Use a Google account that can edit it." | Not retried |
 | 404 | "Spreadsheet not found. Check the link and the Google account." | Not retried |

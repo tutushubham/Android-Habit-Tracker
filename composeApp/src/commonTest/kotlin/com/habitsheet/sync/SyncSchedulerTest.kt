@@ -86,6 +86,47 @@ class SyncSchedulerTest {
     }
 
     @Test
+    fun offlineRunsRetryByThemselvesWithDoublingDelayUntilShouldRetryTurnsFalse() = runTest {
+        val runs = mutableListOf<Long>()
+        var offline = true
+        val scheduler = SyncScheduler(
+            backgroundScope, debounceMillis = 100, retryDelayMillis = 1_000, maxRetryDelayMillis = 3_000,
+            shouldRetry = { offline },
+        ) {
+            runs += testScheduler.currentTime
+            if (runs.size == 4) offline = false // connection is back on the 4th try
+        }
+        scheduler.syncNow()
+        advanceTimeBy(60_000); runCurrent()
+        // first run at 0, then +1000, +2000, +3000 (capped), then it stops retrying.
+        assertEquals(listOf(0L, 1_000L, 3_000L, 6_000L), runs)
+    }
+
+    @Test
+    fun aTriggerWhileWaitingToRetryIsServedImmediatelyAndRetriesContinue() = runTest {
+        val runs = mutableListOf<Long>()
+        var offline = true
+        val scheduler = SyncScheduler(backgroundScope, debounceMillis = 100, retryDelayMillis = 5_000, shouldRetry = { offline }) {
+            runs += testScheduler.currentTime
+            if (runs.size == 2) offline = false
+        }
+        scheduler.syncNow(); runCurrent()
+        advanceTimeBy(1_000)
+        scheduler.syncNow() // e.g. the app came to the foreground
+        advanceTimeBy(60_000); runCurrent()
+        assertEquals(listOf(0L, 1_000L), runs, "served at once, and no further retry once back online")
+    }
+
+    @Test
+    fun noRetryWhenShouldRetryIsFalse() = runTest {
+        var runs = 0
+        val scheduler = SyncScheduler(backgroundScope, retryDelayMillis = 1_000) { runs++ }
+        scheduler.syncNow()
+        advanceTimeBy(60_000); runCurrent()
+        assertEquals(1, runs)
+    }
+
+    @Test
     fun aFailingSyncDoesNotKillTheScheduler() = runTest {
         var calls = 0
         val scheduler = SyncScheduler(backgroundScope, debounceMillis = 100) {
