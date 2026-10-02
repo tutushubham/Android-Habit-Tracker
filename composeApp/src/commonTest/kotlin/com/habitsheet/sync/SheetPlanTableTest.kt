@@ -54,13 +54,13 @@ class SheetPlanTableTest {
           ["one","2026-10-01","Run","Easy",false,false],
           ["one","2026-10-01","Run","Mobility",false,false]
         ]""").jsonArray
-        assertFailsWith<IllegalArgumentException> { parsePlanTable(repeated) }
+        assertFailsWith<SyncError.MalformedPlanTab> { parsePlanTable(repeated) }
     }
 
     @Test
     fun rejectsWrongSchemaBeforeAnyWrite() {
         val table = Json.parseToJsonElement("""[["Date","Habit","Done"]]""").jsonArray
-        assertFailsWith<IllegalArgumentException> { parsePlanTable(table) }
+        assertFailsWith<SyncError.MalformedPlanTab> { parsePlanTable(table) }
     }
 
     @Test

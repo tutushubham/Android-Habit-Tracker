@@ -4,14 +4,28 @@ import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetSyncState
+import com.habitsheet.sync.SyncError
+import com.habitsheet.sync.userMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+/** What the settings screen shows about the last sync. [isError] is false for "Will sync when online." */
+data class SyncStatus(val text: String, val isError: Boolean)
+
+internal fun SheetSyncState.toStatus(): SyncStatus = when (val failure = error) {
+    null -> SyncStatus(message, isError = false)
+    is SyncError.Offline -> SyncStatus(failure.userMessage(), isError = false)
+    else -> SyncStatus(failure.userMessage(), isError = true)
+}
 
 enum class ThemeMode {
     System, Light, Dark
@@ -30,6 +44,8 @@ class SettingsViewModel(
     private val _sheetMessage = MutableStateFlow<String?>(null)
     val sheetMessage: StateFlow<String?> = _sheetMessage.asStateFlow()
     val sheetSyncState: StateFlow<SheetSyncState> = sheetSync?.state ?: MutableStateFlow(SheetSyncState())
+    val sheetSyncStatus: StateFlow<SyncStatus> = sheetSyncState.map { it.toStatus() }
+        .stateIn(scope, SharingStarted.Eagerly, sheetSyncState.value.toStatus())
 
     init {
         scope.launch(ioDispatcher) {

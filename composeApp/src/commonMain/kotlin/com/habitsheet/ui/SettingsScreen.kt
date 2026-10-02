@@ -35,6 +35,7 @@ fun SettingsScreen(
     val sheetUrl by viewModel.sheetUrl.collectAsState()
     val sheetMessage by viewModel.sheetMessage.collectAsState()
     val syncState by viewModel.sheetSyncState.collectAsState()
+    val syncStatus by viewModel.sheetSyncStatus.collectAsState()
     var sheetDraft by remember(sheetUrl) { mutableStateOf(sheetUrl) }
 
     Scaffold(
@@ -66,9 +67,9 @@ fun SettingsScreen(
                     }
                     sheetMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     Text(
-                        syncState.message,
+                        syncStatus.text,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (syncStatus.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         "The Sheet controls dated sessions. Checks for Plan rows work offline and upload when you reconnect. Other tabs are unchanged.",

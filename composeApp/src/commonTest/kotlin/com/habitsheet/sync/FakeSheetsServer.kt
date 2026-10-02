@@ -40,8 +40,11 @@ data class RecordedCall(val method: String, val path: String, val query: String,
 
 /** What an injected fault does when it fires. */
 sealed interface FaultAction {
-    data class Status(val code: Int, val headers: Map<String, String> = emptyMap()) : FaultAction
+    data class Status(val code: Int, val headers: Map<String, String> = emptyMap(), val body: String? = null) : FaultAction
     data object Timeout : FaultAction
+
+    /** No route / DNS failure: an IOException before any response. */
+    data object ConnectionFailure : FaultAction
 }
 
 /**
@@ -80,6 +83,8 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     /** Fails the call that would be number [n] (1-based) of all calls. */
     fun failCallNumber(n: Int, action: FaultAction) = fail(action, afterMatching = n - 1)
 
+    fun clearFaults() = faults.clear()
+
     fun cell(row: Int, column: Int): JsonElement? = planValues.getOrNull(row)?.getOrNull(column)
     fun rowsAsText(): List<List<String>> = planValues.map { row -> row.map { it.jsonPrimitive.content } }
     val writes get() = calls.filter { it.isWrite }
@@ -104,8 +109,9 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
                 fault.remaining--
                 when (val action = fault.action) {
                     FaultAction.Timeout -> throw HttpRequestTimeoutException(url.toString(), 1)
+                    FaultAction.ConnectionFailure -> throw kotlinx.io.IOException("Unable to resolve host")
                     is FaultAction.Status -> return respond(
-                        """{"error":{"code":${action.code}}}""",
+                        action.body ?: """{"error":{"code":${action.code}}}""",
                         HttpStatusCode.fromValue(action.code),
                         Headers.build {
                             append(HttpHeaders.ContentType, "application/json")

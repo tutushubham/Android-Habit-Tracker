@@ -48,10 +48,10 @@ internal fun rowKey(row: SheetPlanRow) = row.id
 internal fun rowKey(habit: String, date: LocalDate) = "${habit.trim().lowercase()}|$date"
 
 internal fun parsePlanTable(values: JsonArray): List<SheetPlanRow> {
-    val header = values.firstOrNull()?.jsonArray?.map { it.jsonPrimitive.content.trim() } ?: error("Plan tab is empty.")
+    val header = values.firstOrNull()?.jsonArray?.map { it.jsonPrimitive.content.trim() } ?: throw SyncError.MalformedPlanTab(null, "is empty")
     val eightColumns = header.take(8) == listOf("ID", "Date", "Area", "Habit", "Session", "Done", "Skip", "Source")
-    require(eightColumns || header.take(6) == listOf("ID", "Date", "Habit", "Session", "Done", "Skip")) {
-        "Plan tab needs ID, Date, Habit, Session, Done, Skip (optional Area and Source columns)."
+    if (!eightColumns && header.take(6) != listOf("ID", "Date", "Habit", "Session", "Done", "Skip")) {
+        throw SyncError.MalformedPlanTab(null, "needs ID, Date, Habit, Session, Done, Skip (optional Area and Source columns)")
     }
     val ids = mutableSetOf<String>()
     return values.drop(1).mapIndexedNotNull { index, element ->
@@ -63,12 +63,12 @@ internal fun parsePlanTable(values: JsonArray): List<SheetPlanRow> {
             dateCell.toDoubleOrNull()?.let { serial ->
                 LocalDate.fromEpochDays(LocalDate(1899, 12, 30).toEpochDays() + serial.toInt())
             } ?: LocalDate.parse(dateCell)
-        } catch (_: Exception) { error("Plan row ${index + 2}: use YYYY-MM-DD in Date.") }
+        } catch (_: Exception) { throw SyncError.MalformedPlanTab(index + 2, "use YYYY-MM-DD in Date") }
         val offset = if (eightColumns) 1 else 0
         val habit = cells.getOrElse(2 + offset) { "" }
         val session = cells.getOrElse(3 + offset) { "" }
-        require(id.isNotBlank() && habit.isNotBlank() && session.isNotBlank()) { "Plan row ${index + 2}: ID, Habit, and Session are required." }
-        require(ids.add(id)) { "Plan row ${index + 2}: duplicate ID $id." }
+        if (id.isBlank() || habit.isBlank() || session.isBlank()) throw SyncError.MalformedPlanTab(index + 2, "ID, Habit and Session are required")
+        if (!ids.add(id)) throw SyncError.MalformedPlanTab(index + 2, "duplicate ID $id")
         val row = SheetPlanRow(
             id, date, habit, session,
             parseFlag(cells.getOrElse(4 + offset) { "" }, index + 2, "Done"),
@@ -84,7 +84,7 @@ internal fun parsePlanTable(values: JsonArray): List<SheetPlanRow> {
 private fun parseFlag(value: String, row: Int, column: String): Boolean = when (value.lowercase()) {
     "true", "yes", "1" -> true
     "false", "no", "0", "" -> false
-    else -> error("Plan row $row: $column must be a checkbox or TRUE/FALSE.")
+    else -> throw SyncError.MalformedPlanTab(row, "$column must be a checkbox or TRUE/FALSE")
 }
 
 internal fun SheetPlanRow.asValues(): JsonArray = buildJsonArray {

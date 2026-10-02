@@ -60,7 +60,7 @@ class SheetSyncCharacterizationTest {
     }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer, token: SheetTokenProvider = Token("t")) =
-        SheetSync(repo, token, server.client(), dates)
+        SheetSync(repo, token, server.client(), dates, RetryPolicy(sleep = { }))
 
     private val runSnapshot get() = HabitSnapshot(
         dailyHabits = listOf(habit("run", "Run")),
@@ -224,7 +224,7 @@ class SheetSyncCharacterizationTest {
     @Test
     fun failedUploadKeepsCheckPendingSoTheNextSyncRetriesIt() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
-        server.fail(FaultAction.Timeout) { it.isDoneWrite }
+        server.fail(FaultAction.Timeout, times = 100) { it.isDoneWrite }
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))),
             pending = true,
@@ -235,6 +235,7 @@ class SheetSyncCharacterizationTest {
         assertEquals(1, repo.snapshot.value.pendingCompletions.size)
         assertFalse(server.cell(1, 4)!!.jsonPrimitive.boolean)
 
+        server.clearFaults() // back online
         sync.sync()
         assertTrue(server.cell(1, 4)!!.jsonPrimitive.boolean)
         assertTrue(repo.snapshot.value.pendingCompletions.isEmpty())
@@ -376,17 +377,19 @@ class SheetSyncCharacterizationTest {
     // ---- errors and partial failure ---------------------------------------------------------------
 
     @Test
-    fun httpStatusesMapToTodaysMessagesAndLeaveLocalStateUntouched() = runTest {
+    fun httpFailuresShowTypedMessagesAndLeaveLocalStateUntouched() = runTest {
+        // status -> (message, total attempts: 401/403/404 are final, 429/503 are retried up to the limit)
         val cases = listOf(
-            401 to "Google session expired. Sign in again.",
-            403 to "Sheet access denied. Check Sheets API, OAuth test user, and edit access.",
-            404 to "Spreadsheet not found. Check the link and Google account.",
-            429 to "Google Sheets error 429.",
-            503 to "Google Sheets error 503.",
+            401 to ("Google sign-in needed. Tap Connect & sync to sign in again." to 1),
+            403 to ("No access to this sheet. Use a Google account that can edit it." to 1),
+            404 to ("Spreadsheet not found. Check the link and the Google account." to 1),
+            429 to ("Google is limiting requests. Sync will retry shortly." to 4),
+            503 to ("Sync failed. Try again in a moment." to 4),
         )
-        for ((status, message) in cases) {
+        for ((status, expected) in cases) {
+            val (message, attempts) = expected
             val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy", true, false))
-            server.fail(FaultAction.Status(status))
+            server.fail(FaultAction.Status(status), times = 100)
             val repo = repo(runSnapshot, lastSync = 100)
             val sync = sync(repo, server)
 
@@ -394,24 +397,24 @@ class SheetSyncCharacterizationTest {
 
             assertEquals(message, sync.state.value.message, "status $status")
             assertFalse(sync.state.value.busy)
-            assertEquals(1, server.calls.size, "CURRENT: no retry on $status")
+            assertEquals(attempts, server.calls.size, "attempts on $status")
             assertEquals(100, repo.getSheetLastSync())
             assertEquals(runSnapshot.dayPlans, repo.snapshot.value.dayPlans)
         }
     }
 
     @Test
-    fun timeoutSurfacesAsRawExceptionTextAndNothingIsAdvanced() = runTest {
+    fun timeoutAfterRetriesIsOfflineAndNothingIsAdvanced() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy", false, false))
-        server.fail(FaultAction.Timeout)
+        server.fail(FaultAction.Timeout, times = 100)
         val repo = repo(runSnapshot, lastSync = 100)
         val sync = sync(repo, server)
 
         sync.sync()
 
-        // CURRENT: the user sees whatever the exception says (no typed Offline/Timeout error).
-        assertTrue(sync.state.value.message.isNotBlank())
-        assertFalse(sync.state.value.message.startsWith("Synced"))
+        assertEquals("Will sync when online.", sync.state.value.message)
+        assertTrue(sync.state.value.error is SyncError.Offline)
+        assertEquals(4, server.calls.size)
         assertFalse(sync.state.value.busy)
         assertEquals(100, repo.getSheetLastSync())
     }
@@ -419,7 +422,7 @@ class SheetSyncCharacterizationTest {
     @Test
     fun failedDoneUploadChangesNothingLocally() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Changed in sheet", false, false))
-        server.fail(FaultAction.Status(500)) { it.isDoneWrite }
+        server.fail(FaultAction.Status(500), times = 100) { it.isDoneWrite }
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))),
             lastSync = 100,
@@ -430,7 +433,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Google Sheets error 500.", sync.state.value.message)
+        assertEquals("Sync failed. Try again in a moment.", sync.state.value.message)
         assertEquals(100, repo.getSheetLastSync())
         // Upload happens before the single local apply, so the sheet's session edit is not applied yet.
         assertEquals("Easy 6 km", repo.snapshot.value.dayPlans.single().detail)
@@ -441,7 +444,7 @@ class SheetSyncCharacterizationTest {
     @Test
     fun failureAfterTabCreationLeavesEmptyTabAndNextSyncRecovers() = runTest {
         val server = FakeSheetsServer()
-        server.fail(FaultAction.Status(500)) { it.isPut }
+        server.fail(FaultAction.Status(500), times = 100) { it.isPut }
         val repo = repo(runSnapshot)
         val sync = sync(repo, server)
 
@@ -450,6 +453,7 @@ class SheetSyncCharacterizationTest {
         assertEquals(0, server.planValues.size)
         assertEquals(0, repo.getSheetLastSync())
 
+        server.clearFaults()
         sync.sync()
         assertEquals(2, server.planValues.size)
         assertEquals("Plan tab created · 1 sessions uploaded", sync.state.value.message)
@@ -516,7 +520,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Plan row 3: use YYYY-MM-DD in Date.", sync.state.value.message)
+        assertEquals("Plan tab, row 3: use YYYY-MM-DD in Date. Fix the sheet, then sync again.", sync.state.value.message)
         assertTrue(server.writes.isEmpty())
         assertEquals("Easy 6 km", repo.snapshot.value.dayPlans.single().detail)
     }

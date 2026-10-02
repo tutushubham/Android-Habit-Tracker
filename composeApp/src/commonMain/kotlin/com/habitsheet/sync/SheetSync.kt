@@ -23,7 +23,13 @@ interface SheetTokenProvider {
     fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit)
 }
 
-data class SheetSyncState(val busy: Boolean = false, val message: String = "Not synced yet", val lastSync: Long = 0)
+/** [error] is set when the last attempt failed; [message] then holds its [userMessage]. */
+data class SheetSyncState(
+    val busy: Boolean = false,
+    val message: String = "Not synced yet",
+    val lastSync: Long = 0,
+    val error: SyncError? = null,
+)
 
 /**
  * Orchestrates one sync: token, [SheetsApi] calls, [PlanReconciler] decisions, repository writes.
@@ -32,8 +38,9 @@ data class SheetSyncState(val busy: Boolean = false, val message: String = "Not 
 class SheetSync(
     private val repository: HabitRepository,
     private val tokenProvider: SheetTokenProvider,
-    private val client: HttpClient = HttpClient(),
+    private val client: HttpClient = createSheetsHttpClient(),
     private val dateProvider: DateProvider = SystemDateProvider,
+    private val retryPolicy: RetryPolicy = RetryPolicy(),
 ) {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(SheetSyncState())
@@ -47,13 +54,13 @@ class SheetSync(
                 if (interactive) mutableState.value = SheetSyncState(message = "Add a spreadsheet link first.")
                 return
             }
-            mutableState.value = mutableState.value.copy(busy = true, message = "Syncing…")
+            mutableState.value = mutableState.value.copy(busy = true, message = "Syncing…", error = null)
             val token = token(interactive)
             if (token == null) {
                 mutableState.value = mutableState.value.copy(busy = false, message = if (interactive) "Google sign-in was cancelled or failed. If you did choose an account, the app's Google OAuth client may not match this build's signing key (see SHEET_SYNC.md)." else "Sign in to sync")
                 return
             }
-            val api = SheetsApi(client, id, token)
+            val api = SheetsApi(client, id, token, retryPolicy)
             removeLegacyWeeklyPlaceholders()
             val snapshot = repository.snapshot.value
             val window = SheetSyncWindow.rolling(dateProvider.today())
@@ -68,7 +75,7 @@ class SheetSync(
             val additionalRows = PlanReconciler.localOnlyRows(snapshot, rows, window)
             if (additionalRows.isNotEmpty()) {
                 api.appendRows(additionalRows)
-                rows = api.readTable() ?: error("Could not read appended Plan rows.")
+                rows = api.readTable() ?: throw SyncError.Unknown(cause = IllegalStateException("Appended Plan rows are missing"))
             }
             val result = PlanReconciler.reconcile(
                 snapshot = snapshot,
@@ -86,7 +93,8 @@ class SheetSync(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            mutableState.value = mutableState.value.copy(busy = false, message = e.message?.take(180) ?: "Sync failed. Try again.")
+            val error = e.toSyncError()
+            mutableState.value = mutableState.value.copy(busy = false, message = error.userMessage(), error = error)
         } finally {
             mutex.unlock()
         }
@@ -115,7 +123,7 @@ class SheetSync(
     private suspend fun token(interactive: Boolean): String? = suspendCancellableCoroutine { continuation ->
         tokenProvider.requestToken(interactive) { value, error ->
             if (continuation.isActive) {
-                if (error != null) continuation.resumeWithException(IllegalStateException(error)) else continuation.resume(value)
+                if (error != null) continuation.resumeWithException(SyncError.AuthExpired(error)) else continuation.resume(value)
             }
         }
     }

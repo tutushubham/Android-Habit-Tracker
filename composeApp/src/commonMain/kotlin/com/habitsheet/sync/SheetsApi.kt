@@ -1,109 +1,208 @@
 package com.habitsheet.sync
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.*
+import kotlin.math.min
+import kotlin.random.Random
+
+/** Network timeouts for the real client; tests inject their own mock-engine client. */
+fun createSheetsHttpClient(): HttpClient = HttpClient {
+    install(HttpTimeout) {
+        connectTimeoutMillis = 15_000
+        socketTimeoutMillis = 30_000
+        requestTimeoutMillis = 45_000
+    }
+}
+
+/**
+ * Bounded exponential backoff with jitter. Attempt n (1-based) waits a random time between half of and the full
+ * `min(maxDelay, base * 2^(n-1))`. A `Retry-After` from Google replaces the computed wait; if it is longer than
+ * [maxRetryAfterMillis] the request is not retried at all and the error carries the wait instead.
+ */
+class RetryPolicy(
+    val maxAttempts: Int = 4,
+    private val baseDelayMillis: Long = 500,
+    private val maxDelayMillis: Long = 8_000,
+    val maxRetryAfterMillis: Long = 30_000,
+    private val random: () -> Double = { Random.nextDouble() },
+    internal val sleep: suspend (millis: Long) -> Unit = { delay(it) },
+) {
+    fun backoffMillis(failedAttempts: Int): Long {
+        val cap = min(maxDelayMillis, baseDelayMillis shl (failedAttempts - 1).coerceIn(0, 20))
+        return cap / 2 + (random() * (cap / 2)).toLong()
+    }
+
+    companion object {
+        val NONE = RetryPolicy(maxAttempts = 1)
+    }
+}
 
 /** HTTP only: talks to the Sheets v4 REST API for one spreadsheet. Parsing lives in [PlanTable]. */
-internal class SheetsApi(private val client: HttpClient, private val id: String, private val token: String) {
+internal class SheetsApi(
+    private val client: HttpClient,
+    id: String,
+    private val token: String,
+    private val retry: RetryPolicy = RetryPolicy(),
+) {
     private val base = "https://sheets.googleapis.com/v4/spreadsheets/$id"
-    private suspend fun check(status: Int, body: String): String {
-        if (status in 200..299) return body
-        val explanation = when (status) {
-            401 -> "Google session expired. Sign in again."
-            403 -> "Sheet access denied. Check Sheets API, OAuth test user, and edit access."
-            404 -> "Spreadsheet not found. Check the link and Google account."
-            else -> "Google Sheets error $status."
-        }
-        error(explanation)
-    }
-    private fun io.ktor.client.request.HttpRequestBuilder.auth() {
+
+    private fun HttpRequestBuilder.auth() {
         headers { append(HttpHeaders.Authorization, "Bearer $token") }
     }
-    suspend fun hasPlanTab(): Boolean {
-        val response = client.get(base) {
-            auth()
-            url { parameters.append("fields", "sheets(properties(title))") }
+
+    /**
+     * Sends a request and returns the 2xx body, or throws a [SyncError].
+     *
+     * Retried (up to [RetryPolicy.maxAttempts]): 429, 503 always; 500/502/504 and connectivity failures only when
+     * [idempotent], because the server may already have acted on a request whose reply was lost (append would
+     * duplicate rows).
+     */
+    private suspend fun call(idempotent: Boolean, request: suspend () -> HttpResponse): String {
+        var attempt = 0
+        while (true) {
+            attempt++
+            var failure: SyncError
+            var retryable: Boolean
+            var retryAfterMillis: Long? = null
+            try {
+                val response = request()
+                val body = response.bodyAsText()
+                val status = response.status.value
+                if (status in 200..299) return body
+                retryAfterMillis = response.headers[HttpHeaders.RetryAfter]?.trim()?.toLongOrNull()?.let { it * 1000 }
+                failure = mapStatus(status, body, retryAfterMillis)
+                retryable = failure is SyncError.RateLimited || status == 503 || (idempotent && status in 500..599)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failure = e.toSyncError()
+                retryable = idempotent && failure is SyncError.Offline
+            }
+            if (!retryable || attempt >= retry.maxAttempts) throw failure
+            val wait = retryAfterMillis ?: retry.backoffMillis(attempt)
+            if (wait > retry.maxRetryAfterMillis) throw failure
+            retry.sleep(wait)
         }
-        val data = Json.parseToJsonElement(check(response.status.value, response.bodyAsText())).jsonObject
+    }
+
+    private fun mapStatus(status: Int, body: String, retryAfterMillis: Long?): SyncError = when {
+        status == 401 -> SyncError.AuthExpired()
+        status == 403 && ("rateLimitExceeded" in body || "RATE_LIMIT_EXCEEDED" in body) ->
+            SyncError.RateLimited(retryAfterMillis?.div(1000))
+        status == 403 -> SyncError.AccessDenied()
+        status == 404 -> SyncError.NotFound()
+        status == 429 -> SyncError.RateLimited(retryAfterMillis?.div(1000))
+        else -> SyncError.Unknown(status = status)
+    }
+
+    suspend fun hasPlanTab(): Boolean {
+        val body = call(idempotent = true) {
+            client.get(base) {
+                auth()
+                url { parameters.append("fields", "sheets(properties(title))") }
+            }
+        }
+        val data = Json.parseToJsonElement(body).jsonObject
         return data["sheets"]?.jsonArray?.any { it.jsonObject["properties"]?.jsonObject?.get("title")?.jsonPrimitive?.content == "Plan" } == true
     }
+
     suspend fun createPlanTab(): Int? {
-        val response = client.post("$base:batchUpdate") {
-            auth(); contentType(ContentType.Application.Json)
-            setBody("""{"requests":[{"addSheet":{"properties":{"title":"Plan","gridProperties":{"frozenRowCount":1}}}}]}""")
+        val body = call(idempotent = false) {
+            client.post("$base:batchUpdate") {
+                auth(); contentType(ContentType.Application.Json)
+                setBody("""{"requests":[{"addSheet":{"properties":{"title":"Plan","gridProperties":{"frozenRowCount":1}}}}]}""")
+            }
         }
-        val data = Json.parseToJsonElement(check(response.status.value, response.bodyAsText())).jsonObject
+        val data = Json.parseToJsonElement(body).jsonObject
         return data["replies"]?.jsonArray?.firstOrNull()?.jsonObject?.get("addSheet")?.jsonObject
             ?.get("properties")?.jsonObject?.get("sheetId")?.jsonPrimitive?.intOrNull
     }
+
     suspend fun formatPlanTab(sheetId: Int) {
         val body = """{"requests":[
           {"setDataValidation":{"range":{"sheetId":$sheetId,"startRowIndex":1,"startColumnIndex":4,"endColumnIndex":6},"rule":{"condition":{"type":"BOOLEAN"},"strict":true,"showCustomUi":true}}},
           {"repeatCell":{"range":{"sheetId":$sheetId,"startRowIndex":0,"endRowIndex":1,"startColumnIndex":0,"endColumnIndex":6},"cell":{"userEnteredFormat":{"backgroundColor":{"red":0.08,"green":0.28,"blue":0.20},"textFormat":{"foregroundColor":{"red":1,"green":1,"blue":1},"bold":true}}},"fields":"userEnteredFormat"}},
           {"updateDimensionProperties":{"range":{"sheetId":$sheetId,"dimension":"COLUMNS","startIndex":3,"endIndex":4},"properties":{"pixelSize":420},"fields":"pixelSize"}}
         ]}"""
-        val response = client.post("$base:batchUpdate") {
-            auth(); contentType(ContentType.Application.Json); setBody(body)
+        call(idempotent = true) {
+            client.post("$base:batchUpdate") {
+                auth(); contentType(ContentType.Application.Json); setBody(body)
+            }
         }
-        check(response.status.value, response.bodyAsText())
     }
+
     suspend fun readTable(): List<SheetPlanRow>? {
-        val response = client.get("$base/values/Plan!A:H") {
-            auth()
-            url { parameters.append("valueRenderOption", "UNFORMATTED_VALUE") }
+        val body = call(idempotent = true) {
+            client.get("$base/values/Plan!A:H") {
+                auth()
+                url { parameters.append("valueRenderOption", "UNFORMATTED_VALUE") }
+            }
         }
-        val data = Json.parseToJsonElement(check(response.status.value, response.bodyAsText())).jsonObject
-        val values = data["values"]?.jsonArray ?: return null
+        val values = Json.parseToJsonElement(body).jsonObject["values"]?.jsonArray ?: return null
         return parsePlanTable(values)
     }
+
     suspend fun putTable(rows: List<SheetPlanRow>) {
         val values = buildJsonArray {
             add(buildJsonArray { PlanTable.HEADER.forEach { add(it) } })
             rows.forEach { add(it.asValues()) }
         }
-        val response = client.put("$base/values/Plan!A1:F${rows.size + 1}") {
-            auth(); contentType(ContentType.Application.Json)
-            url { parameters.append("valueInputOption", "RAW") }
-            setBody(buildJsonObject { put("values", values) }.toString())
-        }
-        check(response.status.value, response.bodyAsText())
-    }
-    suspend fun appendRows(rows: List<SheetPlanRow>) {
-        val response = client.post("$base/values/Plan!A:F:append") {
-            auth(); contentType(ContentType.Application.Json)
-            url {
-                parameters.append("valueInputOption", "RAW")
-                parameters.append("insertDataOption", "INSERT_ROWS")
+        val payload = buildJsonObject { put("values", values) }.toString()
+        call(idempotent = true) {
+            client.put("$base/values/Plan!A1:F${rows.size + 1}") {
+                auth(); contentType(ContentType.Application.Json)
+                url { parameters.append("valueInputOption", "RAW") }
+                setBody(payload)
             }
-            setBody(buildJsonObject {
-                put("values", buildJsonArray { rows.forEach { add(it.asValues()) } })
-            }.toString())
         }
-        check(response.status.value, response.bodyAsText())
     }
+
+    suspend fun appendRows(rows: List<SheetPlanRow>) {
+        val payload = buildJsonObject {
+            put("values", buildJsonArray { rows.forEach { add(it.asValues()) } })
+        }.toString()
+        call(idempotent = false) {
+            client.post("$base/values/Plan!A:F:append") {
+                auth(); contentType(ContentType.Application.Json)
+                url {
+                    parameters.append("valueInputOption", "RAW")
+                    parameters.append("insertDataOption", "INSERT_ROWS")
+                }
+                setBody(payload)
+            }
+        }
+    }
+
     suspend fun writeDone(updates: List<DoneUpload>) {
-        val body = buildJsonObject {
+        val payload = buildJsonObject {
             put("valueInputOption", "RAW")
             put("data", buildJsonArray {
-                updates.forEach { (row, column, done) -> add(buildJsonObject {
-                    put("range", "Plan!$column$row")
-                    put("values", buildJsonArray { add(buildJsonArray { add(done) }) })
-                }) }
+                updates.forEach { update ->
+                    add(buildJsonObject {
+                        put("range", "Plan!${update.column}${update.sheetRow}")
+                        put("values", buildJsonArray { add(buildJsonArray { add(update.done) }) })
+                    })
+                }
             })
+        }.toString()
+        call(idempotent = true) {
+            client.post("$base/values:batchUpdate") {
+                auth(); contentType(ContentType.Application.Json); setBody(payload)
+            }
         }
-        val response = client.post("$base/values:batchUpdate") {
-            auth(); contentType(ContentType.Application.Json); setBody(body.toString())
-        }
-        check(response.status.value, response.bodyAsText())
     }
 }
-
