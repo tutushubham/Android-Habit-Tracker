@@ -147,4 +147,30 @@ class MonthViewModelTest {
         assertEquals(0, viewModel.state.value.daily.first { it.date == LocalDate(2026, 8, 27) }.completed)
         assertEquals(fixedDate, repo.snapshot.value.dailyCompletions.single().date)
     }
+
+    @Test
+    fun tutorialShowsOnFreshInstallAndStaysDismissedAfterCompletion() = runTest {
+        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        runCurrent()
+        assertTrue(viewModel.state.first { it.onboardingVisible }.onboardingVisible)
+
+        viewModel.completeOnboarding()
+        runCurrent()
+        assertFalse(viewModel.state.value.onboardingVisible)
+        assertTrue(repository.isOnboardingCompleted())
+
+        val reopened = MonthViewModel(repository, dateProvider, backgroundScope)
+        runCurrent()
+        assertFalse(reopened.state.value.onboardingVisible)
+    }
+
+    @Test
+    fun tutorialIsNotShownToInstallsThatAlreadyHaveHabits() = runTest {
+        val existing = InMemoryHabitRepository(HabitSnapshot(
+            dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, fixedDate, null, 1, 1)),
+        ))
+        val viewModel = MonthViewModel(existing, dateProvider, backgroundScope)
+        runCurrent()
+        assertFalse(viewModel.state.value.onboardingVisible)
+    }
 }

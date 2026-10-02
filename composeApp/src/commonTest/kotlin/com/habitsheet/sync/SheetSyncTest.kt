@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.presentation.DateProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -25,6 +26,10 @@ class SheetSyncTest {
         override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) {
             completion("test-token", null)
         }
+    }
+    private val dates = object : DateProvider {
+        override fun today() = day
+        override fun nowEpochMillis() = 0L
     }
     private val jsonHeaders = headersOf(HttpHeaders.ContentType, "application/json")
 
@@ -51,7 +56,7 @@ class SheetSyncTest {
                 else -> respond("""{"sheets":[{"properties":{"title":"Plan"}}]}""", headers = jsonHeaders)
             }
         })
-        SheetSync(repo, provider, client).sync(interactive = true)
+        SheetSync(repo, provider, client, dates).sync(interactive = true)
         assertEquals(1, writes)
         assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
         assertEquals(setOf("run"), repo.snapshot.value.sheetManagedHabitIds)
@@ -87,12 +92,15 @@ class SheetSyncTest {
                 else -> respond("""{"sheets":[]}""", headers = jsonHeaders)
             }
         })
-        val sync = SheetSync(repo, provider, client)
+        val sync = SheetSync(repo, provider, client, dates)
         sync.sync(interactive = true)
         assertTrue(created)
         assertTrue(formatted)
         assertTrue(uploaded)
-        assertEquals(93, repo.getSheetSyncedKeys().size)
+        val window = SheetSyncWindow.rolling(day)
+        val dailyRows = (window.start.toEpochDays()..window.end.toEpochDays()).count { it >= day.toEpochDays() }
+        assertEquals(dailyRows * 2, repo.getSheetSyncedKeys().size)
+        assertTrue(repo.snapshot.value.weeklyPlans.isEmpty())
         assertEquals(setOf("run", "protein"), repo.snapshot.value.sheetManagedHabitIds)
     }
 }

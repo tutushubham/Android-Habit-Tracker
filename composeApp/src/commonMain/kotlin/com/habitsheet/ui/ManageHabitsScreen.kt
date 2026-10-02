@@ -571,7 +571,7 @@ private fun HabitEditorDialog(
                         FilterChip(selected = kind == HabitKind.ACTION, onClick = { kind = HabitKind.ACTION }, label = { Text("Do") })
                         FilterChip(selected = kind == HabitKind.AVOIDANCE, onClick = { kind = HabitKind.AVOIDANCE }, label = { Text("Avoid") })
                     }
-                    if (kind == HabitKind.AVOIDANCE) Text("Name it as a positive check-off, e.g. No Junk Food.",
+                    if (kind == HabitKind.AVOIDANCE) Text("Name it as a positive check-off, e.g. No Sugar.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Only on planned dates", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)

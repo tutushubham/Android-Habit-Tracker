@@ -113,6 +113,19 @@ fun MonthScreen(
                 SharePreviewScreen(state.todaySummary, onShare = { shareService.shareDailySummary(state.todaySummary); showSharePreview = false }, onClose = { showSharePreview = false })
             }
 
+            if (state.onboardingVisible) {
+                TutorialOverlay(
+                    steps = listOf(
+                        TutorialStep("Add your habits", "Open Habits to add daily and weekly habits and choose a category.", "manage"),
+                        TutorialStep("Plan and track your day", "Open Plan to schedule sessions, then tap a habit to check it off. To plan from a laptop, link a Google Sheet in Settings.", "today"),
+                        TutorialStep("Share your day", "Create a clean summary of what you completed and what is left today.", "share", "Get Started"),
+                    ),
+                    targetPositions = targetPositions,
+                    onComplete = viewModel::completeOnboarding,
+                    onSkip = viewModel::completeOnboarding,
+                )
+            }
+
             if (showMonthPicker) {
                 MonthYearPickerDialog(
                     current = state.selectedMonth,

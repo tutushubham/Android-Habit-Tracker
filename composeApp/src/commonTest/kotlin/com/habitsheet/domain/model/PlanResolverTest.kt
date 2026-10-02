@@ -72,7 +72,7 @@ class PlanResolverTest {
             run.copy(datedOnly = true),
             DailyHabit("study", "Study", null, 30, 1, true, date, null, 1, 1, datedOnly = true),
             DailyHabit("wake", "Wake Early", null, 30, 2, true, date, null, 1, 1, datedOnly = true),
-            DailyHabit("junk", "No Junk Food", null, 30, 3, true, date, null, 1, 1, HabitKind.AVOIDANCE, datedOnly = true),
+            DailyHabit("junk", "No Sugar", null, 30, 3, true, date, null, 1, 1, HabitKind.AVOIDANCE, datedOnly = true),
             DailyHabit("workout", "Workout", null, 12, 4, true, date, null, 1, 1, datedOnly = true),
         )
         val snapshot = HabitSnapshot(
