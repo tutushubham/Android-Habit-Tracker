@@ -29,3 +29,7 @@ When a Sheet is linked, the in-app Plan screen is read-only and offers **Open Go
 5. Ensure the Google account can **edit** the linked spreadsheet. The app requests the `spreadsheets` read/write scope. A publicly shared file is not made private by OAuth, so restrict sharing if the plan should be private.
 
 The Sheets scope is sensitive. Broad public distribution may require Google's OAuth verification. No client secret, service-account key, access token, or refresh token is stored in the spreadsheet or app database; platform Google libraries manage account sessions. Live sync still requires on-device sign-in to verify.
+
+## Troubleshooting
+
+- **Account picker appears, then nothing happens (Android):** the Google OAuth Android client does not match the build's package and signing certificate. `adb logcat` shows `UNREGISTERED_ON_API_CONSOLE`. Get the SHA-1 with `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android` (each machine's debug keystore differs) and add it to the Android OAuth client in Google Cloud Console; allow a few minutes to propagate.

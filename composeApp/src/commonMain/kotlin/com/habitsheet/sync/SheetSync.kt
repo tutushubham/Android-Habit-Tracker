@@ -67,7 +67,7 @@ class SheetSync(
             mutableState.value = mutableState.value.copy(busy = true, message = "Syncing…")
             val token = token(interactive)
             if (token == null) {
-                mutableState.value = mutableState.value.copy(busy = false, message = if (interactive) "Google sign-in was cancelled." else "Sign in to sync")
+                mutableState.value = mutableState.value.copy(busy = false, message = if (interactive) "Google sign-in was cancelled or failed. If you did choose an account, the app's Google OAuth client may not match this build's signing key (see SHEET_SYNC.md)." else "Sign in to sync")
                 return
             }
             val api = SheetsApi(client, id, token)
