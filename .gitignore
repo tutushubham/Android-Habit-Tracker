@@ -9,3 +9,6 @@ DerivedData/
 .codex-work/
 
 node_modules/
+
+# Personal files (owner-only plan data); never commit
+personal/

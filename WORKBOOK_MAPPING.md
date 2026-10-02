@@ -1,6 +1,6 @@
 # Workbook mapping
 
-`Habits.xlsx` contains three sheets: `Start Here`, `August`, and `September`. `Start Here` defines ten editable categories and explains the tracker. The two month sheets share one structure: a 20-row daily tracker, five seven-day summary blocks, category aggregates, and five weekly-habit blocks.
+The original `Habits.xlsx` workbook (no longer shipped in this repository) contained three sheets: `Start Here`, `August`, and `September`. `Start Here` defines ten editable categories and explains the tracker. The two month sheets share one structure: a 20-row daily tracker, five seven-day summary blocks, category aggregates, and five weekly-habit blocks.
 
 The native app preserves the workbook's terminology and calculations while replacing duplicated month sheets with a single historical record store.
 

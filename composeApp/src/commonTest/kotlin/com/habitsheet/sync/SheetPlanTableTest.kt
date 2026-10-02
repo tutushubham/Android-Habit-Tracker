@@ -42,8 +42,8 @@ class SheetPlanTableTest {
     fun acceptsEightColumnWorkbookAndRejectsDuplicateIds() {
         val table = Json.parseToJsonElement("""[
           ["ID","Date","Area","Habit","Session","Done","Skip","Source"],
-          ["one","2026-10-01","Physical","Run","Easy",false,false,"OND"],
-          ["two","2026-10-01","Physical","Run","Mobility",false,false,"OND"]
+          ["one","2026-10-01","Physical","Run","Easy",false,false,"Plan"],
+          ["two","2026-10-01","Physical","Run","Mobility",false,false,"Plan"]
         ]""").jsonArray
         val rows = parsePlanTable(table)
         assertEquals("Physical", rows.first().area)
