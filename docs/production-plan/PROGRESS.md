@@ -4,7 +4,7 @@ Tick when the plan's *Definition of done* is fully met and merged.
 
 ## Part 1 — Local
 - [Done] P0-A Product split & seed removal
-- [x] P0-B Sync correctness (code + automated tests done; manual two-device checks from the plan still to run)
+- [Done] P0-B Sync correctness (code + automated tests done; manual two-device checks from the plan still to run)
 - [ ] P0-C Release build config
 - [ ] P1-1 Robustness & data safety
 - [ ] P1-2 Architecture & code quality
