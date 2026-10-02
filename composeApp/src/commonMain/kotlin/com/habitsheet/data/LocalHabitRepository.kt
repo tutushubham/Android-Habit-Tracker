@@ -8,6 +8,7 @@ import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.HabitKind
+import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
@@ -72,37 +73,40 @@ class LocalHabitRepository(
     override suspend fun saveDailyHabit(habit: DailyHabit) {
         require(habit.monthlyGoal >= 0)
         mutex.withLock {
-            database.transaction {
-                database.habitsQueries.insertDailyHabit(
-                    id = habit.id,
-                    name = habit.name,
-                    category_id = habit.categoryId,
-                    monthly_goal = habit.monthlyGoal.toLong(),
-                    display_order = habit.displayOrder.toLong(),
-                    active = habit.active.toDbLong(),
-                    created_on = habit.createdOn.toString(),
-                    archived_on = habit.archivedOn?.toString(),
-                    created_at = habit.createdAtEpochMillis,
-                    updated_at = habit.updatedAtEpochMillis,
-                    kind = habit.kind.name,
-                    dated_only = habit.datedOnly.toDbLong(),
-                )
-                database.habitsQueries.updateDailyHabit(
-                    name = habit.name,
-                    category_id = habit.categoryId,
-                    monthly_goal = habit.monthlyGoal.toLong(),
-                    display_order = habit.displayOrder.toLong(),
-                    active = habit.active.toDbLong(),
-                    created_on = habit.createdOn.toString(),
-                    archived_on = habit.archivedOn?.toString(),
-                    updated_at = habit.updatedAtEpochMillis,
-                    kind = habit.kind.name,
-                    dated_only = habit.datedOnly.toDbLong(),
-                    id = habit.id,
-                )
-            }
+            database.transaction { writeDailyHabit(habit) }
             loadSnapshot()
         }
+    }
+
+    /** Insert-or-update; must be called inside a transaction. */
+    private fun writeDailyHabit(habit: DailyHabit) {
+        database.habitsQueries.insertDailyHabit(
+            id = habit.id,
+            name = habit.name,
+            category_id = habit.categoryId,
+            monthly_goal = habit.monthlyGoal.toLong(),
+            display_order = habit.displayOrder.toLong(),
+            active = habit.active.toDbLong(),
+            created_on = habit.createdOn.toString(),
+            archived_on = habit.archivedOn?.toString(),
+            created_at = habit.createdAtEpochMillis,
+            updated_at = habit.updatedAtEpochMillis,
+            kind = habit.kind.name,
+            dated_only = habit.datedOnly.toDbLong(),
+        )
+        database.habitsQueries.updateDailyHabit(
+            name = habit.name,
+            category_id = habit.categoryId,
+            monthly_goal = habit.monthlyGoal.toLong(),
+            display_order = habit.displayOrder.toLong(),
+            active = habit.active.toDbLong(),
+            created_on = habit.createdOn.toString(),
+            archived_on = habit.archivedOn?.toString(),
+            updated_at = habit.updatedAtEpochMillis,
+            kind = habit.kind.name,
+            dated_only = habit.datedOnly.toDbLong(),
+            id = habit.id,
+        )
     }
 
     override suspend fun archiveDailyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) {
@@ -342,6 +346,36 @@ class LocalHabitRepository(
     override suspend fun setSheetManagedHabitIds(ids: Set<String>) {
         mutex.withLock {
             database.habitsQueries.setTextSetting("sheet_managed_habits", ids.sorted().joinToString("\n"))
+            loadSnapshot()
+        }
+    }
+
+    override suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long) {
+        mutex.withLock {
+            // Any exception rolls the whole transaction back; the cached snapshot is only reloaded on success.
+            database.transaction {
+                changes.planIdsToDelete.forEach { database.habitsQueries.deleteDayPlanById(it) }
+                changes.habitsToSave.forEach { habit ->
+                    require(habit.monthlyGoal >= 0)
+                    writeDailyHabit(habit)
+                }
+                changes.plansToSave.forEach { plan ->
+                    require(plan.detail.isNotBlank())
+                    database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), plan.updatedAtEpochMillis)
+                }
+                changes.completionsToSave.forEach { completion ->
+                    database.habitsQueries.upsertDailyCompletion(
+                        plan_id = completion.planId,
+                        habit_id = completion.habitId,
+                        date = completion.date.toString(),
+                        completed = completion.completed.toDbLong(),
+                        updated_at = completion.updatedAtEpochMillis,
+                    )
+                }
+                database.habitsQueries.setTextSetting("sheet_managed_habits", changes.managedHabitIds.sorted().joinToString("\n"))
+                database.habitsQueries.setTextSetting("sheet_synced_keys", newKeys.sorted().joinToString("\n"))
+                database.habitsQueries.setTextSetting("sheet_last_sync", lastSync.toString())
+            }
             loadSnapshot()
         }
     }

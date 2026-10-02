@@ -358,7 +358,7 @@ class SheetSyncCharacterizationTest {
     }
 
     @Test
-    fun failedDoneUploadStillLeavesSheetEditsAppliedLocallyButLastSyncUnchanged() = runTest {
+    fun failedDoneUploadChangesNothingLocally() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Changed in sheet", false, false))
         server.fail(FaultAction.Status(500)) { it.isDoneWrite }
         val repo = repo(
@@ -372,9 +372,8 @@ class SheetSyncCharacterizationTest {
 
         assertEquals("Google Sheets error 500.", sync.state.value.message)
         assertEquals(100, repo.getSheetLastSync())
-        // CURRENT (non-atomic): the session text change was already written locally before the upload failed.
-        assertEquals("Changed in sheet", repo.snapshot.value.dayPlans.single().detail)
-        // The pending check is still local, so the next sync can upload it.
+        // Upload happens before the single local apply, so the sheet's session edit is not applied yet.
+        assertEquals("Easy 6 km", repo.snapshot.value.dayPlans.single().detail)
         assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
         assertFalse(server.cell(1, 4)!!.jsonPrimitive.boolean)
     }
@@ -398,8 +397,11 @@ class SheetSyncCharacterizationTest {
     }
 
     @Test
-    fun duplicateLocalHabitNamesAbortTheSyncWithAMessage() = runTest {
-        val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy", false, false))
+    fun duplicateLocalHabitNamesDoNotAbortTheSync() = runTest {
+        val server = FakeSheetsServer().withPlanRows(
+            listOf("run-1", "2026-10-01", "Run", "Edited", false, false),
+            listOf("run-9", "2026-10-02", "Run", "Unknown id", false, false),
+        )
         val repo = repo(HabitSnapshot(
             dailyHabits = listOf(habit("run", "Run"), habit("run2", "run ")),
             dayPlans = listOf(plan("run", day, "Easy", "run-1")),
@@ -408,8 +410,22 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Two app habits have the same name. Rename one before syncing.", sync.state.value.message)
-        assertEquals(0, repo.getSheetLastSync())
+        assertEquals("Synced 1 sessions · 1 row skipped: \"Run\" matches more than one habit, rename one", sync.state.value.message)
+        assertEquals("Edited", repo.snapshot.value.dayPlans.single().detail)
+        assertTrue(repo.getSheetLastSync() > 0)
+    }
+
+    @Test
+    fun renamingHabitInSheetRenamesLocalHabitInsteadOfDuplicating() = runTest {
+        val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Jog", "Easy 6 km", false, false))
+        val repo = repo(runSnapshot)
+        val sync = sync(repo, server)
+
+        sync.sync()
+
+        assertEquals(listOf("Jog"), repo.snapshot.value.dailyHabits.map { it.name })
+        assertEquals("run", repo.snapshot.value.dailyHabits.single().id)
+        assertEquals("Synced 1 sessions · 1 renamed from sheet", sync.state.value.message)
     }
 
     // ---- foreign / malformed Plan tab ---------------------------------------------------------------
@@ -461,15 +477,17 @@ class SheetSyncCharacterizationTest {
     }
 
     @Test
-    fun headerOnlyTabWipesPreviouslySyncedLocalPlansWhenHabitIsNoLongerLocalOnly() = runTest {
-        // CURRENT (data-loss risk): everything synced before is "deleted from the sheet" if the tab is emptied.
+    fun emptiedPlanTabKeepsPreviouslySyncedLocalPlansAndWarns() = runTest {
         val server = FakeSheetsServer().withPlanTab(FakeSheetsServer.SIX_COLUMNS)
         val repo = repo(runSnapshot, syncedKeys = setOf("run-1"))
         repo.setSheetManagedHabitIds(setOf("run"))
+        val sync = sync(repo, server)
 
-        sync(repo, server).sync()
+        sync.sync()
 
-        assertTrue(repo.snapshot.value.dayPlans.isEmpty())
+        assertEquals(1, repo.snapshot.value.dayPlans.size)
+        assertEquals(setOf("run-1"), repo.getSheetSyncedKeys())
+        assertEquals("Synced 0 sessions · Plan tab has no sessions; kept local sessions", sync.state.value.message)
     }
 
     // ---- preconditions ---------------------------------------------------------------------------

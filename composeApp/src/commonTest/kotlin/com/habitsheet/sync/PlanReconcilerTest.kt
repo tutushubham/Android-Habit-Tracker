@@ -44,9 +44,9 @@ class PlanReconcilerTest {
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, false, 1, "run-1"))),
             listOf(row("run-1", day, "Run", "Easy")),
         )
-        assertTrue(result.plansToSave.isEmpty() && result.completionsToSave.isEmpty() && result.doneUploads.isEmpty())
-        assertTrue(result.habitsToCreate.isEmpty() && result.planIdsToDelete.isEmpty())
-        assertEquals(setOf("run"), result.managedHabitIds)
+        assertTrue(result.changes.plansToSave.isEmpty() && result.changes.completionsToSave.isEmpty() && result.doneUploads.isEmpty())
+        assertTrue(result.changes.habitsToSave.isEmpty() && result.changes.planIdsToDelete.isEmpty())
+        assertEquals(setOf("run"), result.changes.managedHabitIds)
         assertEquals(setOf("run-1"), result.syncedKeys)
         assertEquals(1, result.sessionCount)
     }
@@ -54,7 +54,7 @@ class PlanReconcilerTest {
     @Test
     fun changedSessionOrSkipOrDateSavesPlanFromSheet() {
         val result = reconcile(runSnapshot, listOf(row("run-1", tomorrow, "Run", "Tempo", skip = true)))
-        assertEquals(listOf(DayPlan("run", tomorrow, "Tempo", true, now, "run-1")), result.plansToSave)
+        assertEquals(listOf(DayPlan("run", tomorrow, "Tempo", true, now, "run-1")), result.changes.plansToSave)
     }
 
     @Test
@@ -68,7 +68,7 @@ class PlanReconcilerTest {
                 row("y-2", tomorrow, "yoga", "Again", sheetRow = 4),
             ),
         )
-        val yoga = result.habitsToCreate.single()
+        val yoga = result.changes.habitsToSave.single()
         assertEquals("new-1", yoga.id)
         assertEquals("Yoga", yoga.name)
         assertEquals(1, yoga.displayOrder)
@@ -77,9 +77,9 @@ class PlanReconcilerTest {
         assertEquals(HabitKind.ACTION, yoga.kind)
         assertEquals(tomorrow, yoga.createdOn)
         assertEquals(now, yoga.createdAtEpochMillis)
-        assertEquals(listOf("y-1", "y-2"), result.plansToSave.map { it.id })
-        assertTrue(result.plansToSave.all { it.habitId == "new-1" })
-        assertEquals(setOf("run", "new-1"), result.managedHabitIds)
+        assertEquals(listOf("y-1", "y-2"), result.changes.plansToSave.map { it.id })
+        assertTrue(result.changes.plansToSave.all { it.habitId == "new-1" })
+        assertEquals(setOf("run", "new-1"), result.changes.managedHabitIds)
     }
 
     @Test
@@ -88,21 +88,85 @@ class PlanReconcilerTest {
             HabitSnapshot(),
             listOf(row("a", day, "No sugar", "x"), row("b", day, "Phone", "x", area = "Avoidance")),
         )
-        assertEquals(listOf(HabitKind.AVOIDANCE, HabitKind.AVOIDANCE), result.habitsToCreate.map { it.kind })
+        assertEquals(listOf(HabitKind.AVOIDANCE, HabitKind.AVOIDANCE), result.changes.habitsToSave.map { it.kind })
     }
 
     @Test
     fun habitMatchingIsCaseAndWhitespaceInsensitive() {
         val result = reconcile(runSnapshot, listOf(row("run-1", day, "  RUN ", "Easy")))
-        assertTrue(result.habitsToCreate.isEmpty())
-        assertEquals(setOf("run"), result.managedHabitIds)
+        assertTrue(result.changes.habitsToSave.isEmpty())
+        assertEquals(setOf("run"), result.changes.managedHabitIds)
     }
 
     @Test
-    fun duplicateLocalNamesAreRejected() {
-        val snapshot = HabitSnapshot(dailyHabits = listOf(habit("a", "Run"), habit("b", " run")))
-        val error = assertFailsWith<IllegalArgumentException> { reconcile(snapshot, emptyList()) }
-        assertEquals("Two app habits have the same name. Rename one before syncing.", error.message)
+    fun duplicateLocalNamesNeverThrowKnownIdsSyncAndUnknownIdsAreSkippedWithWarning() {
+        val snapshot = HabitSnapshot(
+            dailyHabits = listOf(habit("a", "Run"), habit("b", " run")),
+            dayPlans = listOf(plan("b", day, "Easy", "run-1")),
+        )
+        val result = reconcile(snapshot, listOf(
+            row("run-1", day, "Run", "Edited"),
+            row("run-2", tomorrow, "Run", "Mystery", sheetRow = 3),
+            row("run-3", tomorrow, "RUN", "Mystery 2", sheetRow = 4),
+        ))
+        assertEquals(listOf(DayPlan("b", day, "Edited", false, now, "run-1")), result.changes.plansToSave)
+        assertEquals(listOf(SyncWarning.AmbiguousHabitName("Run", 1), SyncWarning.AmbiguousHabitName("RUN", 1)), result.warnings)
+        assertEquals(1, result.sessionCount)
+        assertEquals(setOf("run-1", "run-2", "run-3"), result.syncedKeys)
+        assertTrue(result.changes.habitsToSave.isEmpty())
+    }
+
+    @Test
+    fun renamingAllRowsOfAHabitInTheSheetRenamesTheLocalHabit() {
+        val snapshot = runSnapshot.copy(dayPlans = runSnapshot.dayPlans + plan("run", tomorrow, "Long", "run-2"))
+        val result = reconcile(snapshot, listOf(
+            row("run-1", day, "Jog", "Easy"),
+            row("run-2", tomorrow, "jog", "Long", sheetRow = 3),
+        ))
+        assertEquals(listOf(HabitRename("run", "Run", "Jog")), result.renames)
+        assertEquals(listOf("run"), result.changes.habitsToSave.map { it.id })
+        assertEquals("Jog", result.changes.habitsToSave.single().name)
+        assertTrue(result.changes.plansToSave.isEmpty(), "plans keep their habit")
+        assertEquals(setOf("run"), result.changes.managedHabitIds)
+    }
+
+    @Test
+    fun renameIsBlockedWhenTheNewNameBelongsToAnotherHabit() {
+        val snapshot = HabitSnapshot(
+            dailyHabits = listOf(habit("run", "Run"), habit("jog", "Jog")),
+            dayPlans = listOf(plan("run", day, "Easy", "run-1")),
+        )
+        val result = reconcile(snapshot, listOf(row("run-1", day, "Jog", "Easy")))
+        assertTrue(result.renames.isEmpty())
+        // Treated as a move of this session to the existing habit "Jog".
+        assertEquals(listOf(DayPlan("jog", day, "Easy", false, now, "run-1")), result.changes.plansToSave)
+    }
+
+    @Test
+    fun retypingOneRowOfSeveralIsAMoveNotARename() {
+        val snapshot = runSnapshot.copy(dayPlans = runSnapshot.dayPlans + plan("run", tomorrow, "Long", "run-2"))
+        val result = reconcile(snapshot, listOf(
+            row("run-1", day, "Run", "Easy"),
+            row("run-2", tomorrow, "Jog", "Long", sheetRow = 3),
+        ))
+        assertTrue(result.renames.isEmpty())
+        val jog = result.changes.habitsToSave.single()
+        assertEquals("Jog", jog.name)
+        assertEquals(listOf(DayPlan(jog.id, tomorrow, "Long", false, now, "run-2")), result.changes.plansToSave)
+    }
+
+    @Test
+    fun emptiedPlanTabKeepsLocalPlansWarnsAndRemembersOldKeys() {
+        val result = reconcile(runSnapshot, emptyList(), oldKeys = setOf("run-1"))
+        assertTrue(result.changes.planIdsToDelete.isEmpty())
+        assertEquals(listOf<SyncWarning>(SyncWarning.PlanTabEmpty), result.warnings)
+        assertEquals(setOf("run-1"), result.syncedKeys)
+    }
+
+    @Test
+    fun emptyTabWithNoPreviousImportIsQuietlyEmpty() {
+        val result = reconcile(runSnapshot, emptyList())
+        assertTrue(result.warnings.isEmpty() && result.changes.planIdsToDelete.isEmpty())
     }
 
     @Test
@@ -112,11 +176,11 @@ class PlanReconcilerTest {
         val remote = listOf(row("run-1", day, "Run", "Easy", done = false))
 
         val never = reconcile(snapshot, remote, lastSync = 0)
-        assertEquals(listOf(DailyHabitCompletion("run", day, false, now, "run-1")), never.completionsToSave)
+        assertEquals(listOf(DailyHabitCompletion("run", day, false, now, "run-1")), never.changes.completionsToSave)
         assertTrue(never.doneUploads.isEmpty())
 
         val older = reconcile(snapshot, remote, lastSync = 100)
-        assertEquals(1, older.completionsToSave.size)
+        assertEquals(1, older.changes.completionsToSave.size)
         assertTrue(older.doneUploads.isEmpty())
     }
 
@@ -125,7 +189,7 @@ class PlanReconcilerTest {
         val snapshot = runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1")))
         val six = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", sheetRow = 7)), lastSync = 100)
         assertEquals(listOf(DoneUpload(7, "E", true)), six.doneUploads)
-        assertTrue(six.completionsToSave.isEmpty())
+        assertTrue(six.changes.completionsToSave.isEmpty())
 
         val eight = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", sheetRow = 7, doneColumn = "F")), lastSync = 100)
         assertEquals(listOf(DoneUpload(7, "F", true)), eight.doneUploads)
@@ -135,37 +199,37 @@ class PlanReconcilerTest {
     fun matchingNewerLocalCheckNeedsNeitherUploadNorLocalWrite() {
         val snapshot = runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1")))
         val result = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", done = true)), lastSync = 100)
-        assertTrue(result.doneUploads.isEmpty() && result.completionsToSave.isEmpty())
+        assertTrue(result.doneUploads.isEmpty() && result.changes.completionsToSave.isEmpty())
     }
 
     @Test
     fun rowWithNoLocalCompletionGetsOneWrittenEvenWhenNotDone() {
         // Pinned current behaviour: null != false, so a "not done" completion row is materialised.
         val result = reconcile(runSnapshot, listOf(row("run-1", day, "Run", "Easy")))
-        assertEquals(listOf(DailyHabitCompletion("run", day, false, now, "run-1")), result.completionsToSave)
+        assertEquals(listOf(DailyHabitCompletion("run", day, false, now, "run-1")), result.changes.completionsToSave)
     }
 
     @Test
     fun deletesOnlyPlansWhoseKeyWasSyncedBeforeAndIsNowMissing() {
         val snapshot = runSnapshot.copy(dayPlans = runSnapshot.dayPlans + plan("run", tomorrow, "Long", "run-2") + plan("run", tomorrow, "Local", "run-3"))
         val result = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy")), oldKeys = setOf("run-1", "run-2", "gone"))
-        assertEquals(listOf("run-2"), result.planIdsToDelete)
+        assertEquals(listOf("run-2"), result.changes.planIdsToDelete)
         assertEquals(setOf("run-1"), result.syncedKeys)
     }
 
     @Test
     fun legacyNameAndDateKeyAlsoMatchesPlanForDeletion() {
         val snapshot = runSnapshot
-        val result = reconcile(snapshot, emptyList(), oldKeys = setOf("run|2026-10-01"))
-        assertEquals(listOf("run-1"), result.planIdsToDelete)
+        val result = reconcile(snapshot, listOf(row("other-1", tomorrow, "Other", "x")), oldKeys = setOf("run|2026-10-01"))
+        assertEquals(listOf("run-1"), result.changes.planIdsToDelete)
     }
 
     @Test
     fun plansDeletedThisRoundAreNotTreatedAsCurrentForRowsWithSameId() {
         val result = reconcile(runSnapshot, listOf(row("run-1", day, "Run", "Easy")), oldKeys = setOf("run|2026-10-01"))
         // Legacy key is stale, but run-1 is still in the sheet, so the plan is deleted and re-saved from the sheet.
-        assertEquals(listOf("run-1"), result.planIdsToDelete)
-        assertEquals(1, result.plansToSave.size)
+        assertEquals(listOf("run-1"), result.changes.planIdsToDelete)
+        assertEquals(1, result.changes.plansToSave.size)
     }
 
     @Test

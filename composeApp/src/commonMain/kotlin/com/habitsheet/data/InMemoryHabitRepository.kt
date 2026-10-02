@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
@@ -203,6 +204,30 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun setSheetSyncedKeys(keys: Set<String>) { sheetSyncedKeys = keys }
     override suspend fun setSheetManagedHabitIds(ids: Set<String>) {
         mutableSnapshot.value = mutableSnapshot.value.copy(sheetManagedHabitIds = ids)
+    }
+
+    override suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long) {
+        // Build the complete new state first; the single assignment at the end is the "commit".
+        var next = mutableSnapshot.value
+        val deleted = changes.planIdsToDelete.toSet()
+        next = next.copy(dayPlans = next.dayPlans.filterNot { it.id in deleted })
+        changes.habitsToSave.forEach { habit ->
+            require(habit.monthlyGoal >= 0)
+            next = next.copy(dailyHabits = next.dailyHabits.upsert(habit) { it.id })
+        }
+        changes.plansToSave.forEach { plan ->
+            require(plan.detail.isNotBlank())
+            require(next.dailyHabits.any { it.id == plan.habitId }) { "Unknown daily habit" }
+            next = next.copy(dayPlans = next.dayPlans.upsert(plan) { it.id })
+        }
+        changes.completionsToSave.forEach { completion ->
+            require(next.dailyHabits.any { it.id == completion.habitId }) { "Unknown daily habit" }
+            next = next.copy(dailyCompletions = next.dailyCompletions.upsert(completion) { it.planId to it.date })
+        }
+        next = next.copy(sheetManagedHabitIds = changes.managedHabitIds)
+        mutableSnapshot.value = next
+        sheetSyncedKeys = newKeys
+        sheetLastSync = lastSync
     }
 
     override suspend fun clearAllData() {

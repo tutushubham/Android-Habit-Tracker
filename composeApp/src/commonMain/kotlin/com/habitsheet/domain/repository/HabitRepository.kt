@@ -5,6 +5,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
@@ -45,6 +46,11 @@ interface HabitRepository {
     suspend fun getSheetSyncedKeys(): Set<String>
     suspend fun setSheetSyncedKeys(keys: Set<String>)
     suspend fun setSheetManagedHabitIds(ids: Set<String>)
+    /**
+     * Applies a whole sheet sync atomically: [changes], the new synced [newKeys] and [lastSync].
+     * Either everything is written (and the snapshot reloaded once) or nothing is.
+     */
+    suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long)
     suspend fun clearAllData()
     suspend fun restoreFromSnapshot(snapshot: HabitSnapshot)
 }

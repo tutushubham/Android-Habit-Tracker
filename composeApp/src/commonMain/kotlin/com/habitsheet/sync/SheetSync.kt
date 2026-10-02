@@ -4,7 +4,9 @@ import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.SystemDateProvider
+import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetLink
+import com.habitsheet.domain.model.SheetSyncChanges
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,14 +78,12 @@ class SheetSync(
                 nowMillis = Clock.System.now().toEpochMilliseconds(),
                 newId = { DefaultIdGenerator().newId() },
             )
-            applyLocally(result)
+            // Upload first: if it fails nothing has changed locally. If the local apply fails afterwards,
+            // the next sync is idempotent because the sheet already holds the checks.
             if (result.doneUploads.isNotEmpty()) api.writeDone(result.doneUploads)
             val now = Clock.System.now().toEpochMilliseconds()
-            repository.setSheetManagedHabitIds(result.managedHabitIds)
-            repository.setSheetSyncedKeys(result.syncedKeys)
-            repository.setSheetLastSync(now)
-            val uploaded = result.doneUploads.size
-            mutableState.value = SheetSyncState(message = "Synced ${result.sessionCount} sessions${if (uploaded > 0) " · $uploaded checks uploaded" else ""}", lastSync = now)
+            repository.applySheetSync(result.changes, result.syncedKeys, now)
+            mutableState.value = SheetSyncState(message = summary(result), lastSync = now)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -93,7 +93,7 @@ class SheetSync(
         }
     }
 
-    private suspend fun uploadNewTab(api: SheetsApi, createdTabId: Int?, snapshot: com.habitsheet.domain.model.HabitSnapshot, window: SheetSyncWindow) {
+    private suspend fun uploadNewTab(api: SheetsApi, createdTabId: Int?, snapshot: HabitSnapshot, window: SheetSyncWindow) {
         val upload = PlanReconciler.initialUpload(snapshot, window)
         api.putTable(upload.rows)
         if (createdTabId != null) {
@@ -101,18 +101,16 @@ class SheetSync(
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { /* Formatting is optional; the data is already safe. */ }
         }
-        repository.setSheetSyncedKeys(upload.syncedKeys)
         val now = Clock.System.now().toEpochMilliseconds()
-        repository.setSheetLastSync(now)
-        repository.setSheetManagedHabitIds(upload.managedHabitIds)
+        repository.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds), upload.syncedKeys, now)
         mutableState.value = SheetSyncState(message = "Plan tab created · ${upload.rows.size} sessions uploaded", lastSync = now)
     }
 
-    private suspend fun applyLocally(result: ReconcileResult) {
-        result.planIdsToDelete.forEach { repository.deleteDayPlanById(it) }
-        result.habitsToCreate.forEach { repository.saveDailyHabit(it) }
-        result.plansToSave.forEach { repository.saveDayPlan(it) }
-        result.completionsToSave.forEach { repository.setDailyCompletion(it) }
+    private fun summary(result: ReconcileResult): String = buildString {
+        append("Synced ${result.sessionCount} sessions")
+        if (result.doneUploads.isNotEmpty()) append(" · ${result.doneUploads.size} checks uploaded")
+        if (result.renames.isNotEmpty()) append(" · ${result.renames.size} renamed from sheet")
+        result.warnings.forEach { append(" · ").append(it.describe()) }
     }
 
     private suspend fun token(interactive: Boolean): String? = suspendCancellableCoroutine { continuation ->
