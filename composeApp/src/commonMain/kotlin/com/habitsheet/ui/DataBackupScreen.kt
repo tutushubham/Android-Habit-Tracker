@@ -18,7 +18,8 @@ import com.habitsheet.presentation.BackupViewModel
 @Composable
 fun DataBackupScreen(
     viewModel: BackupViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBack: Boolean = true,
 ) {
     var showImportConfirmation by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -26,7 +27,7 @@ fun DataBackupScreen(
 
     Scaffold(
         topBar = {
-            SettingsTopBar(onBack)
+            SettingsTopBar(onBack, "Data & Backup", showBack = true, insetTop = showBack)
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -41,7 +42,7 @@ fun DataBackupScreen(
             SectionLabel("Data & Backup", Modifier.align(Alignment.Start).padding(bottom = 16.dp))
             
             Text(
-                "Keep your habit tracking data safe. You can export all your history to a JSON file and restore it later or on another device.",
+                if (viewModel.usesClipboard) "Copy a JSON backup and save it in Files, Notes, or another safe place. Copy it again before importing." else "Keep your habit tracking data safe. You can export all your history to a JSON file and restore it later or on another device.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 32.dp)
@@ -49,26 +50,32 @@ fun DataBackupScreen(
 
             BackupActionCard(
                 title = "Export Backup",
-                description = "Save your categories, habits, and entire completion history to a local file.",
-                buttonText = "Export JSON",
-                onClick = viewModel::exportBackup
+                description = if (viewModel.usesClipboard) "Copy all habits, plans, and history as JSON." else "Save your categories, habits, plans, and entire completion history to a local file.",
+                buttonText = if (viewModel.usesClipboard) "Copy JSON backup" else "Export JSON",
+                onClick = {
+                    viewModel.exportBackup()
+                    if (viewModel.usesClipboard) successMessage = "Backup copied. Paste and save it somewhere safe before copying anything else."
+                }
             )
 
             Spacer(Modifier.height(24.dp))
 
             BackupActionCard(
                 title = "Export CSV",
-                description = "Export your daily and weekly habit history for use in Excel or Google Sheets.",
-                buttonText = "Export CSV",
-                onClick = viewModel::exportCsv
+                description = if (viewModel.usesClipboard) "Copy your habit history as CSV." else "Export your daily and weekly habit history for use in Excel or Google Sheets.",
+                buttonText = if (viewModel.usesClipboard) "Copy CSV" else "Export CSV",
+                onClick = {
+                    viewModel.exportCsv()
+                    if (viewModel.usesClipboard) successMessage = "CSV copied to clipboard."
+                }
             )
 
             Spacer(Modifier.height(24.dp))
 
             BackupActionCard(
                 title = "Import Backup",
-                description = "Restore your data from a previously exported JSON backup file.",
-                buttonText = "Import JSON",
+                description = if (viewModel.usesClipboard) "Restore JSON currently copied to the clipboard." else "Restore your data from a previously exported JSON backup file.",
+                buttonText = if (viewModel.usesClipboard) "Import copied JSON" else "Import JSON",
                 onClick = { showImportConfirmation = true },
                 isDestructive = true
             )
@@ -134,7 +141,7 @@ fun DataBackupScreen(
         AlertDialog(
             onDismissRequest = { showImportConfirmation = false },
             title = { Text("Replace existing data?") },
-            text = { Text("Importing a backup will permanently replace all your current habits and history. This cannot be undone.") },
+            text = { Text(if (viewModel.usesClipboard) "Importing the copied JSON will permanently replace your current habits, plans, and history. This cannot be undone." else "Importing a backup will permanently replace all your current habits, plans, and history. This cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {

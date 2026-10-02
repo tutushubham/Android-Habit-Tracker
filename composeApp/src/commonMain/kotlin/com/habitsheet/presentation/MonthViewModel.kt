@@ -10,10 +10,14 @@ import com.habitsheet.domain.calculation.ProgressSummary
 import com.habitsheet.domain.calculation.WeeklyBlockSummary
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
+import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.domain.model.PlannedHabit
+import com.habitsheet.domain.model.plannedHabitsOn
 import com.habitsheet.domain.repository.HabitRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,8 +50,15 @@ data class MonthUiState(
     val monthlyProgress: ProgressSummary,
     val weeklyProgress: ProgressSummary,
     val dailyCompletionKeys: Set<Pair<String, LocalDate>>,
+    val dueKeys: Set<Pair<String, LocalDate>>,
     val weeklyCompletionKeys: Set<Pair<String, LocalDate>>,
     val todaySummary: DailyShareSummary,
+    val dayPlan: List<PlannedHabit>,
+    val tomorrowPlan: List<PlannedHabit>,
+    val monthPlan: Map<LocalDate, List<PlannedHabit>>,
+    val allDailyHabits: List<com.habitsheet.domain.model.DailyHabit>,
+    val weeklyPlans: List<WeeklyPlan>,
+    val dayPlans: List<DayPlan>,
     val onboardingVisible: Boolean,
     val scrollToTodayTrigger: Long,
     val todayMode: Boolean = false,
@@ -60,17 +71,21 @@ class MonthViewModel(
     private val repository: HabitRepository,
     private val dateProvider: DateProvider = SystemDateProvider,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val onLocalChange: (() -> Unit)? = null,
 ) {
     private val selectedMonth = MutableStateFlow(MonthKey.from(dateProvider.today()))
     private val selectedDay = MutableStateFlow(dateProvider.today())
+    private val followToday = MutableStateFlow(true)
     private val onboardingVisible = MutableStateFlow(false)
     private val scrollToTodayTrigger = MutableStateFlow(0L)
-    private val todayMode = MutableStateFlow(false)
+    private val todayMode = MutableStateFlow(true)
     private val error = MutableStateFlow<String?>(null)
     private val completionMutex = Mutex()
     private val today = flow {
         while (true) {
-            emit(dateProvider.today())
+            val current = dateProvider.today()
+            if (followToday.value) selectedDay.value = current
+            emit(current)
             delay(1.minutes) // Refresh today's date every minute
         }
     }
@@ -107,12 +122,13 @@ class MonthViewModel(
     }.stateIn(
         scope = scope,
         started = SharingStarted.Eagerly,
-        initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today(), selectedDay.value, false, 0, false, null),
+        initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today(), selectedDay.value, false, 0, true, null),
     )
 
     fun setTodayMode(enabled: Boolean) {
         todayMode.value = enabled
         if (enabled) {
+            followToday.value = true
             val currentDay = dateProvider.today()
             selectedDay.value = currentDay
             selectedMonth.value = MonthKey.from(currentDay)
@@ -123,9 +139,18 @@ class MonthViewModel(
 
     fun nextDay() = selectDay(LocalDate.fromEpochDays(selectedDay.value.toEpochDays() + 1))
 
-    fun currentDay() = selectDay(dateProvider.today())
+    fun openDay(date: LocalDate) {
+        selectDay(date)
+        todayMode.value = true
+    }
 
-    private fun selectDay(day: LocalDate) {
+    fun currentDay() {
+        followToday.value = true
+        selectDay(dateProvider.today(), follow = true)
+    }
+
+    private fun selectDay(day: LocalDate, follow: Boolean = false) {
+        followToday.value = follow
         selectedDay.value = day
         selectedMonth.value = MonthKey.from(day)
     }
@@ -164,21 +189,66 @@ class MonthViewModel(
     }
 
     fun toggleDaily(habitId: String, date: LocalDate) {
+        val planned = repository.snapshot.value.plannedHabitsOn(date).firstOrNull { it.habit.id == habitId && !it.skipped }
+            ?: return
+        togglePlanned(planned.id, date)
+    }
+
+    fun togglePlanned(planId: String, date: LocalDate) {
         scope.launch {
             try {
                 completionMutex.withLock {
-                    val habit = repository.snapshot.value.dailyHabits.firstOrNull { it.id == habitId }
-                    if (habit == null || !habit.isActiveOn(date)) return@withLock
-                    val key = habitId to date
+                    val planned = repository.snapshot.value.plannedHabitsOn(date).firstOrNull { it.id == planId && !it.skipped }
+                        ?: return@withLock
+                    val key = planId to date
                     val completed = repository.snapshot.value.dailyCompletions
-                        .any { it.completed && (it.habitId to it.date) == key }
+                        .any { it.completed && (it.planId to it.date) == key }
                     repository.setDailyCompletion(
-                        DailyHabitCompletion(habitId, date, !completed, dateProvider.nowEpochMillis()),
+                        DailyHabitCompletion(planned.habit.id, date, !completed, dateProvider.nowEpochMillis(), planId),
                     )
+                    onLocalChange?.invoke()
                 }
             } catch (e: Exception) {
                 error.value = "Couldn't update habit. Please try again."
             }
+        }
+    }
+
+    fun saveDayPlan(habitId: String, date: LocalDate, detail: String, skipped: Boolean = false, id: String = "$habitId|$date") {
+        if (detail.isBlank()) return
+        scope.launch {
+            try {
+                repository.saveDayPlan(DayPlan(habitId, date, detail.trim(), skipped, dateProvider.nowEpochMillis(), id))
+            } catch (e: Exception) { error.value = "Couldn't save the day plan." }
+        }
+    }
+
+    fun deleteDayPlan(habitId: String, date: LocalDate) {
+        scope.launch {
+            try { repository.deleteDayPlan(habitId, date) }
+            catch (e: Exception) { error.value = "Couldn't remove the day plan." }
+        }
+    }
+
+    fun deleteDayPlanById(id: String) {
+        scope.launch {
+            try { repository.deleteDayPlanById(id) }
+            catch (e: Exception) { error.value = "Couldn't remove the day plan." }
+        }
+    }
+
+    fun saveWeeklyPlan(habitId: String, weekday: Int, detail: String) {
+        if (detail.isBlank()) return
+        scope.launch {
+            try { repository.saveWeeklyPlan(WeeklyPlan(habitId, weekday, detail.trim(), dateProvider.nowEpochMillis())) }
+            catch (e: Exception) { error.value = "Couldn't save the weekly plan." }
+        }
+    }
+
+    fun deleteWeeklyPlan(habitId: String, weekday: Int) {
+        scope.launch {
+            try { repository.deleteWeeklyPlan(habitId, weekday) }
+            catch (e: Exception) { error.value = "Couldn't remove the weekly plan." }
         }
     }
 
@@ -218,8 +288,20 @@ private fun HabitSnapshot.toUiState(
     todayMode: Boolean,
     error: String?
 ): MonthUiState {
-    val habitSummaries = HabitCalculations.habitSummaries(month, dailyHabits, dailyCompletions)
-    val dailySummaries = HabitCalculations.dailySummaries(month, dailyHabits, dailyCompletions)
+    val monthPlan = month.dates().associateWith(::plannedHabitsOn)
+    val dueKeys = monthPlan.flatMap { (date, planned) -> planned.filterNot { it.skipped }.map { it.id to date } }.toSet()
+    val completedKeys = dailyCompletions.filter { it.completed }.map { it.planId to it.date }.toSet()
+    val habitSummaries = dailyHabits.filter { habit -> month.dates().any(habit::isActiveOn) }
+        .sortedBy { it.displayOrder }
+        .map { habit ->
+            val planned = monthPlan.flatMap { (date, items) -> items.filter { it.habit.id == habit.id && !it.skipped }.map { it.id to date } }
+            HabitSummary(habit, planned.count { it in completedKeys }, planned.size)
+        }
+    val dailySummaries = month.dates().map { date ->
+        val due = dueKeys.count { it.second == date }
+        val done = dueKeys.count { it.second == date && it in completedKeys }
+        DailySummary(date, done, due - done, due)
+    }
     val weekly = HabitCalculations.weeklyBlockSummaries(month, weeklyHabits, weeklyCompletions)
     val monthDates = month.dates().toSet()
     val weekStarts = month.weekStarts().toSet()
@@ -241,14 +323,21 @@ private fun HabitSnapshot.toUiState(
         dailyCompletionKeys = dailyCompletions
             .asSequence()
             .filter { it.completed && it.date in monthDates }
-            .map { it.habitId to it.date }
+            .map { it.planId to it.date }
             .toSet(),
+        dueKeys = dueKeys,
         weeklyCompletionKeys = weeklyCompletions
             .asSequence()
             .filter { it.completed && it.weekStartDate in weekStarts }
             .map { it.weeklyHabitId to it.weekStartDate }
             .toSet(),
-        todaySummary = HabitCalculations.dailyShareSummary(selectedDay, dailyHabits, categories, dailyCompletions),
+        todaySummary = HabitCalculations.plannedDailyShareSummary(selectedDay, this),
+        dayPlan = plannedHabitsOn(selectedDay),
+        tomorrowPlan = plannedHabitsOn(LocalDate.fromEpochDays(selectedDay.toEpochDays() + 1)),
+        monthPlan = monthPlan,
+        allDailyHabits = dailyHabits,
+        weeklyPlans = weeklyPlans,
+        dayPlans = dayPlans,
         onboardingVisible = onboardingVisible,
         scrollToTodayTrigger = scrollToTodayTrigger,
         todayMode = todayMode,

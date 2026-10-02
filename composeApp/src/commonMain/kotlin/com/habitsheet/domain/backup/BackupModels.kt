@@ -13,7 +13,7 @@ data class BackupContainer(
 )
 
 object BackupSerializer {
-    const val CURRENT_VERSION = 1
+    const val CURRENT_VERSION = 3
 
     private val json = Json {
         prettyPrint = true
@@ -34,7 +34,7 @@ object BackupSerializer {
             throw BackupValidationException("The backup file is empty.")
         }
         val container = json.decodeFromString(BackupContainer.serializer(), jsonString)
-        if (container.version != CURRENT_VERSION) {
+        if (container.version !in 1..CURRENT_VERSION) {
             throw BackupValidationException("Unsupported backup version: ${container.version}.")
         }
         if (container.timestamp < 0) {
@@ -65,6 +65,21 @@ object BackupValidator {
             values = snapshot.weeklyHabits.map { it.id },
             entityName = "weekly habit",
         )
+        val weeklyPlanKeys = mutableSetOf<Pair<String, Int>>()
+        snapshot.weeklyPlans.forEach { plan ->
+            requireBackup(plan.habitId in dailyHabitIds, "A weekly plan refers to a missing habit.")
+            requireBackup(plan.weekday in 1..7, "A weekly plan has an invalid weekday.")
+            requireBackup(plan.detail.isNotBlank(), "A weekly plan has an empty detail.")
+            requireBackup(plan.updatedAtEpochMillis >= 0, "A weekly plan has an invalid timestamp.")
+            requireBackup(weeklyPlanKeys.add(plan.habitId to plan.weekday), "The backup contains duplicate weekly plans.")
+        }
+        val dayPlanKeys = mutableSetOf<String>()
+        snapshot.dayPlans.forEach { plan ->
+            requireBackup(plan.habitId in dailyHabitIds, "A day plan refers to a missing habit.")
+            requireBackup(plan.detail.isNotBlank(), "A day plan has an empty detail.")
+            requireBackup(plan.updatedAtEpochMillis >= 0, "A day plan has an invalid timestamp.")
+            requireBackup(plan.id.isNotBlank() && dayPlanKeys.add(plan.id), "The backup contains duplicate day plan identifiers.")
+        }
 
         snapshot.categories.forEach { category ->
             requireBackup(category.id.isNotBlank(), "A category has an empty identifier.")
@@ -113,7 +128,7 @@ object BackupValidator {
                 "A daily completion refers to a missing habit.",
             )
             requireBackup(
-                dailyCompletionKeys.add(completion.habitId to completion.date),
+                completion.planId.isNotBlank() && dailyCompletionKeys.add(completion.planId to completion.date),
                 "The backup contains duplicate daily completions.",
             )
             requireBackup(completion.updatedAtEpochMillis >= 0, "A daily completion has an invalid timestamp.")

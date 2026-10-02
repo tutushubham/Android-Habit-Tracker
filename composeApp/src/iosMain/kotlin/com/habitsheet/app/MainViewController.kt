@@ -3,19 +3,25 @@
 package com.habitsheet.app
 
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.uikit.LocalUIViewController
 import androidx.compose.ui.window.ComposeUIViewController
 import com.habitsheet.AppGraph
+import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.ShareService
 import com.habitsheet.domain.calculation.DailyShareSummary
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSOperationQueue
 import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
 
-fun MainViewController() = ComposeUIViewController {
-    val graph = remember { AppGraph(IosDriverFactory()) }
+fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewController {
+    val graph = remember { AppGraph(IosDriverFactory(), tokenProvider) }
+    LaunchedEffect(graph) { graph.syncOnForeground() }
     val hostController = LocalUIViewController.current
     val shareService = remember(hostController) {
         object : ShareService {
@@ -40,13 +46,24 @@ fun MainViewController() = ComposeUIViewController {
         }
     }
     DisposableEffect(graph) {
-        onDispose(graph::close)
+        val observer = NSNotificationCenter.defaultCenter.addObserverForName(
+            UIApplicationDidBecomeActiveNotification,
+            null,
+            NSOperationQueue.mainQueue,
+        ) { graph.syncOnForeground() }
+        onDispose {
+            NSNotificationCenter.defaultCenter.removeObserver(observer)
+            graph.close()
+        }
     }
     HabitSheetApp(
         graph.monthViewModel,
         graph.manageHabitsViewModel,
         shareService,
         graph.settingsViewModel,
+        IosBackupService(),
+        graph.repository,
+        IosVersionProvider(),
     )
 }
 

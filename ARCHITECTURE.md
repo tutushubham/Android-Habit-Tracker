@@ -2,21 +2,23 @@
 
 ## Model
 
-Habit definitions are independent of months. A daily completion is keyed by `(habitId, date)` and a weekly completion by `(weeklyHabitId, weekStartDate)`. `MonthKey` is a derived calendar window, never a database container. Archiving a habit preserves its existing completion history.
+Habit definitions are reusable activity templates with a category and an action/avoidance kind. A dated plan row has a stable `ID`; multiple rows may use the same habit and date. A daily completion is keyed by `(planId, date)` and a weekly completion by `(weeklyHabitId, weekStartDate)`. `MonthKey` is a derived calendar window, never a database container. Removing or moving a planned row does not delete its completion history.
+
+`HabitSnapshot.plannedHabitsOn(date)` is the single plan resolver. Dated sessions win; otherwise a weekly weekday prescription applies; otherwise a habit with no schedule stays due every day (legacy simple trackers). Habits with `datedOnly`, any weekly plan, or sheet management never fall through to that every-day default. Winter Arc / OND seeded habits are plan-driven (`datedOnly`). Month progress uses planned, non-skipped sessions.
 
 ## Persistence
 
-SQLDelight stores categories, daily habits, weekly habits, and completion records in SQLite. Stable text IDs and update timestamps make the rows individually addressable for a future sync implementation. Unique completion keys make writes idempotent. The repository exposes domain models only; generated SQL rows do not cross the data boundary.
+SQLDelight stores categories, daily habits, weekly habits, and completion records in SQLite. Stable text IDs and update timestamps make rows individually addressable. Unique completion keys make writes idempotent. The repository also stores the selected Sheet link, last successful sync, and keys previously imported from that Sheet; it never stores Google tokens. The repository exposes domain models only; generated SQL rows do not cross the data boundary.
 
-`HabitRepository` is the contract used by presentation code. `LocalHabitRepository` is the production implementation. A server-backed or syncing repository can later implement the same interface and retain the current UI and calculations.
+`HabitRepository` is the contract used by presentation code. `LocalHabitRepository` is the production implementation. `SheetSync` uses the repository's local cache and the Google Sheets API without changing the presentation data model.
 
 ## Calculations
 
-`HabitCalculations` is a pure common-code translation of the workbook formulas. It calculates per-day, per-habit, category, daily-week, weekly-habit, overall-weekly, and monthly summaries. `MonthEngine` handles leap years, 28/29/30/31-day months, weekday metadata, and the workbook's five day blocks.
+`HabitCalculations` contains pure summary functions. Month, Today, and Sheet export all resolve due work through `plannedHabitsOn`. `MonthEngine` handles leap years and the workbook's five day blocks.
 
 ## UI and presentation
 
-Compose Multiplatform UI is shared across Android and iOS. `MonthViewModel` and `ManageHabitsViewModel` combine repository state with pure calculations into immutable UI state. Width-based layout decisions provide a compact phone view and a multi-pane tablet view without device-specific business logic.
+Compose Multiplatform UI is shared across Android and iOS. `MonthViewModel` and `ManageHabitsViewModel` combine repository state with pure calculations into immutable UI state. Width-based layout primitives size the month grid and day plan; phone vs tablet is a breakpoint on available width, not device-specific business logic. The month grid shows only habits planned in that month and marks unplanned days as non-actionable (not empty checkboxes).
 
 ## Module boundaries
 
@@ -28,8 +30,9 @@ The project intentionally uses one shared application module rather than many Gr
 - `data`: SQLDelight mapping and local repository
 - `presentation`: UI state and view models
 - `ui`: shared Compose screens and design system
-- `androidMain` / `iosMain`: database drivers and entry points only
+- `sync`: shared Plan table validation, download, and completion upload
+- `androidMain` / `iosMain`: database drivers, platform entry points, and Google authorization bridge
 
-## Future server persistence
+## Sync limits
 
-A future `SyncingHabitRepository` can compose the existing local database with a remote API. Completion rows already have stable composite identities and timestamps. Conflict resolution, accounts, networking, and sync are deliberately not implemented now.
+The `Plan` tab is authoritative for dated sessions. App check-offs newer than the last successful sync are uploaded, and remote completion values are imported for other rows. The client tracks previously imported keys to apply Sheet row deletions without clearing unrelated local plans. It does not merge simultaneous edits to one row, sync weekly-habit definitions/categories, or provide a change-history UI. The simple last-upload-wins behavior should be revisited before broad production distribution.

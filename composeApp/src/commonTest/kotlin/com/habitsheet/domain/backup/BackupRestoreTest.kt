@@ -21,6 +21,8 @@ class BackupRestoreTest {
             LocalDate(2026, 8, 1), null, 1000, 1000
         )
         repository.saveDailyHabit(dailyHabit)
+        repository.saveWeeklyPlan(WeeklyPlan(dailyHabit.id, 2, "Intervals · 5 km", 1000))
+        repository.saveDayPlan(DayPlan(dailyHabit.id, LocalDate(2026, 8, 5), "Easy run · 6 km", false, 1000))
         repository.setDailyCompletion(DailyHabitCompletion(dailyHabit.id, LocalDate(2026, 8, 5), true, 1000))
         
         val archivedHabit = DailyHabit(
@@ -56,6 +58,8 @@ class BackupRestoreTest {
         assertEquals(originalSnapshot.dailyCompletions, finalSnapshot.dailyCompletions)
         assertEquals(originalSnapshot.weeklyHabits, finalSnapshot.weeklyHabits)
         assertEquals(originalSnapshot.weeklyCompletions, finalSnapshot.weeklyCompletions)
+        assertEquals(originalSnapshot.weeklyPlans, finalSnapshot.weeklyPlans)
+        assertEquals(originalSnapshot.dayPlans, finalSnapshot.dayPlans)
         
         // Verify archived habit preserved
         val restoredArchived = finalSnapshot.dailyHabits.find { it.id == "d2" }
@@ -66,7 +70,7 @@ class BackupRestoreTest {
 
     @Test
     fun deserializeThrowsOnUnsupportedVersion() {
-        val malformedJson = """{"version": 2, "timestamp": 0, "data": {}}"""
+        val malformedJson = """{"version": 4, "timestamp": 0, "data": {}}"""
         assertFailsWith<BackupValidationException> {
             BackupSerializer.deserialize(malformedJson)
         }

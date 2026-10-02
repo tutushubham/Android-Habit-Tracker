@@ -24,9 +24,9 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -74,6 +75,7 @@ import androidx.compose.ui.unit.sp
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.presentation.ManageHabitsViewModel
 
@@ -83,22 +85,32 @@ private sealed interface HabitEditor {
 }
 
 @Composable
-fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) {
+fun ManageHabitsScreen(
+    viewModel: ManageHabitsViewModel,
+    onTracker: () -> Unit,
+    tabletLayout: Boolean = false,
+    openCategories: Boolean = false,
+    onCategoriesOpened: () -> Unit = {},
+) {
     val state by viewModel.state.collectAsState()
     val error by viewModel.error.collectAsState()
     var editor by remember { mutableStateOf<HabitEditor?>(null) }
     var showCategories by remember { mutableStateOf(false) }
     var showArchived by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<Any?>(null) }
+    LaunchedEffect(openCategories) {
+        if (openCategories) {
+            showCategories = true
+            onCategoriesOpened()
+        }
+    }
 
     Surface(color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val wide = maxWidth >= 840.dp
+            val wide = tabletLayout
             if (wide) {
-                Row(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    ManageSidebar(onTracker)
-                    Column(Modifier.weight(1f).fillMaxHeight()) {
-                        ManageTopBar(onTracker, wide = true, onAdd = { editor = HabitEditor.Daily(null) })
+                Column(Modifier.fillMaxSize()) {
+                        ManageTopBar(wide = true)
                         Column(
                             Modifier
                                 .weight(1f)
@@ -108,7 +120,6 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                         ) {
                             Column(
                                 Modifier
-                                    .widthIn(max = 720.dp)
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 24.dp),
                             ) {
@@ -152,24 +163,11 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                                 }
                             }
                         }
-                    }
                 }
             } else {
                 Scaffold(
-                    topBar = { ManageTopBar(onTracker, wide = false, onAdd = { editor = HabitEditor.Daily(null) }) },
+                    topBar = { ManageTopBar(wide = false) },
                     bottomBar = { BottomNavigation(selectedTracker = false, onTracker = onTracker, onManage = {}) },
-                    floatingActionButton = {
-                        if (!showArchived) {
-                            FloatingActionButton(
-                                onClick = { editor = HabitEditor.Daily(null) },
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                shape = CircleShape
-                            ) {
-                                Text("＋", fontSize = 24.sp)
-                            }
-                        }
-                    },
                     contentWindowInsets = WindowInsets(0, 0, 0, 0)
                 ) { innerPadding ->
                     Column(
@@ -182,7 +180,6 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
                     ) {
                         Column(
                             Modifier
-                                .widthIn(max = 720.dp)
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 24.dp),
                         ) {
@@ -236,9 +233,9 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
             editor = value,
             categories = state.categories.filter { it.active },
             onDismiss = { editor = null },
-            onSaveDaily = { existing, name, categoryId, goal ->
-                if (existing == null) viewModel.addDailyHabit(name, categoryId, goal)
-                else viewModel.updateDailyHabit(existing.copy(name = name, categoryId = categoryId, monthlyGoal = goal))
+            onSaveDaily = { existing, name, categoryId, goal, kind, datedOnly ->
+                if (existing == null) viewModel.addDailyHabit(name, categoryId, goal, kind, datedOnly)
+                else viewModel.updateDailyHabit(existing.copy(name = name, categoryId = categoryId, monthlyGoal = goal, kind = kind, datedOnly = datedOnly))
                 editor = null
             },
             onSaveWeekly = { existing, name, categoryId ->
@@ -324,73 +321,20 @@ fun ManageHabitsScreen(viewModel: ManageHabitsViewModel, onTracker: () -> Unit) 
 }
 
 @Composable
-private fun ManageTopBar(onBack: () -> Unit, wide: Boolean, onAdd: () -> Unit = {}) {
+private fun ManageTopBar(wide: Boolean) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .height(if (wide) 88.dp else 64.dp)
+            .then(if (wide) Modifier else Modifier.windowInsetsPadding(WindowInsets.statusBars))
+            .height(if (wide) 72.dp else 64.dp)
             .drawBehind {
                 drawLine(borderColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
             }
-            .padding(horizontal = if (wide) 24.dp else 8.dp),
+            .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (!wide) {
-            IconButton(onClick = onBack) { 
-                Text(
-                    "‹", 
-                    fontSize = 32.sp, 
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.semantics { contentDescription = "Back" }
-                ) 
-            }
-        }
-        Text("Manage Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-        
-        if (wide) {
-            Button(
-                onClick = onAdd,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("＋ Add Habit")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ManageSidebar(onTracker: () -> Unit) {
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
-    Column(
-        Modifier
-            .width(280.dp)
-            .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.surface)
-            .drawBehind {
-                drawLine(dividerColor, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
-            }
-            .padding(24.dp),
-    ) {
-        Text("◉ Tracker", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(48.dp))
-        ManageSidebarItem("▣  Tracker", selected = false, onClick = onTracker)
-        ManageSidebarItem("⚙  Manage", selected = true, onClick = {})
-    }
-}
-
-@Composable
-private fun ManageSidebarItem(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+        Text("Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
     }
 }
 
@@ -465,51 +409,68 @@ private fun DefinitionRow(
     onMoveDown: (() -> Unit)? = null,
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .drawBehind {
-                drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
-            }
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onMoveUp != null || onMoveDown != null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { onMoveUp?.invoke() }, enabled = onMoveUp != null, modifier = Modifier.size(24.dp)) {
-                    Text("▴", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val narrow = maxWidth < 420.dp
+        val rowModifier = Modifier.fillMaxWidth().drawBehind {
+            drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
+        }.padding(horizontal = 8.dp)
+        if (narrow) {
+            Column(rowModifier.padding(vertical = 8.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    HabitRowIdentity(name, category, categories, Modifier.weight(1f))
+                    TextButton(onClick = onEdit, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text("Edit") }
                 }
-                IconButton(onClick = { onMoveDown?.invoke() }, enabled = onMoveDown != null, modifier = Modifier.size(24.dp)) {
-                    Text("▾", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Goal $goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    if (onMoveUp != null || onMoveDown != null) {
+                        HabitMoveButton(name, true, onMoveUp)
+                        HabitMoveButton(name, false, onMoveDown)
+                    }
                 }
             }
-            Spacer(Modifier.width(12.dp))
         } else {
-            Text("⠿", color = MaterialTheme.colorScheme.outline, fontSize = 20.sp, modifier = Modifier.padding(end = 16.dp))
-        }
-        
-        Column(
-            Modifier
-                .weight(1f)
-                .clickable(onClick = onEdit)
-        ) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
-                Box(Modifier.size(8.dp).background(categoryColor(category, categories), CircleShape))
-                Text(
-                    category?.name?.uppercase() ?: "GENERAL",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+            Row(rowModifier.height(96.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (onMoveUp != null || onMoveDown != null) {
+                    Column {
+                        HabitMoveButton(name, true, onMoveUp)
+                        HabitMoveButton(name, false, onMoveDown)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                HabitRowIdentity(name, category, categories, Modifier.weight(1f))
+                Text("Goal $goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 8.dp), maxLines = 1)
+                TextButton(onClick = onEdit, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text("Edit") }
             }
         }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(horizontal = 16.dp)) {
-            Text(goal.substringBefore('/'), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            Text(goal.substringAfter('/').uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun HabitRowIdentity(name: String, category: Category?, categories: List<Category>, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+            Box(Modifier.size(8.dp).background(categoryColor(category, categories), CircleShape))
+            Text(
+                category?.name?.uppercase() ?: "GENERAL",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        Text("✎", color = MaterialTheme.colorScheme.primary, fontSize = 20.sp)
+    }
+}
+
+@Composable
+private fun HabitMoveButton(name: String, up: Boolean, onClick: (() -> Unit)?) {
+    IconButton(
+        onClick = { onClick?.invoke() },
+        enabled = onClick != null,
+        modifier = Modifier.size(44.dp).semantics { contentDescription = "Move $name ${if (up) "up" else "down"}" },
+    ) {
+        HabitIcon(if (up) HabitIconGlyph.Up else HabitIconGlyph.Down, Modifier.size(20.dp), MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -520,6 +481,7 @@ private fun AddButton(label: String, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ManageCategorySection(categories: List<Category>, onManage: () -> Unit) {
     SectionLabel("Categories", Modifier.padding(top = 28.dp, bottom = 14.dp))
@@ -532,7 +494,7 @@ private fun ManageCategorySection(categories: List<Category>, onManage: () -> Un
             modifier = Modifier.padding(bottom = 8.dp)
         )
     } else {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             activeCategories.forEach { category ->
                 Row(
                     Modifier.border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)).padding(horizontal = 12.dp, vertical = 8.dp),
@@ -545,7 +507,7 @@ private fun ManageCategorySection(categories: List<Category>, onManage: () -> Un
         }
     }
     TextButton(onClick = onManage, modifier = Modifier.padding(top = 10.dp)) {
-        Text("⌘  Manage Categories", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Edit categories", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -555,7 +517,7 @@ private fun HabitEditorDialog(
     editor: HabitEditor,
     categories: List<Category>,
     onDismiss: () -> Unit,
-    onSaveDaily: (DailyHabit?, String, String?, Int) -> Unit,
+    onSaveDaily: (DailyHabit?, String, String?, Int, HabitKind, Boolean) -> Unit,
     onSaveWeekly: (WeeklyHabit?, String, String?) -> Unit,
     onArchiveDaily: (DailyHabit) -> Unit,
     onArchiveWeekly: (WeeklyHabit) -> Unit,
@@ -571,6 +533,8 @@ private fun HabitEditorDialog(
     var name by remember(editor) { mutableStateOf(daily?.name ?: weekly?.name.orEmpty()) }
     var goalText by remember(editor) { mutableStateOf(daily?.monthlyGoal?.toString() ?: "") }
     var categoryId by remember(editor) { mutableStateOf(daily?.categoryId ?: weekly?.categoryId) }
+    var kind by remember(editor) { mutableStateOf(daily?.kind ?: HabitKind.ACTION) }
+    var datedOnly by remember(editor) { mutableStateOf(daily?.datedOnly ?: false) }
     
     val goal = goalText.toIntOrNull()
     val isNameValid = name.isNotBlank()
@@ -601,6 +565,18 @@ private fun HabitEditorDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (isDaily) {
+                    Text("TRACK AS", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = kind == HabitKind.ACTION, onClick = { kind = HabitKind.ACTION }, label = { Text("Do") })
+                        FilterChip(selected = kind == HabitKind.AVOIDANCE, onClick = { kind = HabitKind.AVOIDANCE }, label = { Text("Avoid") })
+                    }
+                    if (kind == HabitKind.AVOIDANCE) Text("Name it as a positive check-off, e.g. No Junk Food.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Only on planned dates", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        androidx.compose.material3.Switch(checked = datedOnly, onCheckedChange = { datedOnly = it })
+                    }
                     OutlinedTextField(
                         value = goalText,
                         onValueChange = { goalText = it.filter(Char::isDigit) },
@@ -652,7 +628,7 @@ private fun HabitEditorDialog(
                 TextButton(
                     enabled = canSave,
                     onClick = {
-                        if (isDaily) onSaveDaily(daily, name.trim(), categoryId, goal ?: 0)
+                        if (isDaily) onSaveDaily(daily, name.trim(), categoryId, goal ?: 0, kind, datedOnly)
                         else onSaveWeekly(weekly, name.trim(), categoryId)
                     },
                 ) { Text("Save") }
@@ -716,6 +692,30 @@ private fun CategoryEditorDialog(
                     .imePadding()
                     .verticalScroll(rememberScrollState())
             ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newCategoryName,
+                        onValueChange = { newCategoryName = it },
+                        label = { Text("New category") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = {
+                            if (newCategoryName.isNotBlank()) {
+                                onAdd(newCategoryName.trim())
+                                newCategoryName = ""
+                            }
+                        },
+                        enabled = newCategoryName.isNotBlank(),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text("Add")
+                    }
+                }
                 ordered.forEach { category ->
                     val currentName = modifiedNames[category.id] ?: category.name
                     Row(
@@ -743,30 +743,6 @@ private fun CategoryEditorDialog(
                     }
                 }
 
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = newCategoryName,
-                        onValueChange = { newCategoryName = it },
-                        label = { Text("New category") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(
-                        onClick = {
-                            if (newCategoryName.isNotBlank()) {
-                                onAdd(newCategoryName.trim())
-                                newCategoryName = ""
-                            }
-                        },
-                        enabled = newCategoryName.isNotBlank(),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text("Add")
-                    }
-                }
             }
         },
         confirmButton = {

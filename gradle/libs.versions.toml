@@ -11,6 +11,8 @@ datetime = "0.8.0"
 kotlin = "2.3.20"
 serialization = "1.8.0"
 sqldelight = "2.3.2"
+ktor = "3.3.3"
+google-auth = "21.5.1"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
@@ -27,6 +29,11 @@ sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", ver
 sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+google-play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "google-auth" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

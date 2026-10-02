@@ -16,14 +16,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        graph = AppGraph(AndroidDriverFactory(applicationContext))
+        graph = AppGraph(AndroidDriverFactory(applicationContext), AndroidSheetTokenProvider(this))
         val shareService = AndroidShareService(this)
+        val backupService = AndroidBackupService(this)
         setContent {
             HabitSheetApp(
                 graph.monthViewModel,
                 graph.manageHabitsViewModel,
                 shareService,
                 graph.settingsViewModel,
+                backupService,
+                graph.repository,
+                AndroidVersionProvider(this),
             )
         }
     }
@@ -34,6 +38,7 @@ class MainActivity : ComponentActivity() {
         // Refresh before the user continues so Compose never shows stale checks.
         lifecycleScope.launch {
             graph.repository.refresh()
+            graph.syncOnForeground()
             HabitWidgetUpdater.requestUpdate(applicationContext)
         }
     }

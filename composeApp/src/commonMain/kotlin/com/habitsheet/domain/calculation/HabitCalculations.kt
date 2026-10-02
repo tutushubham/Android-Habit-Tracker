@@ -3,6 +3,9 @@ package com.habitsheet.domain.calculation
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.domain.model.HabitKind
+import com.habitsheet.domain.model.plannedHabitsOn
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
@@ -28,8 +31,9 @@ data class DailySummary(
 data class HabitSummary(
     val habit: DailyHabit,
     val completed: Int,
+    val plannedGoal: Int? = null,
 ) {
-    val goal: Int get() = habit.monthlyGoal
+    val goal: Int get() = plannedGoal ?: habit.monthlyGoal
     val percentage: Double get() = if (goal <= 0) 0.0 else completed.toDouble() / goal
 }
 
@@ -66,7 +70,9 @@ data class DailyShareHabit(
     val id: String,
     val name: String,
     val categoryName: String?,
-    val completed: Boolean
+    val completed: Boolean,
+    val habitId: String = id,
+    val kind: HabitKind = HabitKind.ACTION,
 )
 
 data class DailyShareSummary(
@@ -111,6 +117,24 @@ object HabitCalculations {
             doneHabits = done,
             leftHabits = left
         )
+    }
+
+    fun plannedDailyShareSummary(date: LocalDate, snapshot: HabitSnapshot): DailyShareSummary {
+        val completedIds = snapshot.dailyCompletions.filter { it.date == date && it.completed }.map { it.planId }.toSet()
+        val activities = snapshot.plannedHabitsOn(date).filterNot { it.skipped }.map { planned ->
+            DailyShareHabit(
+                id = planned.id,
+                name = planned.habit.name,
+                categoryName = snapshot.categories.firstOrNull { it.id == planned.habit.categoryId }?.name,
+                completed = planned.id in completedIds,
+                habitId = planned.habit.id,
+                kind = planned.habit.kind,
+            )
+        }
+        val done = activities.filter { it.completed }
+        return DailyShareSummary(date, done.size, activities.size,
+            if (activities.isEmpty()) 0.0 else done.size.toDouble() / activities.size,
+            done, activities.filterNot { it.completed })
     }
 
     fun dailySummaries(

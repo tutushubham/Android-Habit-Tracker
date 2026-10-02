@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_title">Today</string>
+    <string name="widget_description">See today’s progress and check off daily and weekly habits</string>
+    <string name="widget_empty">Your day is clear.</string>
+    <string name="widget_add_habits">Open Habit Sheet to add a habit</string>
+    <string name="widget_all_done">All done — lovely work</string>
+    <string name="widget_tap_to_open">Open Habit Sheet</string>
+    <string name="widget_weekly">Weekly</string>
+    <string name="widget_unavailable">Open Habit Sheet to refresh your habits</string>
+    <string name="widget_mark_complete">Mark %1$s complete</string>
+    <string name="widget_mark_incomplete">Mark %1$s incomplete</string>
+    <plurals name="widget_progress">
+        <item quantity="one">%1$d of %2$d habit complete</item>
+        <item quantity="other">%1$d of %2$d habits complete</item>
+    </plurals>
+    <plurals name="widget_more_habits">
+        <item quantity="one">+%1$d more habit</item>
+        <item quantity="other">+%1$d more habits</item>
+    </plurals>
+</resources>

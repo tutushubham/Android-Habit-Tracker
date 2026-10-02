@@ -3,9 +3,11 @@ package com.habitsheet.domain.repository
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
+import com.habitsheet.domain.model.WeeklyPlan
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
 
@@ -26,11 +28,23 @@ interface HabitRepository {
     suspend fun deleteWeeklyHabit(id: String)
     suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long)
     suspend fun setDailyCompletion(completion: DailyHabitCompletion)
+    suspend fun saveWeeklyPlan(plan: WeeklyPlan)
+    suspend fun deleteWeeklyPlan(habitId: String, weekday: Int)
+    suspend fun saveDayPlan(plan: DayPlan)
+    suspend fun deleteDayPlan(habitId: String, date: LocalDate)
+    suspend fun deleteDayPlanById(id: String)
     suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion)
     suspend fun isOnboardingCompleted(): Boolean
     suspend fun setOnboardingCompleted(completed: Boolean)
     suspend fun getThemeMode(): Int
     suspend fun setThemeMode(mode: Int)
+    suspend fun getSheetUrl(): String
+    suspend fun setSheetUrl(url: String)
+    suspend fun getSheetLastSync(): Long
+    suspend fun setSheetLastSync(epochMillis: Long)
+    suspend fun getSheetSyncedKeys(): Set<String>
+    suspend fun setSheetSyncedKeys(keys: Set<String>)
+    suspend fun setSheetManagedHabitIds(ids: Set<String>)
     suspend fun clearAllData()
     suspend fun restoreFromSnapshot(snapshot: HabitSnapshot)
 }

@@ -4,9 +4,11 @@ import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
+import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +73,8 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.filterNot { it.id == id },
             dailyCompletions = mutableSnapshot.value.dailyCompletions.filterNot { it.habitId == id },
+            weeklyPlans = mutableSnapshot.value.weeklyPlans.filterNot { it.habitId == id },
+            dayPlans = mutableSnapshot.value.dayPlans.filterNot { it.habitId == id },
         )
     }
 
@@ -135,9 +139,29 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         require(mutableSnapshot.value.dailyHabits.any { it.id == completion.habitId }) { "Unknown daily habit" }
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyCompletions = mutableSnapshot.value.dailyCompletions.upsert(completion) {
-                it.habitId to it.date
+                it.planId to it.date
             },
         )
+    }
+
+    override suspend fun saveWeeklyPlan(plan: WeeklyPlan) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.upsert(plan) { it.habitId to it.weekday })
+    }
+
+    override suspend fun deleteWeeklyPlan(habitId: String, weekday: Int) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.filterNot { it.habitId == habitId && it.weekday == weekday })
+    }
+
+    override suspend fun saveDayPlan(plan: DayPlan) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(dayPlans = mutableSnapshot.value.dayPlans.upsert(plan) { it.id })
+    }
+
+    override suspend fun deleteDayPlan(habitId: String, date: LocalDate) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(dayPlans = mutableSnapshot.value.dayPlans.filterNot { it.habitId == habitId && it.date == date })
+    }
+
+    override suspend fun deleteDayPlanById(id: String) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(dayPlans = mutableSnapshot.value.dayPlans.filterNot { it.id == id })
     }
 
     override suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion) {
@@ -159,6 +183,26 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun getThemeMode(): Int = themeMode
     override suspend fun setThemeMode(mode: Int) {
         themeMode = mode
+    }
+
+    private var sheetUrl = ""
+    private var sheetLastSync = 0L
+    private var sheetSyncedKeys = emptySet<String>()
+    override suspend fun getSheetUrl(): String = sheetUrl
+    override suspend fun setSheetUrl(url: String) {
+        if (sheetUrl != url) {
+            sheetLastSync = 0L
+            sheetSyncedKeys = emptySet()
+            mutableSnapshot.value = mutableSnapshot.value.copy(sheetManagedHabitIds = emptySet())
+        }
+        sheetUrl = url
+    }
+    override suspend fun getSheetLastSync(): Long = sheetLastSync
+    override suspend fun setSheetLastSync(epochMillis: Long) { sheetLastSync = epochMillis }
+    override suspend fun getSheetSyncedKeys(): Set<String> = sheetSyncedKeys
+    override suspend fun setSheetSyncedKeys(keys: Set<String>) { sheetSyncedKeys = keys }
+    override suspend fun setSheetManagedHabitIds(ids: Set<String>) {
+        mutableSnapshot.value = mutableSnapshot.value.copy(sheetManagedHabitIds = ids)
     }
 
     override suspend fun clearAllData() {

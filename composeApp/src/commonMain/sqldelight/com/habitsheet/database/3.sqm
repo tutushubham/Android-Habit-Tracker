@@ -1,0 +1,30 @@
+ALTER TABLE dailyHabitEntity ADD COLUMN kind TEXT NOT NULL DEFAULT 'ACTION';
+ALTER TABLE dailyHabitEntity ADD COLUMN dated_only INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE dayPlanEntity RENAME TO oldDayPlanEntity;
+CREATE TABLE dayPlanEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    habit_id TEXT NOT NULL REFERENCES dailyHabitEntity(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    skipped INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+);
+INSERT INTO dayPlanEntity(id, habit_id, date, detail, skipped, updated_at)
+SELECT habit_id || '|' || date, habit_id, date, detail, skipped, updated_at FROM oldDayPlanEntity;
+DROP TABLE oldDayPlanEntity;
+CREATE INDEX dayPlanDateIndex ON dayPlanEntity(date);
+
+ALTER TABLE dailyCompletionEntity RENAME TO oldDailyCompletionEntity;
+CREATE TABLE dailyCompletionEntity (
+    plan_id TEXT NOT NULL,
+    habit_id TEXT NOT NULL REFERENCES dailyHabitEntity(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    completed INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (plan_id, date)
+);
+INSERT INTO dailyCompletionEntity(plan_id, habit_id, date, completed, updated_at)
+SELECT habit_id || '|' || date, habit_id, date, completed, updated_at FROM oldDailyCompletionEntity;
+DROP TABLE oldDailyCompletionEntity;
+CREATE INDEX dailyCompletionDateIndex ON dailyCompletionEntity(date);

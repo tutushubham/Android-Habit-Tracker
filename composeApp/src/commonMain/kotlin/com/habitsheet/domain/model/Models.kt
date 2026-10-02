@@ -2,6 +2,10 @@ package com.habitsheet.domain.model
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+
+@Serializable
+enum class HabitKind { ACTION, AVOIDANCE }
 
 @Serializable
 data class Category(
@@ -24,6 +28,8 @@ data class DailyHabit(
     val archivedOn: LocalDate? = null,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
+    val kind: HabitKind = HabitKind.ACTION,
+    val datedOnly: Boolean = false,
 ) {
     fun isActiveOn(date: LocalDate): Boolean =
         date >= createdOn &&
@@ -37,6 +43,27 @@ data class DailyHabitCompletion(
     val date: LocalDate,
     val completed: Boolean,
     val updatedAtEpochMillis: Long,
+    val planId: String = "$habitId|$date",
+)
+
+/** A recurring prescription for one weekday (Monday = 1). */
+@Serializable
+data class WeeklyPlan(
+    val habitId: String,
+    val weekday: Int,
+    val detail: String,
+    val updatedAtEpochMillis: Long,
+)
+
+/** A dated prescription overrides a weekly plan for this habit and day. */
+@Serializable
+data class DayPlan(
+    val habitId: String,
+    val date: LocalDate,
+    val detail: String,
+    val skipped: Boolean = false,
+    val updatedAtEpochMillis: Long,
+    val id: String = "$habitId|$date",
 )
 
 @Serializable
@@ -72,4 +99,7 @@ data class HabitSnapshot(
     val dailyCompletions: List<DailyHabitCompletion> = emptyList(),
     val weeklyHabits: List<WeeklyHabit> = emptyList(),
     val weeklyCompletions: List<WeeklyHabitCompletion> = emptyList(),
+    val weeklyPlans: List<WeeklyPlan> = emptyList(),
+    val dayPlans: List<DayPlan> = emptyList(),
+    @Transient val sheetManagedHabitIds: Set<String> = emptySet(),
 )

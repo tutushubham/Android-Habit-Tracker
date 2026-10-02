@@ -14,11 +14,12 @@ import com.habitsheet.presentation.VersionProvider
 @Composable
 fun AboutScreen(
     versionProvider: VersionProvider,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBack: Boolean = true,
 ) {
     Scaffold(
         topBar = {
-            SettingsTopBar(onBack)
+            SettingsTopBar(onBack, "About", showBack = true, insetTop = showBack)
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->

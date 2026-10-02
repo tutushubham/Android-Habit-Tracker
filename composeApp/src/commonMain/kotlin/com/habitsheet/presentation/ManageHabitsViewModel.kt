@@ -2,6 +2,7 @@ package com.habitsheet.presentation
 
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
+import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.repository.IdGenerator
@@ -67,7 +68,7 @@ class ManageHabitsViewModel(
         }
     }
 
-    fun addDailyHabit(name: String, categoryId: String?, monthlyGoal: Int) {
+    fun addDailyHabit(name: String, categoryId: String?, monthlyGoal: Int, kind: HabitKind = HabitKind.ACTION, datedOnly: Boolean = false) {
         val trimmed = name.trim()
         if (trimmed.isEmpty() || monthlyGoal < 0) return
         if (state.value.dailyHabits.count { it.active } >= MaxDailyHabits) {
@@ -88,6 +89,8 @@ class ManageHabitsViewModel(
                         createdOn = dateProvider.today(),
                         createdAtEpochMillis = now,
                         updatedAtEpochMillis = now,
+                        kind = kind,
+                        datedOnly = datedOnly,
                     ),
                 )
             } catch (e: Exception) {

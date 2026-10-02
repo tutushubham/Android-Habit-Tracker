@@ -28,22 +28,56 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onManageCategories: () -> Unit,
     onBackup: () -> Unit,
-    onAbout: () -> Unit
+    onAbout: () -> Unit,
+    showBack: Boolean = true,
 ) {
     val themeMode by viewModel.themeMode.collectAsState()
+    val sheetUrl by viewModel.sheetUrl.collectAsState()
+    val sheetMessage by viewModel.sheetMessage.collectAsState()
+    val syncState by viewModel.sheetSyncState.collectAsState()
+    var sheetDraft by remember(sheetUrl) { mutableStateOf(sheetUrl) }
 
     Scaffold(
         topBar = {
-            SettingsTopBar(onBack)
+            SettingsTopBar(onBack, showBack = showBack)
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
+        Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.TopCenter) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
         ) {
+            SettingsSection("Plan sync") {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+                    OutlinedTextField(
+                        value = sheetDraft,
+                        onValueChange = { sheetDraft = it },
+                        label = { Text("Spreadsheet link") },
+                        placeholder = { Text("https://docs.google.com/spreadsheets/d/…") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 2,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { viewModel.saveSheetUrl(sheetDraft) }) { Text("Save link") }
+                        Button(onClick = viewModel::syncNow, enabled = sheetUrl.isNotBlank() && !syncState.busy) {
+                            Text(if (syncState.busy) "Syncing…" else "Connect & sync")
+                        }
+                    }
+                    sheetMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    Text(
+                        syncState.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "The Sheet controls dated sessions. Checks for Plan rows work offline and upload when you reconnect. Other tabs are unchanged.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             SettingsSection("Appearance") {
                 ThemeOption("System Default", ThemeMode.System, themeMode) { viewModel.setThemeMode(it) }
                 ThemeOption("Light", ThemeMode.Light, themeMode) { viewModel.setThemeMode(it) }
@@ -63,6 +97,7 @@ fun SettingsScreen(
             }
             
             Spacer(Modifier.height(48.dp))
+        }
         }
     }
 }
@@ -122,20 +157,25 @@ private fun SettingsActionItem(title: String, description: String, onClick: () -
 }
 
 @Composable
-internal fun SettingsTopBar(onBack: () -> Unit) {
+internal fun SettingsTopBar(
+    onBack: () -> Unit,
+    title: String = "Settings",
+    showBack: Boolean = true,
+    insetTop: Boolean = showBack,
+) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .height(64.dp)
+            .then(if (insetTop) Modifier.windowInsetsPadding(WindowInsets.statusBars) else Modifier)
+            .height(if (showBack) 64.dp else 72.dp)
             .drawBehind {
                 drawLine(borderColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
             }
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = if (showBack) 8.dp else 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) {
+        if (showBack) IconButton(onClick = onBack) {
             Text(
                 "‹", 
                 fontSize = 32.sp, 
@@ -143,6 +183,6 @@ internal fun SettingsTopBar(onBack: () -> Unit) {
                 modifier = Modifier.semantics { contentDescription = "Back" }
             )
         }
-        Text("Settings", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 8.dp))
+        Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = if (showBack) 8.dp else 0.dp))
     }
 }

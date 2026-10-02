@@ -2,6 +2,8 @@ package com.habitsheet.presentation
 
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
+import com.habitsheet.domain.model.DayPlan
+import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -115,5 +117,34 @@ class MonthViewModelTest {
         runCurrent()
 
         assertFalse(repo.snapshot.value.dailyCompletions.any { it.completed })
+    }
+
+    @Test
+    fun separateSessionsCompleteIndependentlyAndRemovalKeepsHistory() = runTest {
+        val habit = DailyHabit("run", "Run", null, 12, 0, true, fixedDate, null, 0, 0, datedOnly = true)
+        val repo = InMemoryHabitRepository(HabitSnapshot(
+            dailyHabits = listOf(habit),
+            dayPlans = listOf(
+                DayPlan("run", fixedDate, "Easy run", false, 1, "run-a"),
+                DayPlan("run", fixedDate, "Mobility", false, 1, "run-b"),
+            ),
+        ))
+        val viewModel = MonthViewModel(repo, dateProvider, backgroundScope)
+        viewModel.togglePlanned("run-a", fixedDate)
+        runCurrent()
+        assertEquals(1, repo.snapshot.value.dailyCompletions.count { it.completed })
+        assertEquals("run-a", repo.snapshot.value.dailyCompletions.single().planId)
+        assertEquals(2, viewModel.state.value.daily.first { it.date == fixedDate }.activeHabits)
+
+        repo.deleteDayPlanById("run-a")
+        runCurrent()
+        assertEquals(1, viewModel.state.value.daily.first { it.date == fixedDate }.activeHabits)
+        assertEquals(0, viewModel.state.value.daily.first { it.date == fixedDate }.completed)
+        assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
+
+        repo.saveDayPlan(DayPlan("run", LocalDate(2026, 8, 27), "Easy run", false, 2, "run-a"))
+        runCurrent()
+        assertEquals(0, viewModel.state.value.daily.first { it.date == LocalDate(2026, 8, 27) }.completed)
+        assertEquals(fixedDate, repo.snapshot.value.dailyCompletions.single().date)
     }
 }

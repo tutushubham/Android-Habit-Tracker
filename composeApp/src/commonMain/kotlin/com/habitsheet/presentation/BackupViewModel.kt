@@ -22,6 +22,7 @@ class BackupViewModel(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
+    val usesClipboard: Boolean get() = backupService.usesClipboard
 
     fun exportBackup() {
         val snapshot = repository.snapshot.value

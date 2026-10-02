@@ -18,15 +18,35 @@ CREATE TABLE dailyHabitEntity (
     created_on TEXT NOT NULL,
     archived_on TEXT,
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    updated_at INTEGER NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'ACTION',
+    dated_only INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE dailyCompletionEntity (
+    plan_id TEXT NOT NULL,
     habit_id TEXT NOT NULL REFERENCES dailyHabitEntity(id) ON DELETE CASCADE,
     date TEXT NOT NULL,
     completed INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    PRIMARY KEY (habit_id, date)
+    PRIMARY KEY (plan_id, date)
+);
+
+CREATE TABLE weeklyPlanEntity (
+    habit_id TEXT NOT NULL REFERENCES dailyHabitEntity(id) ON DELETE CASCADE,
+    weekday INTEGER NOT NULL,
+    detail TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (habit_id, weekday)
+);
+
+CREATE TABLE dayPlanEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    habit_id TEXT NOT NULL REFERENCES dailyHabitEntity(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    skipped INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
 );
 
 CREATE TABLE weeklyHabitEntity (
@@ -54,7 +74,13 @@ CREATE TABLE settingsEntity (
     value INTEGER NOT NULL
 );
 
+CREATE TABLE textSettingsEntity (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE INDEX dailyCompletionDateIndex ON dailyCompletionEntity(date);
+CREATE INDEX dayPlanDateIndex ON dayPlanEntity(date);
 CREATE INDEX weeklyCompletionDateIndex ON weeklyCompletionEntity(week_start_date);
 CREATE INDEX dailyHabitCategoryIndex ON dailyHabitEntity(category_id);
 CREATE INDEX weeklyHabitCategoryIndex ON weeklyHabitEntity(category_id);
@@ -83,13 +109,13 @@ SELECT * FROM dailyHabitEntity ORDER BY display_order, id;
 insertDailyHabit:
 INSERT OR IGNORE INTO dailyHabitEntity(
     id, name, category_id, monthly_goal, display_order, active,
-    created_on, archived_on, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    created_on, archived_on, created_at, updated_at, kind, dated_only
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateDailyHabit:
 UPDATE dailyHabitEntity
 SET name = ?, category_id = ?, monthly_goal = ?, display_order = ?, active = ?,
-    created_on = ?, archived_on = ?, updated_at = ?
+    created_on = ?, archived_on = ?, updated_at = ?, kind = ?, dated_only = ?
 WHERE id = ?;
 
 updateDailyHabitOrder:
@@ -111,9 +137,30 @@ DELETE FROM dailyHabitEntity WHERE id = ?;
 selectAllDailyCompletions:
 SELECT * FROM dailyCompletionEntity ORDER BY date, habit_id;
 
+selectAllWeeklyPlans:
+SELECT * FROM weeklyPlanEntity ORDER BY weekday, habit_id;
+
+upsertWeeklyPlan:
+INSERT OR REPLACE INTO weeklyPlanEntity(habit_id, weekday, detail, updated_at) VALUES (?, ?, ?, ?);
+
+deleteWeeklyPlan:
+DELETE FROM weeklyPlanEntity WHERE habit_id = ? AND weekday = ?;
+
+selectAllDayPlans:
+SELECT * FROM dayPlanEntity ORDER BY date, habit_id;
+
+upsertDayPlan:
+INSERT OR REPLACE INTO dayPlanEntity(id, habit_id, date, detail, skipped, updated_at) VALUES (?, ?, ?, ?, ?, ?);
+
+deleteDayPlan:
+DELETE FROM dayPlanEntity WHERE habit_id = ? AND date = ?;
+
+deleteDayPlanById:
+DELETE FROM dayPlanEntity WHERE id = ?;
+
 upsertDailyCompletion:
-INSERT OR REPLACE INTO dailyCompletionEntity(habit_id, date, completed, updated_at)
-VALUES (?, ?, ?, ?);
+INSERT OR REPLACE INTO dailyCompletionEntity(plan_id, habit_id, date, completed, updated_at)
+VALUES (?, ?, ?, ?, ?);
 
 selectAllWeeklyHabits:
 SELECT * FROM weeklyHabitEntity ORDER BY display_order, id;
@@ -154,14 +201,34 @@ INSERT OR REPLACE INTO weeklyCompletionEntity(weekly_habit_id, week_start_date, 
 VALUES (?, ?, ?, ?);
 
 clearAllData:
-DELETE FROM categoryEntity;
 DELETE FROM dailyHabitEntity;
+
+clearAllDayPlans:
+DELETE FROM dayPlanEntity;
+
+clearAllWeeklyPlans:
+DELETE FROM weeklyPlanEntity;
+
+clearAllDailyCompletions:
 DELETE FROM dailyCompletionEntity;
-DELETE FROM weeklyHabitEntity;
+
+clearAllWeeklyCompletions:
 DELETE FROM weeklyCompletionEntity;
+
+clearAllWeeklyHabits:
+DELETE FROM weeklyHabitEntity;
+
+clearAllCategories:
+DELETE FROM categoryEntity;
 
 getSetting:
 SELECT value FROM settingsEntity WHERE key = ?;
 
 setSetting:
 INSERT OR REPLACE INTO settingsEntity(key, value) VALUES (?, ?);
+
+getTextSetting:
+SELECT value FROM textSettingsEntity WHERE key = ?;
+
+setTextSetting:
+INSERT OR REPLACE INTO textSettingsEntity(key, value) VALUES (?, ?);
