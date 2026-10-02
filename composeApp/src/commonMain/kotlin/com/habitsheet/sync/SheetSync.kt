@@ -1,6 +1,7 @@
 package com.habitsheet.sync
 
 import com.habitsheet.data.DefaultIdGenerator
+import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -9,6 +10,8 @@ import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.domain.model.plannedHabitsOn
 import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.presentation.DateProvider
+import com.habitsheet.presentation.SystemDateProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -26,7 +29,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.CancellationException
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.serialization.json.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -44,6 +50,7 @@ class SheetSync(
     private val repository: HabitRepository,
     private val tokenProvider: SheetTokenProvider,
     private val client: HttpClient = HttpClient(),
+    private val dateProvider: DateProvider = SystemDateProvider,
 ) {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(SheetSyncState())
@@ -64,12 +71,14 @@ class SheetSync(
                 return
             }
             val api = SheetsApi(client, id, token)
+            removeLegacyWeeklyPlaceholders()
             val snapshot = repository.snapshot.value
+            val window = SheetSyncWindow.rolling(dateProvider.today())
             val hasPlanTab = api.hasPlanTab()
             val createdTabId = if (!hasPlanTab) api.createPlanTab() else null
             val existingRows = if (hasPlanTab) api.readTable() else null
             if (existingRows == null) {
-                val rows = ondRowsFor(snapshot)
+                val rows = planRowsFor(snapshot, window)
                 api.putTable(rows)
                 if (createdTabId != null) {
                     try { api.formatPlanTab(createdTabId) }
@@ -79,7 +88,6 @@ class SheetSync(
                 repository.setSheetSyncedKeys(rows.map(::rowKey).toSet())
                 val now = Clock.System.now().toEpochMilliseconds()
                 repository.setSheetLastSync(now)
-                removeSeedWeeklyPlaceholders(snapshot, rows.map { it.habit }.toSet())
                 repository.setSheetManagedHabitIds(snapshot.sheetManagedHabitIds + rows.mapNotNull { row ->
                     snapshot.dailyHabits.firstOrNull { it.name.equals(row.habit, ignoreCase = true) }?.id
                 })
@@ -91,7 +99,7 @@ class SheetSync(
             val localOnlyIds = snapshot.dailyHabits
                 .filter { it.id !in snapshot.sheetManagedHabitIds && it.name.trim().lowercase() !in remoteHabitNames }
                 .map { it.id }.toSet()
-            val additionalRows = ondRowsFor(snapshot).filter { row ->
+            val additionalRows = planRowsFor(snapshot, window).filter { row ->
                 snapshot.dailyHabits.any { it.id in localOnlyIds && it.name.equals(row.habit, ignoreCase = true) }
             }
             if (additionalRows.isNotEmpty()) {
@@ -120,9 +128,7 @@ class SheetSync(
                     val created = DailyHabit(
                         id = DefaultIdGenerator().newId(),
                         name = row.habit,
-                        categoryId = snapshot.categories.firstOrNull { category ->
-                            category.name.substringBefore(' ').equals(categoryFor(row), ignoreCase = true)
-                        }?.id,
+                        categoryId = categoryIdFor(row, snapshot.categories),
                         monthlyGoal = 0,
                         displayOrder = localHabits.size,
                         active = true,
@@ -148,12 +154,7 @@ class SheetSync(
                 }
             }
             if (pending.isNotEmpty()) api.writeDone(pending)
-            removeSeedWeeklyPlaceholders(
-                repository.snapshot.value,
-                rows.map { it.habit }.toSet() + if (lastSync == 0L) setOf("Run", "Workout", "Android", "DSA", "SDE") else emptySet(),
-            )
-            val managedNames = rows.map { it.habit.trim().lowercase() }.toSet() +
-                if (lastSync == 0L) setOf("run", "workout", "android", "dsa", "sde") else emptySet()
+            val managedNames = rows.map { it.habit.trim().lowercase() }.toSet()
             repository.setSheetManagedHabitIds(
                 repository.snapshot.value.sheetManagedHabitIds + repository.snapshot.value.dailyHabits
                     .filter { it.name.trim().lowercase() in managedNames }.map { it.id },
@@ -181,46 +182,51 @@ class SheetSync(
 
     fun close() = client.close()
 
-    private suspend fun removeSeedWeeklyPlaceholders(snapshot: HabitSnapshot, names: Set<String>) {
-        val normalized = names.map { it.trim().lowercase() }.toSet()
-        val habitIds = snapshot.dailyHabits.filter { it.name.trim().lowercase() in normalized }.map { it.id }.toSet()
-        snapshot.weeklyPlans.filter { it.habitId in habitIds && it.detail == "Plan in OND sheet" }.forEach {
+    /** Older builds stored a placeholder weekly detail that is not a real session; drop it if present. */
+    private suspend fun removeLegacyWeeklyPlaceholders() {
+        repository.snapshot.value.weeklyPlans.filter { it.detail == LEGACY_WEEKLY_PLACEHOLDER }.forEach {
             repository.deleteWeeklyPlan(it.habitId, it.weekday)
         }
     }
 }
 
-/** The personal starter plan covers OND 2026; bare daily and custom weekly habits get rows too. */
-internal fun ondRowsFor(snapshot: HabitSnapshot): List<SheetPlanRow> {
-    val start = LocalDate(2026, 10, 1).toEpochDays()
-    val end = LocalDate(2026, 12, 31).toEpochDays()
-    return (start..end).flatMap { dayNumber ->
+private const val LEGACY_WEEKLY_PLACEHOLDER = "Plan in OND sheet"
+
+/** Inclusive range of dates whose planned sessions are mirrored to the sheet. */
+data class SheetSyncWindow(val start: LocalDate, val end: LocalDate) {
+    companion object {
+        const val DAYS_BEFORE_MONTH_START = 31
+        const val DAYS_AFTER_TODAY = 180
+
+        fun rolling(today: LocalDate): SheetSyncWindow = SheetSyncWindow(
+            start = LocalDate(today.year, today.month, 1).minus(DAYS_BEFORE_MONTH_START, DateTimeUnit.DAY),
+            end = today.plus(DAYS_AFTER_TODAY, DateTimeUnit.DAY),
+        )
+    }
+}
+
+/** Every planned session in [window], including bare daily and custom weekly habits. */
+internal fun planRowsFor(snapshot: HabitSnapshot, window: SheetSyncWindow): List<SheetPlanRow> =
+    (window.start.toEpochDays()..window.end.toEpochDays()).flatMap { dayNumber ->
         val date = LocalDate.fromEpochDays(dayNumber)
-        snapshot.plannedHabitsOn(date).mapNotNull { planned ->
-            if (planned.detail == "Plan in OND sheet") return@mapNotNull null
+        snapshot.plannedHabitsOn(date).map { planned ->
             val detail = planned.detail ?: planned.habit.name
             val done = snapshot.dailyCompletions.any { it.planId == planned.id && it.completed }
             SheetPlanRow(planned.id, date, planned.habit.name, detail, done, planned.skipped, 0)
         }
     }
-}
 
 data class SheetPlanRow(val id: String, val date: LocalDate, val habit: String, val session: String, val done: Boolean, val skip: Boolean, val sheetRow: Int, val area: String? = null, val doneColumn: String = "E")
 
 private fun rowKey(row: SheetPlanRow) = row.id
 private fun rowKey(habit: String, date: LocalDate) = "${habit.trim().lowercase()}|$date"
 
-private fun categoryFor(row: SheetPlanRow): String = when (row.habit.lowercase()) {
-    "no junk food" -> "Diet"
-    "no adult content", "no gooning" -> "Health"
-    "wake early", "sleep on time" -> "Sleep"
-    "morning routine" -> "Productivity"
-    else -> when (row.area?.lowercase()) {
-        "physical" -> "Fitness"
-        "mental" -> "Study"
-        "social" -> "Social"
-        else -> row.area.orEmpty()
-    }
+/** Maps the sheet Area column to an existing category by name (ignoring a trailing emoji), else null. */
+private fun categoryIdFor(row: SheetPlanRow, categories: List<Category>): String? {
+    val area = row.area?.trim().orEmpty()
+    if (area.isEmpty()) return null
+    return categories.firstOrNull { it.name.trim().equals(area, ignoreCase = true) }?.id
+        ?: categories.firstOrNull { it.name.substringBefore(' ').equals(area, ignoreCase = true) }?.id
 }
 
 internal fun parsePlanTable(values: JsonArray): List<SheetPlanRow> {

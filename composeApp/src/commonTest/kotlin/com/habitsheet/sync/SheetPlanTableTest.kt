@@ -64,17 +64,27 @@ class SheetPlanTableTest {
     }
 
     @Test
-    fun starterTableIncludesDailyRoutinesButNotPlaceholderRestDays() {
+    fun rollingWindowRunsFromMonthStartMinus31ToTodayPlus180() {
+        val window = SheetSyncWindow.rolling(LocalDate(2026, 10, 15))
+        assertEquals(LocalDate(2026, 8, 31), window.start)
+        assertEquals(LocalDate(2027, 4, 13), window.end)
+    }
+
+    @Test
+    fun planTableIncludesDailyRoutinesAndDatedSessionsInWindow() {
         val start = LocalDate(2026, 10, 1)
-        val run = DailyHabit("run", "Run", null, 12, 0, true, start, null, 1, 1)
+        val window = SheetSyncWindow(start, LocalDate(2026, 12, 31))
+        val run = DailyHabit("run", "Run", null, 12, 0, true, start, null, 1, 1, datedOnly = true)
         val protein = DailyHabit("protein", "Protein", null, 30, 1, true, start, null, 1, 1)
-        val rows = ondRowsFor(HabitSnapshot(
+        val rows = planRowsFor(HabitSnapshot(
             dailyHabits = listOf(run, protein),
-            weeklyPlans = listOf(WeeklyPlan("run", 2, "Plan in OND sheet", 1)),
-            dayPlans = listOf(DayPlan("run", start, "Easy 6 km", false, 1)),
-        ))
+            dayPlans = listOf(
+                DayPlan("run", start, "Easy 6 km", false, 1),
+                DayPlan("run", LocalDate(2027, 2, 1), "Outside window", false, 1),
+            ),
+        ), window)
         assertEquals(93, rows.size)
         assertEquals(92, rows.count { it.habit == "Protein" })
-        assertEquals(1, rows.count { it.habit == "Run" })
+        assertEquals(listOf("Easy 6 km"), rows.filter { it.habit == "Run" }.map { it.session })
     }
 }
