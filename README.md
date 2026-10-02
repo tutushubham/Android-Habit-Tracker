@@ -13,7 +13,7 @@ An offline-first Kotlin Multiplatform habit tracker for Android phones/tablets a
 - Previous/next/current month navigation with correct 28/29/30/31-day behavior
 - Android application target and SwiftUI-hosted iOS/iPadOS application target
 - Unit tests for the spreadsheet-derived formulas, calendar behavior, history, and actual SQLite restart persistence
-- A neutral first run: default categories only, no pre-filled habits or plans
+- A neutral first run: default categories only, no pre-filled habits or plans, plus a short one-time tutorial (shown only on installs with no habits yet)
 
 The product mapping is documented in [WORKBOOK_MAPPING.md](WORKBOOK_MAPPING.md), and the data/UI boundaries are documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 

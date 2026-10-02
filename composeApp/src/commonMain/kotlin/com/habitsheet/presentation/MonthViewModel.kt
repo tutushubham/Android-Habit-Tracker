@@ -93,7 +93,9 @@ class MonthViewModel(
     init {
         scope.launch {
             try {
-                onboardingVisible.value = !repository.isOnboardingCompleted()
+                // Existing installs that already have habits are not shown the first-run tutorial.
+                onboardingVisible.value = !repository.isOnboardingCompleted() &&
+                    repository.snapshot.value.dailyHabits.isEmpty()
             } catch (e: Exception) {
                 error.value = "Couldn't load app settings."
             }
