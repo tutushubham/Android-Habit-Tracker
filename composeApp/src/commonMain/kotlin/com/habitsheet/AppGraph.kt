@@ -6,6 +6,7 @@ import com.habitsheet.data.LocalHabitRepository
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
+import com.habitsheet.sync.SerializingTokenProvider
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.sync.SyncScheduler
@@ -18,8 +19,9 @@ class AppGraph(
     driverFactory: DriverFactory,
     tokenProvider: SheetTokenProvider,
 ) {
+    private val serializedTokens = SerializingTokenProvider(tokenProvider)
     val repository = LocalHabitRepository(driverFactory)
-    val sheetSync = SheetSync(repository, tokenProvider)
+    val sheetSync = SheetSync(repository, serializedTokens)
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val syncScheduler = SyncScheduler(syncScope) { interactive -> sheetSync.sync(interactive) }
     val monthViewModel = MonthViewModel(repository, onLocalChange = syncScheduler::markDirty)
@@ -34,6 +36,7 @@ class AppGraph(
         settingsViewModel.close()
         syncScope.cancel()
         sheetSync.close()
+        serializedTokens.close()
         repository.close()
     }
 }

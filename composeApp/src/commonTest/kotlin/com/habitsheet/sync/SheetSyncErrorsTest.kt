@@ -178,6 +178,33 @@ class SheetSyncErrorsTest {
         assertTrue(server.calls.isEmpty())
     }
 
+    @Test
+    fun platformNetworkErrorIsOfflineButOtherSignInErrorsAreAuthExpired() = runTest {
+        for ((text, expectOffline) in listOf(SheetTokenProvider.NETWORK_ERROR to true, "Google access was revoked. Sign in again." to false)) {
+            val server = FakeSheetsServer().withPlanRows(okRow)
+            val sync = SheetSync(
+                repo(),
+                object : SheetTokenProvider {
+                    override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(null, text)
+                },
+                server.client(), dates, retry,
+            )
+            sync.sync()
+            if (expectOffline) assertIs<SyncError.Offline>(sync.state.value.error) else assertIs<SyncError.AuthExpired>(sync.state.value.error)
+            assertTrue(server.calls.isEmpty())
+        }
+    }
+
+    @Test
+    fun backgroundSyncWithoutAccessIsAnAuthErrorNotASilentNoOp() = runTest {
+        val server = FakeSheetsServer().withPlanRows(okRow)
+        val sync = sync(repo(), server, token = null)
+        sync.sync(interactive = false)
+        assertIs<SyncError.AuthExpired>(sync.state.value.error)
+        assertTrue(sync.state.value.toStatus().isError)
+        assertTrue(server.calls.isEmpty())
+    }
+
     // ---- retry rules --------------------------------------------------------------------------------
 
     @Test

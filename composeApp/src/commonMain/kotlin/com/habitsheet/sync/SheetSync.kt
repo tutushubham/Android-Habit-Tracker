@@ -20,7 +20,16 @@ import kotlin.time.Clock
 
 /** Platform Google Sign-In owns tokens. The shared layer never persists credentials. */
 interface SheetTokenProvider {
+    /**
+     * Calls [completion] exactly once with `(token, null)`, `(null, null)` (user cancelled, or sign-in is needed
+     * but [interactive] is false) or `(null, errorText)`. Use [NETWORK_ERROR] as the error text when the failure
+     * is only a missing connection.
+     */
     fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit)
+
+    companion object {
+        const val NETWORK_ERROR = "network-unavailable"
+    }
 }
 
 /** [error] is set when the last attempt failed; [message] then holds its [userMessage]. */
@@ -57,7 +66,12 @@ class SheetSync(
             mutableState.value = mutableState.value.copy(busy = true, message = "Syncing…", error = null)
             val token = token(interactive)
             if (token == null) {
-                mutableState.value = mutableState.value.copy(busy = false, message = if (interactive) "Google sign-in was cancelled or failed. If you did choose an account, the app's Google OAuth client may not match this build's signing key (see SHEET_SYNC.md)." else "Sign in to sync")
+                mutableState.value = if (interactive) {
+                    mutableState.value.copy(busy = false, error = null, message = "Google sign-in was cancelled or failed. If you did choose an account, the app's Google OAuth client may not match this build's signing key (see SHEET_SYNC.md).")
+                } else {
+                    // Nobody is looking at a sign-in sheet: access was revoked, expired or never granted.
+                    SyncError.AuthExpired().let { mutableState.value.copy(busy = false, error = it, message = it.userMessage()) }
+                }
                 return
             }
             val api = SheetsApi(client, id, token, retryPolicy)
@@ -123,9 +137,18 @@ class SheetSync(
     private suspend fun token(interactive: Boolean): String? = suspendCancellableCoroutine { continuation ->
         tokenProvider.requestToken(interactive) { value, error ->
             if (continuation.isActive) {
-                if (error != null) continuation.resumeWithException(SyncError.AuthExpired(error)) else continuation.resume(value)
+                if (error != null) {
+                    continuation.resumeWithException(
+                        if (error == SheetTokenProvider.NETWORK_ERROR) SyncError.Offline() else SyncError.AuthExpired(error),
+                    )
+                } else continuation.resume(value)
             }
         }
+    }
+
+    /** Forgets the last result (used by Disconnect); local data and the repository are untouched. */
+    fun reset() {
+        mutableState.value = SheetSyncState()
     }
 
     fun close() = client.close()

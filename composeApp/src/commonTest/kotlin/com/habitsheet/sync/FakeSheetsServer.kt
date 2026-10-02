@@ -59,6 +59,10 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     /** Row 0 is the header, exactly as stored in the sheet. */
     val planValues = mutableListOf<MutableList<JsonElement>>()
     val calls = mutableListOf<RecordedCall>()
+
+    /** Writes that targeted anything but the Plan tab. The fake rejects them (400); tests assert this stays empty. */
+    val violations = mutableListOf<String>()
+    private var planSheetId = -1
     private val faults = mutableListOf<Fault>()
     private var nextSheetId = 100
 
@@ -67,6 +71,7 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     /** Pre-populates an existing Plan tab. */
     fun withPlanTab(header: List<Any>, vararg rows: List<Any>): FakeSheetsServer {
         hasPlanTab = true
+        planSheetId = nextSheetId++
         planValues.clear()
         planValues += header.map(::toCell).toMutableList()
         rows.forEach { row -> planValues += row.map(::toCell).toMutableList() }
@@ -121,6 +126,10 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
                 }
             }
         }
+        writeViolation(call)?.let { reason ->
+            violations += reason
+            return json(buildJsonObject { put("error", reason) }, HttpStatusCode.BadRequest)
+        }
         return when {
             call.isMetadata -> json(buildJsonObject {
                 put("sheets", buildJsonArray {
@@ -130,10 +139,14 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
                 })
             })
             call.isAddSheet -> {
-                if (hasPlanTab) return json(buildJsonObject { put("error", "duplicate") }, HttpStatusCode.BadRequest)
+                // Google rejects duplicate tab names case-insensitively.
+                if (hasPlanTab || otherTabs.any { it.equals("Plan", ignoreCase = true) }) {
+                    return json(buildJsonObject { put("error", "duplicate") }, HttpStatusCode.BadRequest)
+                }
                 hasPlanTab = true
                 planValues.clear()
                 val id = nextSheetId++
+                planSheetId = id
                 json(buildJsonObject {
                     put("replies", buildJsonArray {
                         add(buildJsonObject {
@@ -173,6 +186,22 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
             }
             else -> json(buildJsonObject { put("error", "unmodelled $call") }, HttpStatusCode.NotFound)
         }
+    }
+
+    /** Null if the write only touches the Plan tab; otherwise why it does not. */
+    private fun writeViolation(call: RecordedCall): String? = when {
+        !call.isWrite -> null
+        call.isAddSheet -> if (Regex(""""title"\s*:\s*"Plan"""").containsMatchIn(call.body)) null else "addSheet with a title other than Plan"
+        call.isFormat -> {
+            val ids = Regex(""""sheetId"\s*:\s*(\d+)""").findAll(call.body).map { it.groupValues[1].toInt() }.toSet()
+            if (ids.isNotEmpty() && ids.all { it == planSheetId }) null else "format request touches sheetIds $ids, Plan is $planSheetId"
+        }
+        call.isPut || call.isAppend -> if (call.path.startsWith("/values/Plan!")) null else "write to ${call.path}"
+        call.isDoneWrite -> {
+            val ranges = Json.parseToJsonElement(call.body).jsonObject["data"]!!.jsonArray.map { it.jsonObject["range"]!!.jsonPrimitive.content }
+            if (ranges.all { it.startsWith("Plan!") }) null else "done write to $ranges"
+        }
+        else -> "unmodelled write ${call}"
     }
 
     private fun valuesOf(body: String): List<List<JsonElement>> =

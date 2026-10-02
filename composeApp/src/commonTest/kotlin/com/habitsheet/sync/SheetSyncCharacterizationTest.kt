@@ -578,7 +578,7 @@ class SheetSyncCharacterizationTest {
         val sync = sync(repo, server, Token(null))
 
         sync.sync(interactive = false)
-        assertEquals("Sign in to sync", sync.state.value.message)
+        assertEquals("Google sign-in needed. Tap Connect & sync to sign in again.", sync.state.value.message)
         sync.sync(interactive = true)
         assertTrue(sync.state.value.message.startsWith("Google sign-in was cancelled or failed."))
         assertTrue(server.calls.isEmpty())

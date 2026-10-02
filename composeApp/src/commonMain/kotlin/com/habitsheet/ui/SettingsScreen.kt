@@ -61,6 +61,9 @@ fun SettingsScreen(
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedButton(onClick = { viewModel.saveSheetUrl(sheetDraft) }) { Text("Save link") }
+                        if (sheetUrl.isNotBlank()) {
+                            OutlinedButton(onClick = viewModel::disconnect, enabled = !syncState.busy) { Text("Disconnect") }
+                        }
                         Button(onClick = viewModel::syncNow, enabled = sheetUrl.isNotBlank() && !syncState.busy) {
                             Text(if (syncState.busy) "Syncing…" else "Connect & sync")
                         }

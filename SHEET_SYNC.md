@@ -34,6 +34,47 @@ Every check-off made on this device is marked *pending upload* in the local data
 
 No device clocks are compared. If two devices change the same check before either syncs, whoever syncs last wins; there is no conflict history. Linking a different sheet discards pending marks (the new sheet is authoritative). Restoring a backup also starts with nothing pending. Upload failures leave the mark in place so the next sync retries.
 
+## Which habit does a row belong to? (identity)
+
+The `ID` column identifies a *session*. The habit it belongs to is found like this:
+
+1. If the `ID` is already known on this device, the row belongs to **that session's habit**, whatever the `Habit` text says.
+2. Otherwise the habit is matched by name (ignoring case and spaces).
+3. Otherwise a new habit is created from the row (dated sessions only, with no weekly plan).
+
+What that means in practice:
+
+- **Rename a habit in the sheet** by changing the `Habit` text on *all* of its rows to the same new name: the app renames its habit and keeps its history. If you change only some rows, those sessions *move* to the habit with the new name (created if it does not exist).
+- **Two habits with the same name on the device** no longer stop syncing. Rows with a known `ID` sync normally; a *new* row whose name matches both is skipped with a note ("1 row skipped: ... rename one"). Rename one habit and the row is picked up on the next sync.
+- **Names are controlled by the sheet.** Renaming a sheet-managed habit inside the app is undone on the next sync, because the app does not write names back. Rename it in the sheet instead.
+- A typo in the `Habit` cell of a *new* row creates a new habit; fix the text and delete the stray habit in the app.
+- If the `Plan` tab has no sessions at all but an earlier sync had imported some, the app keeps its local sessions and says so instead of deleting everything. Restore the rows (or **Disconnect**) to continue.
+
+## What the app will and will not write
+
+- It only ever writes to a tab named exactly `Plan`: it creates the tab if it does not exist, rewrites it only when it is the first upload to a brand-new/blank tab, and otherwise only appends rows for habits the sheet does not know and updates `Done` cells of rows it recognises.
+- If a tab called `Plan` exists but its header row is not the six (or eight) documented columns in the documented order, or a row is malformed (bad date, missing ID/Habit/Session, duplicate ID, `Done`/`Skip` not a checkbox or TRUE/FALSE), the app **does not modify it**. It shows what is wrong (including the row number) and waits for you to fix the sheet.
+- All other tabs (Food, Workout, Marathon Plan, and so on) are never read for data or written. A different tab whose name only differs by capitalisation (for example `plan`) makes Google reject creating `Plan`; the sync then fails without touching either tab.
+- Local changes are applied to the device database in one transaction, so a failure part-way never leaves a half-synced plan.
+
+## Messages, errors and offline behaviour
+
+| Situation | What you see | What the app does |
+| --- | --- | --- |
+| No connection, DNS failure or timeouts | "Will sync when online." (not shown as an error) | Retries a few times with backoff; your check-offs stay marked pending and upload on the next sync (next check-off, app foreground, or **Connect & sync**) |
+| Google session ended, access revoked, sign-in cancelled | "Google sign-in needed. Tap Connect & sync to sign in again." | No data is changed; sign in again |
+| 403, no edit access | "No access to this sheet. Use a Google account that can edit it." | Not retried |
+| 404 | "Spreadsheet not found. Check the link and the Google account." | Not retried |
+| 429 / quota | "Google is limiting requests. Sync will retry shortly." | Waits as long as Google asks (`Retry-After`, up to 30 s per wait) between up to 4 attempts, otherwise stops |
+| `Plan` tab problem | "Plan tab, row N: ... Fix the sheet, then sync again." | Nothing is written |
+| Anything else (for example Google 5xx after retries) | "Sync failed. Try again in a moment." | Local data unchanged |
+
+Network requests have connect (15 s), socket (30 s) and total (45 s) timeouts. Retries use exponential backoff with jitter. Requests that could be applied twice (appending rows, creating the tab) are not retried after an ambiguous failure, so rows are never duplicated by a retry. Sign-in requests are queued one at a time and give up after three minutes if the Google sign-in screen is abandoned.
+
+## Disconnect
+
+**Settings → Plan sync → Disconnect** unlinks the spreadsheet, forgets the last-sync state, sync keys and pending marks, and clears the status line. Habits, plans and check-offs already on the device are **kept**; the in-app Plan screen becomes editable again. To stop the app's Google access completely, remove it in your Google Account under **Security → Third-party access**. Linking the same or another sheet later starts a fresh sync where that sheet is authoritative.
+
 ## Google Cloud setup
 
 1. In your Google Cloud project, enable the **Google Sheets API** and configure the OAuth consent screen. While it is in Testing, add the Google account used on your devices as a test user.

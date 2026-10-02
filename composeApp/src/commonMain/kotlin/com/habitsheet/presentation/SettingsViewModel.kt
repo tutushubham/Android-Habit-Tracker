@@ -79,6 +79,20 @@ class SettingsViewModel(
         }
     }
 
+    /** Unlinks the sheet and forgets sync state. Habits, plans and check-offs on this device are kept. */
+    fun disconnect() {
+        scope.launch(ioDispatcher) {
+            try {
+                repository.setSheetUrl("")
+                _sheetUrl.value = ""
+                sheetSync?.reset()
+                _sheetMessage.value = "Disconnected. Your habits and check-offs stay on this device."
+            } catch (_: Exception) {
+                _sheetMessage.value = "Could not disconnect. Please try again."
+            }
+        }
+    }
+
     fun syncNow() {
         val service = sheetSync ?: return
         scope.launch(ioDispatcher) { service.sync(interactive = true) }
