@@ -21,43 +21,6 @@ import kotlin.test.assertTrue
 
 class LocalHabitRepositoryPersistenceTest {
     @Test
-    fun ondSeedReusesWorkoutAndPreservesCompletion() = runTest {
-        val databaseFile = Files.createTempFile("habit-sheet-ond-seed", ".db")
-        val url = "jdbc:sqlite:${databaseFile.toAbsolutePath()}"
-        val bootstrap = JdbcSqliteDriver(url)
-        HabitsDatabase.Schema.create(bootstrap)
-        bootstrap.close()
-        try {
-            val first = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
-            first.saveDailyHabit(DailyHabit(
-                id = "existing-workout", name = "Workout", categoryId = "category-4",
-                monthlyGoal = 20, displayOrder = 0, active = true,
-                createdOn = LocalDate(2026, 9, 1), createdAtEpochMillis = 1, updatedAtEpochMillis = 1,
-            ))
-            val completion = DailyHabitCompletion("existing-workout", LocalDate(2026, 9, 30), true, 2)
-            first.setDailyCompletion(completion)
-            first.close()
-
-            val seeded = LocalHabitRepository({ JdbcSqliteDriver(url) })
-            val snapshot = seeded.snapshot.value
-            assertEquals(1, snapshot.dailyHabits.count { it.name == "Workout" })
-            assertEquals(completion, snapshot.dailyCompletions.single())
-            assertTrue(snapshot.dailyHabits.any { it.name == "Run" })
-            assertTrue(snapshot.dailyHabits.any { it.name == "Android" })
-            assertTrue(snapshot.dayPlans.any { it.date == LocalDate(2026, 10, 18) && it.detail.contains("Half marathon") })
-            assertTrue(snapshot.dayPlans.any { it.date == LocalDate(2026, 10, 15) && it.skipped && it.habitId == "ond-2026-run" })
-            val planCount = snapshot.dayPlans.size
-            seeded.close()
-
-            val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) })
-            assertEquals(planCount, reopened.snapshot.value.dayPlans.size)
-            reopened.close()
-        } finally {
-            Files.deleteIfExists(databaseFile)
-        }
-    }
-
-    @Test
     fun completionSurvivesRepositoryRestart() = runTest {
         val databaseFile = Files.createTempFile("habit-sheet-persistence", ".db")
         val url = "jdbc:sqlite:${databaseFile.toAbsolutePath()}"
@@ -66,7 +29,7 @@ class LocalHabitRepositoryPersistenceTest {
         bootstrap.close()
 
         try {
-            val first = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+            val first = LocalHabitRepository({ JdbcSqliteDriver(url) })
             val habit = DailyHabit(
                 id = "read",
                 name = "Read",
@@ -92,7 +55,7 @@ class LocalHabitRepositoryPersistenceTest {
             first.saveDayPlan(dayPlan)
             first.close()
 
-            val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+            val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) })
             assertEquals(listOf(completion), reopened.snapshot.value.dailyCompletions)
             assertEquals(listOf(weeklyPlan), reopened.snapshot.value.weeklyPlans)
             assertEquals(listOf(dayPlan), reopened.snapshot.value.dayPlans)
@@ -145,12 +108,12 @@ class LocalHabitRepositoryPersistenceTest {
         )
 
         try {
-            val repository = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+            val repository = LocalHabitRepository({ JdbcSqliteDriver(url) })
             repository.restoreFromSnapshot(backup)
             assertEquals(backup, repository.snapshot.value)
             repository.close()
 
-            val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+            val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) })
             assertEquals(backup, reopened.snapshot.value)
             reopened.close()
         } finally {
@@ -167,7 +130,7 @@ class LocalHabitRepositoryPersistenceTest {
         bootstrap.close()
 
         try {
-            val repository = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+            val repository = LocalHabitRepository({ JdbcSqliteDriver(url) })
             val existing = DailyHabit(
                 id = "read",
                 name = "Read",

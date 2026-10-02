@@ -28,8 +28,7 @@ class SeedRemovalCharacterizationTest {
 
     @Test
     fun freshDatabaseWithoutSeedingHasOnlyDefaultCategories() = withDatabase { url ->
-        // Step 3 of P0-A removes the seedOndPlan parameter; drop the argument then.
-        val repository = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+        val repository = LocalHabitRepository({ JdbcSqliteDriver(url) })
         val snapshot = repository.snapshot.value
         assertEquals(DefaultData.categories(0).map { it.id to it.name }, snapshot.categories.map { it.id to it.name })
         assertTrue(snapshot.dailyHabits.isEmpty())
@@ -44,7 +43,7 @@ class SeedRemovalCharacterizationTest {
     @Test
     fun alreadySeededDatabaseIsUntouchedByRepositoryInit() = withDatabase { url ->
         // Build an install that looks like one which already ran the OND seed.
-        val first = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false)
+        val first = LocalHabitRepository({ JdbcSqliteDriver(url) })
         // "Run" is a seed-era name deliberately left datedOnly=false to prove it is not rewritten.
         val run = DailyHabit(
             id = "ond-2026-run", name = "Run", categoryId = "category-4", monthlyGoal = 12,
@@ -70,10 +69,9 @@ class SeedRemovalCharacterizationTest {
             driver.close()
         }
 
-        val before = LocalHabitRepository({ JdbcSqliteDriver(url) }, seedOndPlan = false).run {
+        val before = LocalHabitRepository({ JdbcSqliteDriver(url) }).run {
             snapshot.value.also { close() }
         }
-        // Default constructor: runs whatever start-up logic exists today and after P0-A.
         val after = LocalHabitRepository({ JdbcSqliteDriver(url) }).run {
             snapshot.value.also { close() }
         }

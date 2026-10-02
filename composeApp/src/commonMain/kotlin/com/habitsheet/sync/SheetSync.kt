@@ -1,7 +1,6 @@
 package com.habitsheet.sync
 
 import com.habitsheet.data.DefaultIdGenerator
-import com.habitsheet.data.OndSeedData
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -108,14 +107,7 @@ class SheetSync(
             val pending = mutableListOf<Triple<Int, String, Boolean>>()
             val keys = rows.map(::rowKey).toSet()
             // A deleted sheet row deletes only a row previously imported from this sheet.
-            val seedIds = OndSeedData.sessions.map { it.id }.toSet()
-            val firstSyncSeedKeys = if (lastSync == 0L) snapshot.dayPlans.filter { plan ->
-                plan.id in seedIds || (plan.id == "${plan.habitId}|${plan.date}" &&
-                    snapshot.dailyHabits.firstOrNull { it.id == plan.habitId }?.name?.lowercase() in
-                    setOf("run", "workout", "android", "dsa", "sde") && plan.date.year == 2026 &&
-                    (plan.date.month.ordinal + 1) in 10..12)
-            }.map { it.id }.toSet() else emptySet()
-            for (key in (oldKeys + firstSyncSeedKeys) - keys) {
+            for (key in oldKeys - keys) {
                 val old = snapshot.dayPlans.firstOrNull { plan ->
                     plan.id == key || snapshot.dailyHabits.firstOrNull { it.id == plan.habitId }
                         ?.let { rowKey(it.name, plan.date) == key } == true

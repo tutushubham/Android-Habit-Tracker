@@ -22,7 +22,6 @@ import kotlin.time.Clock
 
 class LocalHabitRepository(
     driverFactory: DriverFactory,
-    seedOndPlan: Boolean = true,
 ) : HabitRepository {
     private val driver = driverFactory.createDriver()
     private val database: HabitsDatabase
@@ -34,9 +33,6 @@ class LocalHabitRepository(
         driver.execute(null, "PRAGMA foreign_keys = ON", 0)
         database = HabitsDatabase(driver)
         seedDefaultsIfEmpty()
-        if (seedOndPlan) seedOndPlanIfNeeded()
-        if (seedOndPlan) seedWinterArcRoutinesIfNeeded()
-        if (seedOndPlan) ensureWinterArcHabitsAreDatedOnly()
         loadSnapshot()
     }
 
@@ -475,141 +471,6 @@ class LocalHabitRepository(
                 }
             }
             database.habitsQueries.setSetting("defaults_seeded", 1L)
-        }
-    }
-
-    /** Add the OND starter plan once, preserving existing habits, edits and completions. */
-    private fun seedOndPlanIfNeeded() {
-        if (database.habitsQueries.getSetting("ond_2026_seeded").executeAsOneOrNull() == 1L) return
-        val now = Clock.System.now().toEpochMilliseconds()
-        val templates = listOf(
-            Triple("Run", "category-4", 12),
-            Triple("Workout", "category-4", 12),
-            Triple("Android", "category-10", 12),
-            Triple("DSA", "category-10", 12),
-            Triple("SDE", "category-10", 8),
-            Triple("Mobility", "category-4", 8),
-            Triple("Wake Early", "category-8", 30),
-            Triple("Morning Routine", "category-7", 30),
-            Triple("Study", "category-10", 30),
-            Triple("Sleep on Time", "category-8", 30),
-            Triple("No Junk Food", "category-2", 30),
-            Triple("No Adult Content", "category-5", 30),
-            Triple("No Gooning", "category-5", 30),
-        )
-        val weekdays = mapOf(
-            "Run" to listOf(2, 4, 7),
-            "Workout" to listOf(1, 3, 5),
-            "Android" to listOf(1, 3, 5),
-            "DSA" to listOf(2, 4, 6),
-            "SDE" to listOf(5, 7),
-        )
-        database.transaction {
-            val habits = database.habitsQueries.selectAllDailyHabits().executeAsList()
-            val ids = templates.associate { (name, categoryId, monthlyGoal) ->
-                val existing = habits.firstOrNull { it.name.equals(name, ignoreCase = true) }
-                val id = existing?.id ?: "ond-2026-${name.lowercase()}"
-                if (existing == null) {
-                    database.habitsQueries.insertDailyHabit(
-                        id = id,
-                        name = name,
-                        category_id = categoryId,
-                        monthly_goal = monthlyGoal.toLong(),
-                        display_order = (habits.size + templates.indexOf(Triple(name, categoryId, monthlyGoal))).toLong(),
-                        active = 1L,
-                        created_on = "2026-10-01",
-                        archived_on = null,
-                        created_at = now,
-                        updated_at = now,
-                        kind = if (name.startsWith("No ")) HabitKind.AVOIDANCE.name else HabitKind.ACTION.name,
-                        // Plan-driven: only appear on weekly/dated sessions, never as silent daily checkboxes.
-                        dated_only = 1L,
-                    )
-                }
-                name to id
-            }
-            val existingWeekly = database.habitsQueries.selectAllWeeklyPlans().executeAsList()
-                .map { it.habit_id to it.weekday.toInt() }.toSet()
-            weekdays.forEach { (name, days) ->
-                val id = ids.getValue(name)
-                if (existingWeekly.none { it.first == id }) {
-                    days.forEach { weekday ->
-                        database.habitsQueries.upsertWeeklyPlan(id, weekday.toLong(), "Plan in OND sheet", now)
-                    }
-                }
-            }
-            val existingDays = database.habitsQueries.selectAllDayPlans().executeAsList()
-                .map { it.id }.toSet()
-            OndSeedData.sessions.forEach { session ->
-                val id = ids.getValue(session.habit)
-                if (session.id !in existingDays) {
-                    database.habitsQueries.upsertDayPlan(session.id, id, session.date, session.detail, session.skipped.toDbLong(), now)
-                }
-            }
-            database.habitsQueries.setSetting("ond_2026_seeded", 1L)
-        }
-    }
-
-    /** Add new Winter Arc routines to existing installations without re-seeding edited sessions. */
-    private fun seedWinterArcRoutinesIfNeeded() {
-        if (database.habitsQueries.getSetting("winter_arc_routines_seeded").executeAsOneOrNull() == 1L) return
-        val now = Clock.System.now().toEpochMilliseconds()
-        val routineNames = setOf("Mobility", "Wake Early", "Morning Routine", "Study", "Sleep on Time", "No Junk Food", "No Adult Content", "No Gooning")
-        val categories = mapOf(
-            "Mobility" to "category-4", "Wake Early" to "category-8", "Morning Routine" to "category-7",
-            "Study" to "category-10", "Sleep on Time" to "category-8", "No Junk Food" to "category-2",
-            "No Adult Content" to "category-5", "No Gooning" to "category-5",
-        )
-        database.transaction {
-            val existing = database.habitsQueries.selectAllDailyHabits().executeAsList()
-            val ids = routineNames.associateWith { name ->
-                val current = existing.firstOrNull { it.name.equals(name, ignoreCase = true) }
-                val id = current?.id ?: "ond-2026-${name.lowercase().replace(' ', '-')}"
-                if (current == null) database.habitsQueries.insertDailyHabit(
-                    id = id, name = name, category_id = categories[name], monthly_goal = 30L,
-                    display_order = (existing.size + routineNames.indexOf(name)).toLong(), active = 1L,
-                    created_on = "2026-10-01", archived_on = null, created_at = now, updated_at = now,
-                    kind = if (name.startsWith("No ")) HabitKind.AVOIDANCE.name else HabitKind.ACTION.name,
-                    dated_only = 1L,
-                )
-                id
-            }
-            val oldRows = database.habitsQueries.selectAllDayPlans().executeAsList().map { it.id }.toSet()
-            OndSeedData.sessions.filter { it.habit in routineNames && it.id !in oldRows }.forEach { session ->
-                database.habitsQueries.upsertDayPlan(session.id, ids.getValue(session.habit), session.date,
-                    session.detail, session.skipped.toDbLong(), now)
-            }
-            database.habitsQueries.setSetting("winter_arc_routines_seeded", 1L)
-        }
-    }
-
-    /**
-     * Existing installs seeded routines without datedOnly, so unplanned days still showed
-     * actionable checkboxes. Mark Winter Arc habit names as plan-driven once.
-     */
-    private fun ensureWinterArcHabitsAreDatedOnly() {
-        if (database.habitsQueries.getSetting("winter_arc_dated_only").executeAsOneOrNull() == 1L) return
-        val names = OndSeedData.sessions.map { it.habit.trim().lowercase() }.toSet()
-        val now = Clock.System.now().toEpochMilliseconds()
-        database.transaction {
-            database.habitsQueries.selectAllDailyHabits().executeAsList()
-                .filter { it.name.trim().lowercase() in names && it.dated_only == 0L }
-                .forEach { row ->
-                    database.habitsQueries.updateDailyHabit(
-                        name = row.name,
-                        category_id = row.category_id,
-                        monthly_goal = row.monthly_goal,
-                        display_order = row.display_order,
-                        active = row.active,
-                        created_on = row.created_on,
-                        archived_on = row.archived_on,
-                        updated_at = now,
-                        kind = row.kind,
-                        dated_only = 1L,
-                        id = row.id,
-                    )
-                }
-            database.habitsQueries.setSetting("winter_arc_dated_only", 1L)
         }
     }
 
