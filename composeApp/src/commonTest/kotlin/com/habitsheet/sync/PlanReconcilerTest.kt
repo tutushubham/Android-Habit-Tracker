@@ -1,6 +1,8 @@
 package com.habitsheet.sync
 
 import com.habitsheet.domain.model.Category
+import com.habitsheet.domain.model.CompletionAck
+import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -30,8 +32,7 @@ class PlanReconcilerTest {
         snapshot: HabitSnapshot,
         rows: List<SheetPlanRow>,
         oldKeys: Set<String> = emptySet(),
-        lastSync: Long = 0,
-    ) = PlanReconciler.reconcile(snapshot, rows, oldKeys, lastSync, now) { "new-${++ids}" }
+    ) = PlanReconciler.reconcile(snapshot, rows, oldKeys, now) { "new-${++ids}" }
 
     private val runSnapshot = HabitSnapshot(
         dailyHabits = listOf(habit("run", "Run")),
@@ -169,37 +170,44 @@ class PlanReconcilerTest {
         assertTrue(result.warnings.isEmpty() && result.changes.planIdsToDelete.isEmpty())
     }
 
+    private fun pending(snapshot: HabitSnapshot) =
+        snapshot.copy(pendingCompletions = snapshot.dailyCompletions.map { CompletionKey(it.planId, it.date) }.toSet())
+
     @Test
-    fun sheetDoneOverwritesLocalWhenNeverSyncedOrLocalIsOlder() {
-        val completion = DailyHabitCompletion("run", day, true, 50, "run-1")
+    fun sheetValueWinsOverNonPendingLocalCheckEvenIfLocalIsNewer() {
+        val completion = DailyHabitCompletion("run", day, true, 9_999, "run-1")
         val snapshot = runSnapshot.copy(dailyCompletions = listOf(completion))
-        val remote = listOf(row("run-1", day, "Run", "Easy", done = false))
-
-        val never = reconcile(snapshot, remote, lastSync = 0)
-        assertEquals(listOf(DailyHabitCompletion("run", day, false, now, "run-1")), never.changes.completionsToSave)
-        assertTrue(never.doneUploads.isEmpty())
-
-        val older = reconcile(snapshot, remote, lastSync = 100)
-        assertEquals(1, older.changes.completionsToSave.size)
-        assertTrue(older.doneUploads.isEmpty())
+        val result = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", done = false)))
+        assertEquals(listOf(DailyHabitCompletion("run", day, false, now, "run-1")), result.changes.completionsToSave)
+        assertTrue(result.doneUploads.isEmpty() && result.changes.completionsToAcknowledge.isEmpty())
     }
 
     @Test
-    fun localCheckNewerThanLastSyncIsUploadedToTheRightColumnAndRow() {
-        val snapshot = runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1")))
-        val six = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", sheetRow = 7)), lastSync = 100)
-        assertEquals(listOf(DoneUpload(7, "E", true)), six.doneUploads)
+    fun pendingLocalCheckIsUploadedToTheRightColumnAndRowWithAnAck() {
+        val snapshot = pending(runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))))
+        val ack = CompletionAck("run-1", day, 150)
+        val six = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", sheetRow = 7)))
+        assertEquals(listOf(DoneUpload(7, "E", true, ack)), six.doneUploads)
+        assertEquals(listOf(ack), six.changes.completionsToAcknowledge)
         assertTrue(six.changes.completionsToSave.isEmpty())
 
-        val eight = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", sheetRow = 7, doneColumn = "F")), lastSync = 100)
-        assertEquals(listOf(DoneUpload(7, "F", true)), eight.doneUploads)
+        val eight = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", sheetRow = 7, doneColumn = "F")))
+        assertEquals(listOf(DoneUpload(7, "F", true, ack)), eight.doneUploads)
     }
 
     @Test
-    fun matchingNewerLocalCheckNeedsNeitherUploadNorLocalWrite() {
-        val snapshot = runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1")))
-        val result = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", done = true)), lastSync = 100)
+    fun pendingLocalCheckAlreadyMatchingTheSheetOnlyClearsItsFlag() {
+        val snapshot = pending(runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))))
+        val result = reconcile(snapshot, listOf(row("run-1", day, "Run", "Easy", done = true)))
         assertTrue(result.doneUploads.isEmpty() && result.changes.completionsToSave.isEmpty())
+        assertEquals(listOf(CompletionAck("run-1", day, 150)), result.changes.completionsToAcknowledge)
+    }
+
+    @Test
+    fun pendingFlagDoesNotDependOnAnyClock() {
+        // An "old" updatedAt (1) that is pending still wins; a "new" one that is not pending does not.
+        val oldButPending = pending(runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 1, "run-1"))))
+        assertEquals(1, reconcile(oldButPending, listOf(row("run-1", day, "Run", "Easy"))).doneUploads.size)
     }
 
     @Test

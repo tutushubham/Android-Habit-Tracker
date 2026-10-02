@@ -18,7 +18,21 @@ One row per planned session, with these six headers in row 1:
 - An optional eight-column layout adds `Area` and `Source` columns: `ID,Date,Area,Habit,Session,Done,Skip,Source`. The app accepts this layout when used as the `Plan` tab and writes check-offs to its `Done` column. `Area` is matched to an existing category by name; otherwise the habit is uncategorized. The app does not import `.xlsx` files directly; upload one to Google Drive and open it as a Google Sheet first.
 - The app leaves columns outside the supported table and all other tabs alone. Do not reorder the headers.
 
-When a Sheet is linked, the in-app Plan screen is read-only and offers **Open Google Sheet**. This prevents local edits that would be overwritten by the Sheet. The app writes pending local `Done` changes to their matching Sheet IDs, then pulls the latest plan and other completion values. Daily habits without a `Plan` row are given one row per day inside the sync window; habits outside it stay local-only until rows are added. On a brand-new device's first connection, existing Sheet values win. If two devices edit the same check-off before either syncs, the last upload can win; this minimal client does not offer conflict history.
+When a Sheet is linked, the in-app Plan screen is read-only and offers **Open Google Sheet**. This prevents local edits that would be overwritten by the Sheet. The app writes pending local `Done` changes to their matching Sheet IDs, then pulls the latest plan and other completion values (see the conflict rule below). Daily habits without a `Plan` row are given one row per day inside the sync window; habits outside it stay local-only until rows are added. On a brand-new device's first connection, existing Sheet values win.
+
+## When syncs run
+
+Check-offs are saved locally at once. A burst of taps triggers **one** sync, about 2.5 seconds after the last tap (the app waits for a quiet moment). Taps made while a sync is running produce exactly one follow-up sync. The app also syncs when it comes to the foreground, and **Connect & sync / Sync now** syncs immediately.
+
+## Conflict rule (check-offs)
+
+Every check-off made on this device is marked *pending upload* in the local database until its value has been written to the sheet. On each sync, for every sheet row:
+
+1. **Pending local check** whose value differs from the sheet: the local value is written to the sheet, then the pending mark is cleared. If the sheet already holds the same value, the mark is simply cleared.
+2. **No pending mark:** the sheet's value is applied locally.
+3. If you tap a check *while* a sync is running, your newer tap stays pending and is uploaded by the next sync; the sheet value read earlier never overwrites it.
+
+No device clocks are compared. If two devices change the same check before either syncs, whoever syncs last wins; there is no conflict history. Linking a different sheet discards pending marks (the new sheet is authoritative). Restoring a backup also starts with nothing pending. Upload failures leave the mark in place so the next sync retries.
 
 ## Google Cloud setup
 

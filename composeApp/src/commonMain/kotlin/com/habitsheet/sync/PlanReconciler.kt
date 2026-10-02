@@ -1,6 +1,8 @@
 package com.habitsheet.sync
 
 import com.habitsheet.domain.model.Category
+import com.habitsheet.domain.model.CompletionAck
+import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -8,11 +10,19 @@ import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetSyncChanges
 
-/** A Done checkbox to write back to the sheet: [column] is `E` (6-column layout) or `F` (8-column layout). */
-internal data class DoneUpload(val sheetRow: Int, val column: String, val done: Boolean)
+/**
+ * A Done checkbox to write back to the sheet: [column] is `E` (6-column layout) or `F` (8-column layout).
+ * [ack] identifies the exact local value being uploaded so its pending flag can be cleared afterwards.
+ */
+internal data class DoneUpload(val sheetRow: Int, val column: String, val done: Boolean, val ack: CompletionAck)
 
 /** Everything a first upload to a brand-new `Plan` tab needs to know. */
-internal data class InitialUpload(val rows: List<SheetPlanRow>, val syncedKeys: Set<String>, val managedHabitIds: Set<String>)
+internal data class InitialUpload(
+    val rows: List<SheetPlanRow>,
+    val syncedKeys: Set<String>,
+    val managedHabitIds: Set<String>,
+    val acknowledged: List<CompletionAck>,
+)
 
 /** A local habit renamed to the spelling used by the sheet (sheet wins). */
 internal data class HabitRename(val habitId: String, val from: String, val to: String)
@@ -49,8 +59,12 @@ internal object PlanReconciler {
     /** Rows for a brand-new tab: every planned local session in [window]. */
     fun initialUpload(snapshot: HabitSnapshot, window: SheetSyncWindow): InitialUpload {
         val rows = planRowsFor(snapshot, window)
+        val uploadedIds = rows.map { it.id }.toSet()
         return InitialUpload(
             rows = rows,
+            acknowledged = snapshot.dailyCompletions
+                .filter { CompletionKey(it.planId, it.date) in snapshot.pendingCompletions && it.planId in uploadedIds }
+                .map { CompletionAck(it.planId, it.date, it.updatedAtEpochMillis) },
             syncedKeys = rows.map(::rowKey).toSet(),
             managedHabitIds = snapshot.sheetManagedHabitIds + rows.mapNotNull { row ->
                 snapshot.dailyHabits.firstOrNull { it.name.equals(row.habit, ignoreCase = true) }?.id
@@ -79,13 +93,11 @@ internal object PlanReconciler {
      * habit is found by normalised name, otherwise created. See docs/production-plan/notes/p0-b-identity.md.
      *
      * @param oldKeys row keys imported by the previous sync; only these may be deleted locally when the row vanishes
-     * @param lastSync epoch millis of the previous successful sync (0 = never, sheet wins everywhere)
      */
     fun reconcile(
         snapshot: HabitSnapshot,
         remoteRows: List<SheetPlanRow>,
         oldKeys: Set<String>,
-        lastSync: Long,
         nowMillis: Long,
         newId: () -> String,
     ): ReconcileResult {
@@ -133,6 +145,7 @@ internal object PlanReconciler {
         val plans = mutableListOf<DayPlan>()
         val completions = mutableListOf<DailyHabitCompletion>()
         val uploads = mutableListOf<DoneUpload>()
+        val acks = mutableListOf<CompletionAck>()
         val skippedByName = linkedMapOf<String, Int>()
         for (row in remoteRows) {
             val key = normalize(row.habit)
@@ -168,8 +181,13 @@ internal object PlanReconciler {
                 plans += DayPlan(habit.id, row.date, row.session, row.skip, nowMillis, row.id)
             }
             val localDone = snapshot.dailyCompletions.firstOrNull { it.planId == row.id && it.date == row.date }
-            if (lastSync > 0 && localDone != null && localDone.updatedAtEpochMillis > lastSync && localDone.completed != row.done) {
-                uploads += DoneUpload(row.sheetRow, row.doneColumn, localDone.completed)
+            // Conflict rule: a local check that has not reached the sheet yet (explicit flag) is uploaded;
+            // anything else takes the sheet's value. Equal values just clear the flag.
+            val pending = localDone != null && CompletionKey(row.id, row.date) in snapshot.pendingCompletions
+            if (pending && localDone != null) {
+                val ack = CompletionAck(row.id, row.date, localDone.updatedAtEpochMillis)
+                if (localDone.completed != row.done) uploads += DoneUpload(row.sheetRow, row.doneColumn, localDone.completed, ack)
+                else acks += ack
             } else if (localDone?.completed != row.done) {
                 completions += DailyHabitCompletion(habit.id, row.date, row.done, nowMillis, row.id)
             }
@@ -183,6 +201,7 @@ internal object PlanReconciler {
                 habitsToSave = saved.values.toList(),
                 plansToSave = plans,
                 completionsToSave = completions,
+                completionsToAcknowledge = acks + uploads.map { it.ack },
                 managedHabitIds = snapshot.sheetManagedHabitIds +
                     habitsById.values.filter { normalize(it.name) in managedNames }.map { it.id },
             ),

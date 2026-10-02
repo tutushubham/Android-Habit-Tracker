@@ -74,7 +74,6 @@ class SheetSync(
                 snapshot = snapshot,
                 remoteRows = rows,
                 oldKeys = repository.getSheetSyncedKeys(),
-                lastSync = repository.getSheetLastSync(),
                 nowMillis = Clock.System.now().toEpochMilliseconds(),
                 newId = { DefaultIdGenerator().newId() },
             )
@@ -102,7 +101,7 @@ class SheetSync(
             catch (_: Exception) { /* Formatting is optional; the data is already safe. */ }
         }
         val now = Clock.System.now().toEpochMilliseconds()
-        repository.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds), upload.syncedKeys, now)
+        repository.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds, completionsToAcknowledge = upload.acknowledged), upload.syncedKeys, now)
         mutableState.value = SheetSyncState(message = "Plan tab created · ${upload.rows.size} sessions uploaded", lastSync = now)
     }
 

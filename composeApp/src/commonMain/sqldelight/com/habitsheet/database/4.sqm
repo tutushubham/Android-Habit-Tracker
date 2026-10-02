@@ -1,0 +1,12 @@
+-- P0-B: explicit per-completion "pending upload" flag replaces the `updated_at > sheet_last_sync` guess.
+ALTER TABLE dailyCompletionEntity ADD COLUMN pending_upload INTEGER NOT NULL DEFAULT 0;
+
+-- Backfill with exactly the rule the old code used: a completion changed after the last successful sync
+-- (and only if there was one) has not been uploaded yet. No rows are removed or rewritten otherwise.
+UPDATE dailyCompletionEntity SET pending_upload = 1
+WHERE EXISTS (
+    SELECT 1 FROM textSettingsEntity
+    WHERE key = 'sheet_last_sync'
+      AND CAST(value AS INTEGER) > 0
+      AND CAST(value AS INTEGER) < dailyCompletionEntity.updated_at
+);

@@ -3,6 +3,7 @@ package com.habitsheet.data
 import com.habitsheet.database.HabitsDatabase
 import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
+import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -226,12 +227,14 @@ class LocalHabitRepository(
 
     override suspend fun setDailyCompletion(completion: DailyHabitCompletion) {
         mutex.withLock {
+            // A user/widget write: it still has to reach the sheet.
             database.habitsQueries.upsertDailyCompletion(
                 plan_id = completion.planId,
                 habit_id = completion.habitId,
                 date = completion.date.toString(),
                 completed = completion.completed.toDbLong(),
                 updated_at = completion.updatedAtEpochMillis,
+                pending_upload = 1L,
             )
             loadSnapshot()
         }
@@ -320,6 +323,8 @@ class LocalHabitRepository(
                 database.habitsQueries.setTextSetting("sheet_last_sync", "0")
                 database.habitsQueries.setTextSetting("sheet_synced_keys", "")
                 database.habitsQueries.setTextSetting("sheet_managed_habits", "")
+                // Pending checks belonged to the previous sheet; a newly linked sheet is authoritative.
+                database.habitsQueries.clearAllPendingUploads()
             }
             database.habitsQueries.setTextSetting("sheet_url", url)
             loadSnapshot()
@@ -364,13 +369,20 @@ class LocalHabitRepository(
                     database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), plan.updatedAtEpochMillis)
                 }
                 changes.completionsToSave.forEach { completion ->
+                    // The user toggled this check after the sync read its snapshot: their change wins and stays pending.
+                    val key = completion.date.toString()
+                    if (database.habitsQueries.isCompletionPending(completion.planId, key).executeAsOneOrNull() == 1L) return@forEach
                     database.habitsQueries.upsertDailyCompletion(
                         plan_id = completion.planId,
                         habit_id = completion.habitId,
-                        date = completion.date.toString(),
+                        date = key,
                         completed = completion.completed.toDbLong(),
                         updated_at = completion.updatedAtEpochMillis,
+                        pending_upload = 0L,
                     )
+                }
+                changes.completionsToAcknowledge.forEach { ack ->
+                    database.habitsQueries.acknowledgeCompletionUpload(ack.planId, ack.date.toString(), ack.updatedAtEpochMillis)
                 }
                 database.habitsQueries.setTextSetting("sheet_managed_habits", changes.managedHabitIds.sorted().joinToString("\n"))
                 database.habitsQueries.setTextSetting("sheet_synced_keys", newKeys.sorted().joinToString("\n"))
@@ -446,6 +458,7 @@ class LocalHabitRepository(
                         date = completion.date.toString(),
                         completed = completion.completed.toDbLong(),
                         updated_at = completion.updatedAtEpochMillis,
+                        pending_upload = 0L,
                     )
                 }
                 snapshot.weeklyPlans.forEach { plan ->
@@ -571,6 +584,9 @@ class LocalHabitRepository(
                     updatedAtEpochMillis = row.updated_at,
                 )
             },
+            pendingCompletions = database.habitsQueries.selectAllDailyCompletions().executeAsList()
+                .filter { it.pending_upload != 0L }
+                .map { CompletionKey(it.plan_id, LocalDate.parse(it.date)) }.toSet(),
             sheetManagedHabitIds = database.habitsQueries.getTextSetting("sheet_managed_habits")
                 .executeAsOneOrNull()?.lineSequence()?.filter { it.isNotBlank() }?.toSet().orEmpty(),
         )

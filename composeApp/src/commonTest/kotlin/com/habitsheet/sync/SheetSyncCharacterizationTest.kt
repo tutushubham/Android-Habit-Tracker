@@ -46,12 +46,18 @@ class SheetSyncCharacterizationTest {
     private fun plan(habitId: String, date: LocalDate, detail: String, id: String, skipped: Boolean = false) =
         DayPlan(habitId, date, detail, skipped, 1, id)
 
-    private suspend fun repo(snapshot: HabitSnapshot, lastSync: Long = 0, syncedKeys: Set<String> = emptySet()) =
-        InMemoryHabitRepository(snapshot).also {
-            it.setSheetUrl(url)
-            it.setSheetLastSync(lastSync)
-            it.setSheetSyncedKeys(syncedKeys)
-        }
+    /** [pending] marks every completion in [snapshot] as changed on this device, the way a real check-off does. */
+    private suspend fun repo(
+        snapshot: HabitSnapshot,
+        lastSync: Long = 0,
+        syncedKeys: Set<String> = emptySet(),
+        pending: Boolean = false,
+    ) = InMemoryHabitRepository(snapshot).also {
+        it.setSheetUrl(url)
+        it.setSheetLastSync(lastSync)
+        it.setSheetSyncedKeys(syncedKeys)
+        if (pending) snapshot.dailyCompletions.forEach { completion -> it.setDailyCompletion(completion) }
+    }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer, token: SheetTokenProvider = Token("t")) =
         SheetSync(repo, token, server.client(), dates)
@@ -140,11 +146,11 @@ class SheetSyncCharacterizationTest {
         assertEquals(setOf("run", yoga.id), snapshot.sheetManagedHabitIds)
         assertEquals(setOf("run-1", "yoga-1"), repo.getSheetSyncedKeys())
         assertEquals("Synced 2 sessions", sync.state.value.message)
-        assertTrue(server.writes.isEmpty(), "first sync with no lastSync never writes to an existing tab")
+        assertTrue(server.writes.isEmpty(), "nothing pending, so nothing is written to an existing tab")
     }
 
     @Test
-    fun sheetDoneFalseClearsLocalDoneWhenLocalIsNotNewerThanLastSync() = runTest {
+    fun sheetDoneFalseClearsNonPendingLocalDone() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 50, "run-1"))),
@@ -157,7 +163,7 @@ class SheetSyncCharacterizationTest {
     }
 
     @Test
-    fun lastSyncOfZeroMeansSheetWinsEvenOverNewerLocalCheck() = runTest {
+    fun sheetWinsOverNonPendingLocalCheckEvenWhenLocalIsNewer() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 9_999, "run-1"))),
@@ -179,6 +185,7 @@ class SheetSyncCharacterizationTest {
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))),
             lastSync = 100,
+            pending = true,
         )
         sync(repo, server).sync()
 
@@ -191,11 +198,12 @@ class SheetSyncCharacterizationTest {
     // ---- uploading pending Done ----------------------------------------------------------------
 
     @Test
-    fun localCheckNewerThanLastSyncIsUploadedAndNotOverwritten() = runTest {
+    fun pendingLocalCheckIsUploadedAndNotOverwritten() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))),
             lastSync = 100,
+            pending = true,
         )
         val sync = sync(repo, server)
 
@@ -205,14 +213,64 @@ class SheetSyncCharacterizationTest {
         assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
         assertEquals("Synced 1 sessions · 1 checks uploaded", sync.state.value.message)
         assertTrue(repo.getSheetLastSync() > 100)
+        assertTrue(repo.snapshot.value.pendingCompletions.isEmpty(), "uploaded check is no longer pending")
+
+        // Second sync: nothing pending, so no second upload.
+        sync.sync()
+        assertEquals(1, server.writes.size)
+        assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
     }
 
     @Test
-    fun localUncheckNewerThanLastSyncIsUploadedAsFalse() = runTest {
+    fun failedUploadKeepsCheckPendingSoTheNextSyncRetriesIt() = runTest {
+        val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
+        server.fail(FaultAction.Timeout) { it.isDoneWrite }
+        val repo = repo(
+            runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))),
+            pending = true,
+        )
+        val sync = sync(repo, server)
+
+        sync.sync()
+        assertEquals(1, repo.snapshot.value.pendingCompletions.size)
+        assertFalse(server.cell(1, 4)!!.jsonPrimitive.boolean)
+
+        sync.sync()
+        assertTrue(server.cell(1, 4)!!.jsonPrimitive.boolean)
+        assertTrue(repo.snapshot.value.pendingCompletions.isEmpty())
+    }
+
+    @Test
+    fun pendingCheckIsAlsoUploadedOnFirstSyncAgainstExistingTab() = runTest {
+        // No lastSync needed any more: the flag alone decides.
+        val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
+        val repo = repo(
+            runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 1, "run-1"))),
+            lastSync = 0,
+            pending = true,
+        )
+        sync(repo, server).sync()
+        assertTrue(server.cell(1, 4)!!.jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun newTabUploadClearsPendingForUploadedRows() = runTest {
+        val server = FakeSheetsServer()
+        val repo = repo(
+            runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 5, "run-1"))),
+            pending = true,
+        )
+        sync(repo, server).sync()
+        assertTrue(repo.snapshot.value.pendingCompletions.isEmpty())
+    }
+
+    @Test
+    fun pendingLocalUncheckIsUploadedAsFalse() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", true, false))
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, false, 150, "run-1"))),
             lastSync = 100,
+            pending = true,
         )
         sync(repo, server).sync()
 
@@ -236,6 +294,7 @@ class SheetSyncCharacterizationTest {
                 ),
             ),
             lastSync = 100,
+            pending = true,
         )
         sync(repo, server).sync()
 
@@ -364,6 +423,7 @@ class SheetSyncCharacterizationTest {
         val repo = repo(
             runSnapshot.copy(dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1"))),
             lastSync = 100,
+            pending = true,
             syncedKeys = setOf("run-1"),
         )
         val sync = sync(repo, server)

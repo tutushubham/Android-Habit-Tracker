@@ -29,6 +29,7 @@ CREATE TABLE dailyCompletionEntity (
     date TEXT NOT NULL,
     completed INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
+    pending_upload INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (plan_id, date)
 );
 
@@ -159,8 +160,18 @@ deleteDayPlanById:
 DELETE FROM dayPlanEntity WHERE id = ?;
 
 upsertDailyCompletion:
-INSERT OR REPLACE INTO dailyCompletionEntity(plan_id, habit_id, date, completed, updated_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO dailyCompletionEntity(plan_id, habit_id, date, completed, updated_at, pending_upload)
+VALUES (?, ?, ?, ?, ?, ?);
+
+isCompletionPending:
+SELECT pending_upload FROM dailyCompletionEntity WHERE plan_id = ? AND date = ?;
+
+-- Only clears the flag if the completion has not been touched since the snapshot that was uploaded.
+acknowledgeCompletionUpload:
+UPDATE dailyCompletionEntity SET pending_upload = 0 WHERE plan_id = ? AND date = ? AND updated_at = ?;
+
+clearAllPendingUploads:
+UPDATE dailyCompletionEntity SET pending_upload = 0;
 
 selectAllWeeklyHabits:
 SELECT * FROM weeklyHabitEntity ORDER BY display_order, id;

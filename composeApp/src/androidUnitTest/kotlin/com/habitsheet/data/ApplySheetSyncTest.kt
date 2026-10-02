@@ -2,6 +2,8 @@ package com.habitsheet.data
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.habitsheet.database.HabitsDatabase
+import com.habitsheet.domain.model.CompletionAck
+import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -116,6 +118,76 @@ class ApplySheetSyncTest {
             assertEquals(before, persisted.snapshot.value, "nothing partially written to disk")
             assertEquals(setOf("run-1"), persisted.getSheetSyncedKeys())
             assertEquals(100, persisted.getSheetLastSync())
+        }
+    }
+
+    @Test
+    fun userCheckIsPendingUntilAcknowledgedWithTheSameValueAndSurvivesRestart() = runTest {
+        withRepository { repo, reopen ->
+            seed(repo)
+            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/x/edit") // new link clears seed-time flags
+            repo.setDailyCompletion(DailyHabitCompletion("run", day, true, 10, "run-1"))
+            assertEquals(setOf(CompletionKey("run-1", day)), repo.snapshot.value.pendingCompletions)
+            repo.close()
+
+            val second = reopen()
+            assertEquals(setOf(CompletionKey("run-1", day)), second.snapshot.value.pendingCompletions)
+
+            // A newer toggle after the sync read its snapshot: the ack for the OLD value must not clear the flag.
+            second.setDailyCompletion(DailyHabitCompletion("run", day, false, 20, "run-1"))
+            second.applySheetSync(SheetSyncChanges(completionsToAcknowledge = listOf(CompletionAck("run-1", day, 10)), managedHabitIds = setOf("run")), setOf("run-1"), 5)
+            assertEquals(1, second.snapshot.value.pendingCompletions.size)
+
+            second.applySheetSync(SheetSyncChanges(completionsToAcknowledge = listOf(CompletionAck("run-1", day, 20)), managedHabitIds = setOf("run")), setOf("run-1"), 6)
+            assertTrue(second.snapshot.value.pendingCompletions.isEmpty())
+            assertEquals(false, second.snapshot.value.dailyCompletions.single().completed, "ack never changes the value")
+        }
+    }
+
+    @Test
+    fun valueFromSheetNeverOverwritesACheckToggledDuringTheSync() = runTest {
+        withRepository { repo, _ ->
+            seed(repo)
+            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/x/edit")
+            repo.setDailyCompletion(DailyHabitCompletion("run", day, true, 30, "run-1")) // user toggles mid-sync
+
+            repo.applySheetSync(
+                SheetSyncChanges(
+                    completionsToSave = listOf(DailyHabitCompletion("run", day, false, 25, "run-1")), // sheet value read earlier
+                    managedHabitIds = setOf("run"),
+                ),
+                setOf("run-1"), 9,
+            )
+
+            assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
+            assertEquals(1, repo.snapshot.value.pendingCompletions.size)
+        }
+    }
+
+    @Test
+    fun valueFromSheetIsStoredAsNotPending() = runTest {
+        withRepository { repo, _ ->
+            seed(repo)
+            repo.applySheetSync(SheetSyncChanges(completionsToAcknowledge = listOf(CompletionAck("run-1", day, 1)), managedHabitIds = setOf("run")), setOf("run-1"), 8)
+            repo.applySheetSync(
+                SheetSyncChanges(completionsToSave = listOf(DailyHabitCompletion("run", day, true, 25, "run-1")), managedHabitIds = setOf("run")),
+                setOf("run-1"), 9,
+            )
+            assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
+            assertTrue(repo.snapshot.value.pendingCompletions.isEmpty())
+        }
+    }
+
+    @Test
+    fun linkingADifferentSheetDropsPendingFlags() = runTest {
+        withRepository { repo, _ ->
+            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/a/edit")
+            seed(repo)
+            repo.setDailyCompletion(DailyHabitCompletion("run", day, true, 10, "run-1"))
+            assertEquals(1, repo.snapshot.value.pendingCompletions.size)
+            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/b/edit")
+            assertTrue(repo.snapshot.value.pendingCompletions.isEmpty())
+            assertTrue(repo.snapshot.value.dailyCompletions.single().completed, "the check itself is kept")
         }
     }
 }

@@ -2,6 +2,7 @@ package com.habitsheet.data
 
 import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
+import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
@@ -142,6 +143,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
             dailyCompletions = mutableSnapshot.value.dailyCompletions.upsert(completion) {
                 it.planId to it.date
             },
+            pendingCompletions = mutableSnapshot.value.pendingCompletions + CompletionKey(completion.planId, completion.date),
         )
     }
 
@@ -194,7 +196,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         if (sheetUrl != url) {
             sheetLastSync = 0L
             sheetSyncedKeys = emptySet()
-            mutableSnapshot.value = mutableSnapshot.value.copy(sheetManagedHabitIds = emptySet())
+            mutableSnapshot.value = mutableSnapshot.value.copy(sheetManagedHabitIds = emptySet(), pendingCompletions = emptySet())
         }
         sheetUrl = url
     }
@@ -222,7 +224,15 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         }
         changes.completionsToSave.forEach { completion ->
             require(next.dailyHabits.any { it.id == completion.habitId }) { "Unknown daily habit" }
+            // A check toggled after the sync read its snapshot stays pending and wins.
+            if (CompletionKey(completion.planId, completion.date) in next.pendingCompletions) return@forEach
             next = next.copy(dailyCompletions = next.dailyCompletions.upsert(completion) { it.planId to it.date })
+        }
+        changes.completionsToAcknowledge.forEach { ack ->
+            val current = next.dailyCompletions.firstOrNull { it.planId == ack.planId && it.date == ack.date }
+            if (current != null && current.updatedAtEpochMillis == ack.updatedAtEpochMillis) {
+                next = next.copy(pendingCompletions = next.pendingCompletions - CompletionKey(ack.planId, ack.date))
+            }
         }
         next = next.copy(sheetManagedHabitIds = changes.managedHabitIds)
         mutableSnapshot.value = next
@@ -237,7 +247,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
 
     override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
         BackupValidator.validate(snapshot)
-        mutableSnapshot.value = snapshot
+        mutableSnapshot.value = snapshot.copy(pendingCompletions = emptySet())
     }
 }
 

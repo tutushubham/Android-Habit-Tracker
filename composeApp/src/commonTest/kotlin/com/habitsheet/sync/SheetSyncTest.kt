@@ -42,6 +42,7 @@ class SheetSyncTest {
         ))
         repo.setSheetUrl(url)
         repo.setSheetLastSync(100)
+        repo.setDailyCompletion(DailyHabitCompletion("run", day, true, 150, "run-1")) // marks it pending
         var writes = 0
         val client = HttpClient(MockEngine { request ->
             when {

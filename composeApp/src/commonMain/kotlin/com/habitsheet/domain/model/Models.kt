@@ -92,6 +92,9 @@ data class WeeklyHabitCompletion(
     val updatedAtEpochMillis: Long,
 )
 
+/** Identifies one daily completion: the plan it belongs to and the date. */
+data class CompletionKey(val planId: String, val date: LocalDate)
+
 @Serializable
 data class HabitSnapshot(
     val categories: List<Category> = emptyList(),
@@ -102,4 +105,6 @@ data class HabitSnapshot(
     val weeklyPlans: List<WeeklyPlan> = emptyList(),
     val dayPlans: List<DayPlan> = emptyList(),
     @Transient val sheetManagedHabitIds: Set<String> = emptySet(),
+    /** Completions changed on this device and not yet written to the sheet. Not part of backups. */
+    @Transient val pendingCompletions: Set<CompletionKey> = emptySet(),
 )

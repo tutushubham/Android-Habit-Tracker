@@ -8,11 +8,11 @@ import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
+import com.habitsheet.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 class AppGraph(
     driverFactory: DriverFactory,
@@ -21,11 +21,12 @@ class AppGraph(
     val repository = LocalHabitRepository(driverFactory)
     val sheetSync = SheetSync(repository, tokenProvider)
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val monthViewModel = MonthViewModel(repository, onLocalChange = { syncScope.launch { sheetSync.sync() } })
+    private val syncScheduler = SyncScheduler(syncScope) { interactive -> sheetSync.sync(interactive) }
+    val monthViewModel = MonthViewModel(repository, onLocalChange = syncScheduler::markDirty)
     val manageHabitsViewModel = ManageHabitsViewModel(repository, DefaultIdGenerator())
     val settingsViewModel = SettingsViewModel(repository, sheetSync = sheetSync)
 
-    fun syncOnForeground() { syncScope.launch { sheetSync.sync() } }
+    fun syncOnForeground() = syncScheduler.syncNow()
 
     fun close() {
         monthViewModel.close()
