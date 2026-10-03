@@ -79,8 +79,8 @@ Network requests have connect (15 s), socket (30 s) and total (45 s) timeouts. R
 
 1. In your Google Cloud project, enable the **Google Sheets API** and configure the OAuth consent screen. While it is in Testing, add the Google account used on your devices as a test user.
 2. Android OAuth client: register package `com.habitsheet.app` and the SHA-1 of the signing certificate of the installed build (debug and release certificates each need registration). Android Google Authorization resolves the client by package and certificate, so the client ID is not passed to its SDK at runtime.
-3. iOS OAuth client: create one for the app's bundle ID and put its client ID and reversed URL scheme in `Info.plist`.
-4. Client IDs and signing details: `<configured via build config — see P0-C>`.
+3. iOS OAuth client: create one for the app's bundle ID and put its client ID and reversed URL scheme in `iosApp/Config/Local.xcconfig` (`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_REVERSED_CLIENT_ID`; copy `Local.xcconfig.example`). `Info.plist` reads them from there.
+4. Signing details: Android release signing comes from `keystore.properties` or `HABITSHEET_*` environment variables; register the SHA-1 of that certificate (or of Play App Signing). Debug and release share the application ID, so each certificate needs its own Android OAuth client entry. See [docs/RELEASING.md](docs/RELEASING.md).
 5. Ensure the Google account can **edit** the linked spreadsheet. The app requests the `spreadsheets` read/write scope. A publicly shared file is not made private by OAuth, so restrict sharing if the plan should be private.
 
 The Sheets scope is sensitive. Broad public distribution may require Google's OAuth verification. No client secret, service-account key, access token, or refresh token is stored in the spreadsheet or app database; platform Google libraries manage account sessions. Live sync still requires on-device sign-in to verify.

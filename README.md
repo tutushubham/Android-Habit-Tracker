@@ -37,6 +37,8 @@ Command-line build:
 
 The debug APK is generated under `composeApp/build/outputs/apk/debug/`.
 
+Signed release builds, version bumps, secrets and the iOS archive are described in [docs/RELEASING.md](docs/RELEASING.md).
+
 ## Run iOS or iPadOS
 
 Requirements: macOS with a full Xcode installation and its command-line tools selected.
@@ -75,4 +77,4 @@ There is no proprietary account server, notification system, or gamification. Op
 
 Habits are not the same every day, so the plan lives in a spreadsheet you control. Create a blank Google Sheet in your own account, copy its link, then in **Settings → Plan sync** paste it and choose **Connect & sync**. The first authorized sync creates a `Plan` tab and uploads your planned sessions; if a valid `Plan` tab already exists, it becomes authoritative. Check-offs are cached offline and written back to the `Done` column on sync. Habits without dated `Plan` rows stay local-only. A burst of check-offs triggers a single sync a couple of seconds after the last tap; when offline the app keeps your check-offs and retries on its own; **Settings → Disconnect** unlinks the sheet without deleting anything on the device. The app accepts both an eight-column layout (`ID, Date, Area, Habit, Session, Done, Skip, Source`) and the simpler six-column schema.
 
-Sync needs the Google Sheets API enabled, OAuth client IDs configured for the build (see the release build configuration; client IDs are provided by build config, not documented here), and a Google account with edit access to the sheet. See [SHEET_SYNC.md](SHEET_SYNC.md) for setup and table rules.
+Sync needs the Google Sheets API enabled, OAuth client IDs configured for the build (see [docs/RELEASING.md](docs/RELEASING.md) and [SHEET_SYNC.md](SHEET_SYNC.md)), and a Google account with edit access to the sheet. See [SHEET_SYNC.md](SHEET_SYNC.md) for setup and table rules.

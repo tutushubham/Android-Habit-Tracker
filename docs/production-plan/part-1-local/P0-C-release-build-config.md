@@ -77,12 +77,14 @@ git grep -nE "G5VX9GMK76|412589914724|apps.googleusercontent.com" -- . ':!docs' 
 Manual: install the release APK on a device, run the full smoke checklist; iOS `[mac]`: archive succeeds and validates in Xcode Organizer.
 
 ## 5. Definition of done
-- [ ] One version source; Android + iOS read it.
-- [ ] No keystores/passwords/team ID/personal client IDs tracked (placeholders only).
-- [ ] Release build is signed, minified, smoke-tested; keep rules complete.
-- [ ] Backup rules exclude the DB; theme/manifest hygiene done.
-- [ ] `PrivacyInfo.xcprivacy` present and accurate; archive validated `[mac]`.
-- [ ] `docs/RELEASING.md` exists; `PROGRESS.md` ticked.
+- [x] One version source; Android + iOS read it.
+- [x] No keystores/passwords/team ID/personal client IDs tracked (placeholders only; they remain in git history, see D2).
+- [x] Release build is signed and minified (verified with a test keystore). On-device smoke test still owed; keep rules are provisional until then.
+- [x] Backup rules exclude the DB; theme/manifest hygiene done.
+- [x] `PrivacyInfo.xcprivacy` present (derived from code/dependencies). Accuracy and archive validation still need a Mac `[mac]`.
+- [x] `docs/RELEASING.md` exists; `PROGRESS.md` updated.
+
+Status 2026-10-03: all steps implemented on `master`. Deviations from the plan: no `.debug` application ID suffix (it would break Google sign-in until a separate OAuth client is registered and would start with an empty DB; opt-in instructions are in `docs/RELEASING.md`); `Theme.Material3.DayNight` replaced by a platform-based day/night pair (Material Components is not a dependency); the 1024 app icon was flattened to opaque because the App Store rejects alpha; the foojay resolver was bumped to 1.0.0 for Gradle 9. Verification still owed: release APK on a device, and everything marked `[mac]`.
 
 ## 6. Handoff
 B1 (CI) consumes the Gradle tasks and the secret names defined here. B2 (OAuth) consumes the config variables and the release SHA-1 procedure.

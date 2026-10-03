@@ -58,7 +58,7 @@ private fun Throwable.isConnectivityFailure(): Boolean {
     var current: Throwable? = this
     var depth = 0
     while (current != null && depth++ < 6) {
-        if (current is CancellationException && current !is HttpRequestTimeoutException) return false
+        if (current is CancellationException) return false
         if (current is IOException ||
             current is HttpRequestTimeoutException ||
             current is ConnectTimeoutException ||

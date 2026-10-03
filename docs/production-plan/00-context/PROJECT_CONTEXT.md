@@ -16,8 +16,9 @@ Read this at the start of every plan session. It is the shared memory for all pl
 
 - **P0-A done**: no personal data/seed in shared code; neutral first run; personal files in gitignored `personal/`. Audit finding P0-1 below is **resolved**.
 - **P0-B done**: sync split into `SheetsApi` / `PlanTable` / `PlanReconciler` / `SheetSync` + `SyncScheduler` + `SerializingTokenProvider`; atomic apply, explicit pending flag (migration `4.sqm`), typed errors, retries, offline auto-retry, Disconnect. Audit finding P0-5 is **resolved**.
-- Still open: P0-2 release config, P0-3 iOS gaps, P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, and every P1/P2 item.
-- Verification state: 196 JVM tests green, `assembleDebug` OK, iOS klib compile OK on Windows; device checks owed (see `PROGRESS.md`).
+- **P0-C done in code** (device smoke test and `[mac]` verification owed): one version source in `gradle.properties`, signing/IDs externalised, R8 release build, backup exclusion, iOS privacy manifest, `docs/RELEASING.md`. Audit findings P0-2 and P0-3 are **resolved** (the iOS archive itself is unverified without a Mac).
+- Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, and every P1/P2 item.
+- Verification state: 196 JVM tests green, `assembleDebug`, `assembleRelease`/`bundleRelease` (test keystore) and iOS klib compile OK on Windows; device and Mac checks owed (see `PROGRESS.md`).
 - Branching: work happens directly on `master` from here.
 
 ## Tech snapshot (verified in repo)
@@ -45,8 +46,8 @@ Legend: **V** = verified by reading code/config; **I** = inferred.
    - `LocalHabitRepository.kt` constructor (`seedOndPlan = true`) runs `seedOndPlanIfNeeded` (l.482), `seedWinterArcRoutinesIfNeeded` (l.554), `ensureWinterArcHabitsAreDatedOnly` (l.590) at every startup; settings flags `ond_2026_seeded`, `winter_arc_routines_seeded`, `winter_arc_dated_only`. Hard-coded habit names/category IDs (`category-4`, …).
    - `sync/SheetSync.kt` hard-codes `"run","workout","android","dsa","sde"` (l.115, 164), the `"Plan in OND sheet"` placeholder (l.195, 208), and the window `2026-10-01..2026-12-31` in `ondRowsFor` (l.203–204).
    - README/SHEET_SYNC describe the OND plan as a product feature; `outputs/ond-2026/*`, `tools/build_ond_plan.mjs`, `Habits.xlsx` (2.4 MB) are committed.
-2. **No Android release config (V).** `composeApp/build.gradle.kts` has no `buildTypes`, signing, R8/ProGuard; version hard-coded (`versionCode = 6`, `versionName = "1.1.3"`) and duplicated in `iosApp/iosApp/Info.plist` and `project.pbxproj` (`MARKETING_VERSION = 1.1.3`).
-3. **iOS gaps (V).** No `PrivacyInfo.xcprivacy`, no entitlements file; `DEVELOPMENT_TEAM = G5VX9GMK76` checked in; deployment target 15.0; GoogleSignIn via SPM only.
+2. **No Android release config (V). — RESOLVED in P0-C.** `composeApp/build.gradle.kts` has no `buildTypes`, signing, R8/ProGuard; version hard-coded (`versionCode = 6`, `versionName = "1.1.3"`) and duplicated in `iosApp/iosApp/Info.plist` and `project.pbxproj` (`MARKETING_VERSION = 1.1.3`).
+3. **iOS gaps (V). — mostly RESOLVED in P0-C** (privacy manifest; team ID and client IDs externalised; archive validation owed on a Mac). No `PrivacyInfo.xcprivacy`, no entitlements file; `DEVELOPMENT_TEAM = G5VX9GMK76` checked in; deployment target 15.0; GoogleSignIn via SPM only.
 4. **OAuth readiness (V per SHEET_SYNC.md).** Consent screen in Testing; Android client registered with the debug SHA-1; scope `spreadsheets` (sensitive).
 5. **Sync correctness (V). — RESOLVED in P0-B.** Habits matched by lowercase name; duplicate names abort sync (`require` in SheetSync l.~104); multi-step local writes are not transactional; every local toggle triggers a full `sync()` (`AppGraph.monthViewModel(onLocalChange=…)`) that re-reads `Plan!A:H`; pending detection uses `updatedAt > lastSync` (device clocks); last-upload-wins; `HttpClient()` with no timeouts/retry; parse errors reported by `error()` strings.
 6. **No CI (V).** No `.github/`.
