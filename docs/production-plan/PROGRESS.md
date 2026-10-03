@@ -6,7 +6,7 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 ## Part 1 — Local
 - [Done] P0-A Product split & seed removal (on `master` via PR #1; manual device check, step 9, still owed)
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
-- [ ] P0-C Release build config
+- [Partial] P0-C Release build config (steps 1�11 done on `master`; owed: release APK device smoke test, [mac] needs Mac verification: pbxproj edits, `xcodebuild archive`, privacy report, icon validation)
 - [ ] P1-1 Robustness & data safety
 - [ ] P1-2 Architecture & code quality
 - [ ] P1-3 Gaps in existing features
@@ -73,7 +73,7 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 - Widget check-offs set the pending flag but do not themselves start a sync (uploaded on the next foreground / Sync now).
 - Debounce has no maximum wait (continuous tapping with gaps under 2.5 s delays the sync until a pause).
 - Android consent screen results after Activity recreation are not resumed (the queue times out after 3 min and the user taps Connect & sync again) → revisit in **P1-2**.
-- `stitch/` design exports (1.3 MB, includes a zip) are still tracked; decide with D2 at the end of Part 1.
+- `stitch/` design exports are still tracked (the redundant zip was removed in P0-C); decide with D2 at the end of Part 1.
 - `iosApp/iosApp/Info.plist` and `project.pbxproj` still hold the personal Apple team / client IDs → **P0-C**.
 - Default category names (emoji list) are the original workbook's → **P1-3** neutral first run.
 - Knowledge-graph parser (tree-sitter) reports a syntax warning at the `class SheetSync(` header; the code compiles, it is a tool limitation.
@@ -84,3 +84,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-02 · P0-A · steps 2–8 done on `prod/p0-a-product-split` (seed removed, SheetSync de-OND'd with rolling window, personal files moved, docs rewritten, tutorial restored); 87 JVM tests green; step 9 manual device checks pending · merged as PR #1 (`cc4660d`)
 2026-10-02/03 · P0-B · steps 1–11 done (`5dcc123` … `56e97a8`); 190 JVM tests green · rebased onto master
 2026-10-03 · P0-A/B completion review · iOS compile fix, offline auto-retry, coverage gaps, docs refresh, graphify installed; 196 JVM tests green; work continues directly on `master`
+2026-10-03 � P0-C � steps 1�11 done directly on `master` (`0591134` � `9edcc91`); assembleDebug, unit tests, assembleRelease/bundleRelease (test keystore) OK; device + Mac verification pending
