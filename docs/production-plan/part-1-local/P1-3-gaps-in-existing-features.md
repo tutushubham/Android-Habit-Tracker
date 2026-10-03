@@ -82,3 +82,10 @@ Manual: switch device language/region (dates & first weekday adapt); TalkBack/Vo
 
 ## 6. Handoff
 P2 adds UI tests for these flows (empty state, sheet-link validation, accessibility semantics assertions).
+
+## 7. Inputs from P1-1 (already built; this plan finishes the user-facing side)
+- **Backups:** the format is v4 and `BackupViewModel` already has `exportBackup(includeSheetLink = false)` and `importBackup(applySheetLink = false)`; the UI has no control for them yet. Add: an "include my sheet link" choice on export, and on import (when the backup contains a link) a confirm "use the backup's sheet link?".
+- **Before Reset/Import:** offer "export a backup first" (or make an automatic pre-restore copy); Import currently confirms before the file is chosen and so cannot preview it: consider pick → preview counts (`DataSummary`) → confirm.
+- **iOS backup** is still clipboard-based (`IosBackupService`); the file-based flow is this plan's step on iOS. Reuse `BackupResult` and `BackupStreams`-style error handling; import must keep calling `BackupSerializer.parse` + one restore transaction.
+- **Strings:** all confirmation texts live in `DestructiveAction` (presentation) and the startup screen/recovery messages in `StartupFailureScreen`, `AndroidStartupRecovery`, `IosStartupRecovery`, `AndroidBackupService`, `BackupStreams`; they must move to resources too (some are shown from non-UI classes: pass message keys or resolved strings through a small interface). Tests assert some of these texts (`DestructiveActionsConfirmationTest`, `BackupStreamsTest`): update them with the move.
+- **Accessibility:** the new dialogs and the startup failure screen need semantics/labels; the startup screen uses only theme defaults.

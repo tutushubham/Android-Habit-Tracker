@@ -80,3 +80,9 @@ xcodebuild test -scheme iosApp ...                   # [mac], XCUITest smoke
 3. Your own devices: update-over-install keeps your data; your sheet syncs both ways.
 4. `git grep` for personal strings/IDs (see P0-A/P0-C) is clean.
 5. Handle D2: create the public-facing repo/history strategy now so Part 2 (B1/B4) doesn't ship private history.
+
+## 7. Inputs from P1-1 (what exists, what is still missing)
+- **Exists (JVM, 291 tests at P1-1 end):** backup v1–v4 fixtures and restore, tamper detection; real-SQLite migration tests from v1–v4 (`SchemaMigrationTest`) and schema verification in `check`; delete cascades; monotonic `updated_at`; date rollover/DST/travel with a fake clock; startup failure handling and file move-aside; `loadSnapshot` timing test; destructive-call-site guard.
+- **Missing, assign here:** Compose UI tests for `DestructiveConfirmDialog` flows (Reset, Import, delete habit/category, remove session), `StartupFailureScreen` (three buttons, reset confirmation, success → retry), `DataBackupScreen` result messages; instrumented tests for `AndroidBackupService` (process death while the picker is open), `AndroidStartupRecovery` and a forced corrupt database (Android's default would delete it; `onCorruption` is a no-op by design); iOS tests for `IosBackupService`, `IosStartupRecovery` (file locations, share sheet) and the `NSSystemTimeZoneDidChange` / `NSCalendarDayChanged` observers `[mac]`; a device check that the Android/iOS SQLite drivers keep `PRAGMA foreign_keys = ON`.
+- **Performance:** keep `LoadSnapshotPerformanceTest` (prints timings, loose bound) and tighten it to the 100 ms / 50 ms targets once P1-2 step 5 has implemented the proposal.
+- **Coverage tooling gap:** `androidUnitTest` is where all SQLite tests run (JDBC driver); they locate `sqldelight/databases` and `ui/` sources by relative path from the module directory.

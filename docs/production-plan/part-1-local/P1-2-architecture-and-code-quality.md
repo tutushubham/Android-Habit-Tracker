@@ -2,9 +2,30 @@
 
 **Goal:** a maintainable, lifecycle-correct, lint-clean codebase using idiomatic KMP patterns — **without changing behaviour or adding features**. Refactors are guarded by tests written first.
 
-**Depends on:** P0-A/B/C, P1-1.
+**Depends on:** P0-A/B/C, P1-1 (**P1-1 is on `prod/p1-1-robustness` and may not be merged yet: merge it into `master` first, or branch from it**).
 **Branch:** `prod/p1-2-architecture`
 **Out of scope:** new screens, redesign, new libraries beyond those named here, moving to multi-module unless you explicitly choose to.
+
+## 0. Handoff from P1-1 (read first; these change the steps below)
+
+State at handoff: 291 JVM tests, schema v5 with verified migrations, `check` runs `verifyCommonMainHabitsDatabaseMigration`. Details: `00-context/PROJECT_CONTEXT.md` → "Facts from P1-1".
+
+- **Step 1 (characterization tests):** much already exists and must stay green: `MonthViewModelTest`, `DateHandlingTest` (rollover/DST/travel), `DestructiveActionsConfirmationTest`, backup tests (`BackupFormatTest`, `BackupViewModelTest`), SQLite tests (`SchemaMigrationTest`, `ApplySheetSyncTest`, `DeleteCascadeSqliteTest`, `MonotonicUpdatedAtTest`, `BackupRestoreSqliteTest`), `AppStartupTest`. Add golden tests for `toUiState`, `PlanResolver`, `HabitCalculations` only where missing.
+- **Step 3 (lifecycle ViewModels):**
+  - Keep the constructor parameters `logger: Logger` (all four) and `BackupViewModel(callbackDispatcher, onDataReplaced)`; `AppGraph` already passes `logger`. Provide `onDataReplaced = settingsViewModel::reloadFromStorage` where `BackupViewModel` is created (now inside `HabitSheetApp`; move creation into the factory).
+  - `MonthViewModel` runs a one-minute `refreshToday()` loop in its scope and exposes `refreshToday()` to the shells; keep both. With `viewModelScope` (Main.immediate) tests need `Dispatchers.setMain`; several tests currently pass a `backgroundScope` and `UnconfinedTestDispatcher`.
+  - `AppGraph` is now created through `AppStartup.create` (returns `Ready`/`Failed`); `MainActivity` holds a nullable graph and `startup` state; iOS renders `ReadyApp` or `StartupFailureScreen`. The failure screen is **outside** the ViewModel/navigation world on purpose (nothing can be created without the database); keep it that way when moving to ViewModel factories or navigation.
+- **Step 4–5 (repository split):**
+  - **The `loadSnapshot()` measurement is done and exceeds the target: 209 ms median, a check-off 248 ms (36k completions).** So do the optional part of step 5: implement the proposal in `notes/p1-1-load-snapshot-timings.md` (1: read completions once and derive `pendingCompletions` from the same rows; 2: drop the `ORDER BY` / sort in memory; 3: update the in-memory snapshot for single check-offs; 4 only if still needed). Re-run `LoadSnapshotPerformanceTest`, record the numbers in that note; target `loadSnapshot` < 100 ms and a check-off < 50 ms.
+  - Restore/clear semantics to preserve in `BackupStore`: `restoreFromSnapshot(snapshot, settings, restoreSheetLink)` always clears synced keys, last sync, managed habits and pending flags; `clearAllData()` also clears the sheet link (theme kept); both are single transactions.
+  - Keep `monotonicUpdatedAt` behaviour (SQL `MAX(updated_at, :updated_at)`, strict for completions) and the explicit delete cascades.
+  - `DatabaseFileNames` and the startup recovery classes are outside the repository split.
+- **Step 6 (navigation):** `DestructiveConfirmDialog` and `StartupFailureScreen` are plain composables; keep `Destination.Backup`/`Settings` reachable from the tablet sidebar as today.
+- **Step 7 (decompose screens):** `DestructiveCallSitesTest` (androidUnitTest) lists the destructive calls by **file name in `ui/` only** and does not recurse. When `ManageHabitsScreen`, `PlanScreen`, `DataBackupScreen`, `SettingsScreen` move/split, update the test to scan `ui/**` and keep the reviewed list (`clearAllData`, `importBackup`, `deleteDailyHabit`, `deleteWeeklyHabit`, `deleteCategory`, `deleteWeeklyPlan`, `deleteDayPlanById`, `disconnect`) with the same "must show `DestructiveConfirmDialog`" rule. Do not remove that test.
+- **Step 9 (widget):** `HabitCompletionWidgetProvider.withRepository` still opens a `LocalHabitRepository(AndroidDriverFactory(...))` per action; a corrupt database now makes that throw (it already shows the "unavailable" state), check that path. Widget toggles go through `setDailyCompletion` (pending flag, monotonic stamp); they do not start a sync (known limitation).
+- **Step 10 (lint):** the build currently compiles with warnings (`@OptIn`, deprecated AGP-in-KMP notice, CRLF warnings from git). `-Werror` for `commonMain` needs those cleaned first. The AGP "application plugin inside KMP module" deprecation (`android.builtInKotlin=false` / `android.newDsl=false`) is a P1-2 item: moving the Android app to an `androidApp` module would also change where `AndroidDriverFactory`/`MainActivity` live and how `androidUnitTest` finds `src/commonMain/sqldelight/databases` and the `ui` sources (the tests locate them by relative path from the module directory, with a fallback for the repo root).
+- **Known follow-up for P1-3, not P1-2:** safety copy/prompt before Reset/Import, import preview, iOS file-based backup (see `PROGRESS.md`).
+- **Do not touch:** frozen `BackupFixtures`, committed `N.db` snapshots, shipped `.sqm` files.
 
 ## 1. Code analysis
 
@@ -37,7 +58,7 @@
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P1-2-architecture-and-code-quality.md. Confirm P0-A/B/C and P1-1 are merged. Branch prod/p1-2-architecture. Hard rules: zero behaviour/visual change except the multi-session counting fix; every refactor step is preceded by tests that fail if behaviour changes; commit after each step; use graphify-out if present. Summarise the plan in 8 lines and wait.
+Read docs/production-plan/README.md, docs/production-plan/PROGRESS.md ("Next session: P1-2"), 00-context/PROJECT_CONTEXT.md (Status and "Facts from P1-1") and part-1-local/P1-2-architecture-and-code-quality.md including section 0 "Handoff from P1-1". Confirm P0-A/B/C are merged and check whether prod/p1-1-robustness is merged into master; if not, ask me whether to merge it (fast-forward) before you branch prod/p1-2-architecture. Hard rules: zero behaviour/visual change except the multi-session counting fix; every refactor step is preceded by tests that fail if behaviour changes; commit after each step; use graphify-out if present. Summarise the plan in 8 lines and wait.
 ```
 
 ### Step prompts

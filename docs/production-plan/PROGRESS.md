@@ -3,6 +3,12 @@
 Tick when the plan's *Definition of done* is fully met and merged.
 Legend: **[Done]** = code, automated tests and docs complete and on `master`. Items that can only be checked on a real device are listed separately under *Manual checks still owed*.
 
+## Next session: P1-2
+- Branch state: P1-1 lives on **`prod/p1-1-robustness`** (7 commits, `8e18a67` … `cc029b7`) and is **not merged into `master`** yet. Merge it first (fast-forward, `master` has not moved) or branch `prod/p1-2-architecture` from it. Do this before starting P1-2.
+- Read first: `00-context/PROJECT_CONTEXT.md` ("Status" and "Facts from P1-1"), then `part-1-local/P1-2-architecture-and-code-quality.md` — its new section **"Handoff from P1-1"** lists what changed under it and what to adjust.
+- Baseline to protect: 291 JVM tests green, `verifyCommonMainHabitsDatabaseMigration` green, `compileKotlinIosSimulatorArm64` + `compileTestKotlinIosSimulatorArm64` green, `assembleDebug` OK.
+- Untracked on purpose (not part of any plan): `.claude/` and `gradle/gradle-daemon-jvm.properties`.
+
 ## Part 1 — Local
 - [Done] P0-A Product split & seed removal (on `master` via PR #1; manual device check, step 9, still owed)
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
@@ -72,6 +78,16 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 - [ ] Owed on a device: release-APK smoke test (checklist in `docs/RELEASING.md`).
 - [ ] Owed on a Mac `[mac]`: open the project in Xcode (hand-edited pbxproj), create `Local.xcconfig`, `xcodebuild archive`, Validate in Organizer, compare the privacy report with `PrivacyInfo.xcprivacy`, check the adjusted icon.
 
+### P1-1 — Robustness & data safety (branch `prod/p1-1-robustness`)
+- [x] Steps 1–2 `Logger` (Android logcat, iOS `NSLog`, no-op), injected through `AppGraph`; throwables logged by class name only (no URLs, tokens or user text); `runCatchingCancellable`; every `catch` in `commonMain` logs or rethrows cancellation (`ManageHabitsViewModel` used to swallow it); Android uncaught-exception logger. `8e18a67`
+- [x] Step 3 Backup format **v4** (`settings`: theme, onboarding, optional sheet link; SHA-256 over settings+data; no sync keys/last-sync/pending flags); v1–v3 still restore (frozen fixtures `BackupFixtures`); restore always clears sheet sync state; tamper, missing checksum and unknown-version rejection. `66a4c97`
+- [x] Steps 4–5 `BackupService` reports `BackupResult` / failures; `AndroidBackupService` reads whole streams (`BackupStreams`: 32 MB cap, BOM, null/IO errors), exports through a private cache file (survives process death, toast if the screen is gone), deletes half-written files; iOS clipboard import refuses empty text, export is v4. `3f8e95c`
+- [x] Steps 6–7 Reset clears sheet link + sync state (Google Sheet untouched); every destructive action has a named confirmation (`DestructiveAction` + `DestructiveConfirmDialog`), including the two previously unguarded session removals; audit table in `notes/p1-1-destructive-actions-audit.md`; `DestructiveCallSitesTest` guards the screens. `1b729ba`
+- [x] Step 8 `refreshToday()` on foreground, Android TIMEZONE/DATE/TIME broadcasts and iOS time-zone/day-change notifications (1-min poll kept); `ClockDateProvider` (injectable clock+zone); rollover, DST and travel tests; `updated_at` never goes backwards (completions strictly increase so upload acknowledgements stay correct). `bff8353`
+- [x] Steps 9–10 `verifyMigrations` on, snapshots `1.db`–`5.db` (README in `sqldelight/databases/`), `SchemaMigrationTest` (v1–v4 → v5 with rows), `3.sqm` got a no-op `DROP INDEX IF EXISTS`; explicit delete cascades (the JVM driver ignores `PRAGMA foreign_keys`); `loadSnapshot()` measured 209 ms median for 36k completions, proposal in `notes/p1-1-load-snapshot-timings.md` (**not implemented**, input to P1-2 step 5). `0158050`
+- [x] Step 11 Startup failure screen (`AppStartup`, `StartupFailureScreen`, `AndroidStartupRecovery`, `IosStartupRecovery`): Try again / Save a copy of the data file / Start with empty data (confirmed; moves the files aside, keeps the newest 3); Android no longer lets the framework delete a corrupt database; a failed open closes its driver. `cc029b7`
+- [ ] Owed: device and `[mac]` checks, see the next section (P1-1 entries).
+
 ## Manual checks still owed (need a device / your Google account)
 - P0-A step 9: install over the existing build on your phone; habits, plans and completions intact; sheet still connects.
 - P0-A: fresh emulator install is empty and shows the tutorial once.
@@ -85,7 +101,10 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 
 ## Known limitations carried forward (not bugs in P0-A/P0-B/P0-C scope)
 - ~~`restoreFromSnapshot` does not reset sync keys / last-sync~~ — fixed in P1-1 step 3 (restore now clears all sync state; backup v4 carries theme/onboarding and an optional sheet link, never sync state or pending marks).
-- After a restore, check-offs not yet uploaded are dropped from the pending set (sheet wins); the checked state itself comes from the backup. (A restored theme and a cleared link now show immediately: `BackupViewModel.onDataReplaced` → `SettingsViewModel.reloadFromStorage`.) the UI has no prompt yet for restoring a backup's sheet link or including it on export (`exportBackup(includeSheetLink)` / `importBackup(applySheetLink)` exist, default false) → P1-3 copy.
+- After a restore, check-offs not yet uploaded are dropped from the pending set (sheet wins); the checked state itself comes from the backup. (A restored theme and a cleared link now show immediately: `BackupViewModel.onDataReplaced` → `SettingsViewModel.reloadFromStorage`.) The UI has no prompt yet for restoring a backup's sheet link or including it on export (`exportBackup(includeSheetLink)` / `importBackup(applySheetLink)` exist, default false) → P1-3 copy.
+- P1-1 follow-ups left for later plans: no "export a backup first" prompt or automatic safety copy before Reset/Import (**P1-3**); Import confirms before the file is chosen so it cannot preview the file's contents (**P1-3**); iOS backup is still clipboard-based (**P1-3**); a sync running at the moment of a Reset can re-apply sheet rows once; deleting a sheet-managed habit locally is undone by the next sync and the dialog does not say so; the widget (`HabitCompletionWidgetProvider`) still opens its own `LocalHabitRepository` per action (**P1-2 step 9**).
+- Whether the Android/iOS SQLite drivers keep `PRAGMA foreign_keys = ON` is unverified (the JVM driver does not); deletes no longer depend on it, but inserts are not FK-checked on the JVM test driver.
+- `loadSnapshot()` is 2x over the 100 ms target for a heavy user (209 ms, 36k completions); cause (the completions query runs twice) and a 4-point proposal are in `notes/p1-1-load-snapshot-timings.md` → **P1-2 step 5**.
 - Widget check-offs set the pending flag but do not themselves start a sync (uploaded on the next foreground / Sync now).
 - Debounce has no maximum wait (continuous tapping with gaps under 2.5 s delays the sync until a pause).
 - Android consent screen results after Activity recreation are not resumed (the queue times out after 3 min and the user taps Connect & sync again) → revisit in **P1-2**.
@@ -110,3 +129,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-03 · P1-1 step 8 · `MonthViewModel.refreshToday()` (foreground, Android TIMEZONE/DATE/TIME broadcasts, iOS foreground + time-zone + day-change observers, 1-min poll kept as safety net), injectable `ClockDateProvider`, rollover/DST/travel tests, `updated_at` never moves backwards (SQL `MAX`, completions strictly increasing so upload acks stay correct); 266 JVM tests green · `prod/p1-1-robustness`
 2026-10-03 · P1-1 steps 9–10 · `verifyMigrations` on (snapshots `1.db`–`5.db` committed, wired into `check`, negative-tested), `SchemaMigrationTest` migrates v1–v4 fixtures to v5, `3.sqm` got a no-op `DROP INDEX IF EXISTS` so SQLDelight can compile it against `1.db`; **found** the JVM driver ignores `PRAGMA foreign_keys` so deletes now cascade explicitly (`DeleteCascadeSqliteTest`); `loadSnapshot()` measured at 209 ms median for 36k completions (target 100) — cause and proposal in `notes/p1-1-load-snapshot-timings.md`; 274 JVM tests green · `prod/p1-1-robustness`
 2026-10-03 · P1-1 step 11 · `AppStartup.create` returns Ready/Failed instead of throwing; `StartupFailureScreen` (Try again / Save a copy of the data file / Start with empty data, confirmed, moves the file aside and keeps the newest 3 copies) on Android (`AndroidStartupRecovery`, zip via picker) and iOS (`IosStartupRecovery`, share sheet, unverified); Android no longer deletes a corrupt database (`onCorruption` no-op); failed open closes its driver; 291 JVM tests green · `prod/p1-1-robustness`
+2026-10-03 · P1-1 review · progress and docs checked against the code (291 JVM tests, migration verification, iOS compile green); `PROJECT_CONTEXT.md`, `PROGRESS.md`, `ARCHITECTURE.md`, `README.md`, `SHEET_SYNC.md` and the P1-2/P1-3/P2 plans updated for the next session · `prod/p1-1-robustness` (unmerged)

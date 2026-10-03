@@ -12,21 +12,22 @@ Read this at the start of every plan session. It is the shared memory for all pl
   1. **The owner** — uses it with his OND 2026 plan and own data on his own phone + iPad.
   2. **Everyone else** — a neutral app with none of the owner's data, plan, names or credentials.
 
-## Status (updated 2026-10-03)
+## Status (updated 2026-10-03, after P1-1)
 
 - **P0-A done**: no personal data/seed in shared code; neutral first run; personal files in gitignored `personal/`. Audit finding P0-1 below is **resolved**.
 - **P0-B done**: sync split into `SheetsApi` / `PlanTable` / `PlanReconciler` / `SheetSync` + `SyncScheduler` + `SerializingTokenProvider`; atomic apply, explicit pending flag (migration `4.sqm`), typed errors, retries, offline auto-retry, Disconnect. Audit finding P0-5 is **resolved**.
 - **P0-C done in code** (device smoke test and `[mac]` verification owed): one version source in `gradle.properties`, signing/IDs externalised, R8 release build, backup exclusion, iOS privacy manifest, `docs/RELEASING.md`. Audit findings P0-2 and P0-3 are **resolved** (the iOS archive itself is unverified without a Mac).
-- Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, and every P1/P2 item.
-- Verification state: 196 JVM tests green, `assembleDebug`, `assembleRelease`/`bundleRelease` (test keystore) and iOS klib compile OK on Windows; device and Mac checks owed (see `PROGRESS.md`).
-- Branching: work happens directly on `master` from here.
+- **P1-1 done in code** (device and `[mac]` verification owed): `Logger`, cancellation-safe error handling, backup v4 (checksum, settings, optional sheet link), robust Android backup I/O, consistent reset, named confirmations for every destructive action, `refreshToday()` + injectable clock, monotonic `updated_at`, verified migrations (schema v5, snapshots `1.db`–`5.db`), explicit delete cascades, startup failure screen. Audit items under "P1 — robustness" below are **resolved** except where marked.
+- Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, P1-2, P1-3, P2.
+- Verification state: **291 JVM tests green**, `verifyCommonMainHabitsDatabaseMigration`, `assembleDebug`, and the iOS klib compile (main + test) OK on Windows; `assembleRelease`/`bundleRelease` last verified in P0-C (not re-run since); device and Mac checks owed (see `PROGRESS.md`).
+- Branching: P0 work went directly to `master`. **P1-1 is on `prod/p1-1-robustness` and not merged yet** (7 commits ahead of `master`); merge it (fast-forward) or branch P1-2 from it. P1-2 uses `prod/p1-2-architecture`.
 
 ## Tech snapshot (verified in repo)
 
 - Kotlin Multiplatform: Kotlin 2.3.20, Compose Multiplatform 1.11.1, AGP 8.9.1, Gradle 8.14.4, SQLDelight 2.3.2, Ktor 3.3.3, kotlinx-datetime 0.8.0, kotlinx-serialization 1.8.0. Android min 23 / target+compile 35; iOS deployment target 15; JVM 17.
-- One module `:composeApp` (+ `iosApp` SwiftUI host, GoogleSignIn via SPM). ~13k lines Kotlin, 196 JVM tests (was 83 at audit time), 4 SQLDelight migrations (`1.sqm`–`4.sqm`).
-- Layers: `domain` (models, `HabitCalculations`, `PlanResolver`, backup) → `data` (`LocalHabitRepository`, `InMemoryHabitRepository`, `OndSeedData`) → `presentation` (plain-class ViewModels with own scopes) → `ui` (shared Compose) ; `sync/` (`SheetsApi`, `PlanTable`, `PlanReconciler`, `SheetSync`, `SyncScheduler`, `SyncError`, `SerializingTokenProvider`); `androidMain` (driver, token provider, backup, share, widget) ; `iosMain`.
-- Wiring: `AppGraph` (hand-rolled DI). Navigation: a single `enum Destination` in `ui/HabitSheetApp.kt`.
+- One module `:composeApp` (+ `iosApp` SwiftUI host, GoogleSignIn via SPM). ~9.7k lines of main Kotlin plus ~6.6k of tests, **291 JVM tests** (83 at audit time), 4 SQLDelight migrations (`1.sqm`–`4.sqm`, schema version **5**, committed snapshots in `composeApp/src/commonMain/sqldelight/databases/`, `verifyMigrations` part of `check`).
+- Layers: `domain` (models, `HabitCalculations`, `PlanResolver`, `backup/` v1–v4 + `Sha256`, `monotonicUpdatedAt`) → `data` (`LocalHabitRepository`, `InMemoryHabitRepository`, `DatabaseFileNames`) → `presentation` (plain-class ViewModels with own scopes; `DestructiveAction`, `DateProvider`/`ClockDateProvider`) → `ui` (shared Compose; `DestructiveConfirmDialog`, `StartupFailureScreen`, `BackupService`/`StartupRecovery` interfaces) ; `platform/` (`Logger`, `runCatchingCancellable`) ; `sync/` (`SheetsApi`, `PlanTable`, `PlanReconciler`, `SheetSync`, `SyncScheduler`, `SyncError`, `SerializingTokenProvider`); `androidMain` (driver, token provider, `AndroidBackupService`/`BackupStreams`, `AndroidStartupRecovery`/`DatabaseFiles`, `AndroidLogger`, share, widget) ; `iosMain` (`IosBackupService`, `IosStartupRecovery`, `IosLogger`).
+- Wiring: `AppGraph(driverFactory, tokenProvider, logger)` (hand-rolled DI), created through `AppStartup.create(...)` which returns `Ready(graph)` or `Failed(cause)`; `MainActivity` keeps a nullable graph + startup state, iOS `MainViewController` renders `ReadyApp` or the failure screen. `BackupViewModel` is still built inside `HabitSheetApp`. Navigation: a single `enum Destination` in `ui/HabitSheetApp.kt`.
 - Docs already in repo: `README.md`, `ARCHITECTURE.md`, `SHEET_SYNC.md`, `WORKBOOK_MAPPING.md`.
 - A knowledge graph exists in `graphify-out/` (if present) — use `GRAPH_REPORT.md` / `graph.json` to navigate; refresh with `graphify update .`.
 
@@ -35,6 +36,20 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - `HabitSnapshot.plannedHabitsOn(date)` (domain/model/PlanResolver.kt) is the single resolver: dated `DayPlan` rows → weekly `WeeklyPlan` → every-day only for habits with no schedule (`datedOnly`/sheet-managed habits never fall through).
 - Completions: daily keyed `(planId, date)`; weekly `(weeklyHabitId, weekStart)`. Month is a derived window.
 - Sheet `Plan` tab columns: `ID, Date, Habit, Session, Done, Skip` (or 8-column OND layout `ID, Date, Area, Habit, Session, Done, Skip, Source`). Sheet wins on conflicts, except local check-offs flagged *pending upload* (explicit per-completion flag, no clock comparison), which are uploaded first.
+
+## Facts from P1-1 that later plans must respect
+
+- **Every ViewModel takes a `Logger` (default `NoOpLogger`) as its last constructor parameter**, and `BackupViewModel` also takes `callbackDispatcher` (default `Dispatchers.Main`) and `onDataReplaced`. Tests pass positional arguments, so a lifecycle-ViewModel conversion must keep these parameters (or use a factory) and tests need `Dispatchers.setMain`.
+- **Logging rule:** log fixed descriptions plus the throwable (rendered as class names only). Never log sheet URLs/ids, tokens, habit/category names or session text.
+- **Destructive actions** go through `DestructiveAction` (text) + `DestructiveConfirmDialog` (UI). `androidUnitTest/.../DestructiveCallSitesTest` scans `commonMain/.../ui/*.kt` (non-recursive, by file name: `DataBackupScreen`, `ManageHabitsScreen`, `PlanScreen`, `SettingsScreen`) and **will break when those screens are split into `ui/month/*`, `ui/manage/*`**: update it to scan recursively and keep the reviewed list of calls.
+- **Dates:** `MonthViewModel.refreshToday()` is called by the platform shells (foreground, time-zone/date change); `AppGraph.refreshToday()` forwards to it. `ClockDateProvider(clock, zone)` is the testable provider. Stored dates are plain `LocalDate`s.
+- **`updated_at`:** SQL `UPDATE`s use `MAX(updated_at, :updated_at)`; upserts of plans/completions read the previous stamp (`monotonicUpdatedAt`; completions are strictly increasing because upload acknowledgements compare `updated_at`). Do not "simplify" this away.
+- **Deletes cascade explicitly** (`deleteDailyHabit`, `deleteWeeklyHabit`, `deleteCategory` run several statements in one transaction) because the JVM driver ignores `PRAGMA foreign_keys`.
+- **Schema changes** need `N.sqm` + a new snapshot (`generateCommonMainHabitsDatabaseSchema`) + a new case in `SchemaMigrationTest`; never edit a shipped `.sqm` or a committed `.db` (one recorded exception in `3.sqm`). See `sqldelight/databases/README.md`.
+- **Backups:** writers always produce v4; `BackupSerializer.parse` reads v1–v4. Frozen fixtures `BackupFixtures.V1`–`V4` stand for files people hold: never regenerate them to make a test pass.
+- **Android SQLite:** `AndroidDriverFactory` overrides `onCorruption` (no-op) so the framework does not delete a corrupt database; the startup failure screen decides. `DATABASE_NAME` lives there.
+- **`loadSnapshot()` cost:** 209 ms median for 36k completions (target 100). Proposal in `notes/p1-1-load-snapshot-timings.md`: read completions once, drop the `ORDER BY`, update in memory for single check-offs.
+- **Test-only trap:** `Map.merge` and other JVM-only APIs compile in `androidUnitTest` and `commonTest` on the JVM but break the iOS compile (`compileTestKotlinIosSimulatorArm64`); run both before declaring done.
 
 ## Audit findings (the source for every plan)
 
@@ -53,7 +68,7 @@ Legend: **V** = verified by reading code/config; **I** = inferred.
 6. **No CI (V).** No `.github/`.
 7. **No privacy policy / store listing assets (I).**
 
-### P1 — robustness
+### P1 — robustness (**resolved in P1-1** except where marked; details in `PROGRESS.md`)
 - No logging or crash reporting; 31 `catch` blocks in `commonMain` (V).
 - Backup (`domain/backup/BackupModels.kt`) serializes only `HabitSnapshot`; sheet link/theme/onboarding and `sheetManagedHabitIds` (`@Transient`) are excluded; `restoreFromSnapshot` wipes `sheet_managed_habits` (V).
 - `AndroidBackupService` import reads lines and concatenates without newlines (V). iOS backup is clipboard-based (README).

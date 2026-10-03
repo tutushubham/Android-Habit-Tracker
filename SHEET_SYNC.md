@@ -32,7 +32,7 @@ Every check-off made on this device is marked *pending upload* in the local data
 2. **No pending mark:** the sheet's value is applied locally.
 3. If you tap a check *while* a sync is running, your newer tap stays pending and is uploaded by the next sync; the sheet value read earlier never overwrites it.
 
-No device clocks are compared. If two devices change the same check before either syncs, whoever syncs last wins; there is no conflict history. Linking a different sheet discards pending marks (the new sheet is authoritative). Restoring a backup also starts with nothing pending. Upload failures leave the mark in place so the next sync retries.
+No device clocks are compared. If two devices change the same check before either syncs, whoever syncs last wins; there is no conflict history. Linking a different sheet discards pending marks (the new sheet is authoritative). Restoring a backup also starts with nothing pending and forgets the last sync, so the next sync is a clean "sheet wins" pass (sessions that exist only locally are still added to the sheet). **Reset all data** also clears the sheet link; **Disconnect** only unlinks. Neither ever changes the Google Sheet. Upload failures leave the mark in place so the next sync retries.
 
 ## Which habit does a row belong to? (identity)
 

@@ -62,14 +62,17 @@ The second command validates shared and iOS Kotlin sources without launching a s
 
 - `composeApp/src/commonMain/kotlin/com/habitsheet/domain` — models, repository contract, and workbook calculations
 - `composeApp/src/commonMain/kotlin/com/habitsheet/data` — defaults and repository implementations
-- `composeApp/src/commonMain/sqldelight` — SQLite schema and queries
+- `composeApp/src/commonMain/sqldelight` — SQLite schema, migrations (`*.sqm`) and queries; `databases/` holds the committed schema snapshots used by `verifyMigrations`
+- `docs/production-plan` — the production plan, `PROGRESS.md` and working notes
 - `composeApp/src/commonMain/kotlin/com/habitsheet/presentation` — view models and derived UI state
 - `composeApp/src/commonMain/kotlin/com/habitsheet/ui` — responsive shared Compose screens
 - `composeApp/src/androidMain` and `composeApp/src/iosMain` — minimal platform drivers/entry points
 - `iosApp` — native SwiftUI host project
 - `stitch` — design reference screens (code, images, metadata)
 
-On iOS, Data & Backup copies JSON or CSV to the clipboard; save the copied text somewhere durable. Import reads a previously copied JSON backup. On Android, Data & Backup uses the system document picker for files.
+On iOS, Data & Backup copies JSON or CSV to the clipboard; save the copied text somewhere durable. Import reads a previously copied JSON backup. On Android, Data & Backup uses the system document picker for files. Backups are written as format version 4 (habits, plans, history, theme and first-run flag, with a checksum that detects a damaged or edited file); versions 1–3 still import. A backup never contains sync state, and importing one makes the next sync start from your Google Sheet. **Reset all data** and **Import** both replace local data only and say so before they run; your Google Sheet is never touched.
+
+If the app cannot open its local database at start, it shows a recovery screen (Try again / Save a copy of the data file / Start with empty data) instead of crashing; nothing is deleted without a confirmation, and the old file is kept on the device when you start empty.
 
 There is no proprietary account server, notification system, or gamification. Optional Google Sheets sync uses native Google authorization and the Sheets API; credentials are not stored in the app database.
 
