@@ -10,6 +10,7 @@ import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.w
 import com.habitsheet.platform.runCatchingCancellable
+import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -35,7 +36,7 @@ class BackupViewModel(
      * Exports a version 4 backup: all habit data plus theme and onboarding. The sheet link is included only when
      * [includeSheetLink] is true (default: no, so a shared backup file never reveals the person's sheet).
      */
-    fun exportBackup(includeSheetLink: Boolean = false) {
+    fun exportBackup(includeSheetLink: Boolean = false, onResult: (BackupResult) -> Unit = {}) {
         // UNDISPATCHED: starts on the caller's thread; the repository reads below do not normally suspend.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val settings = runCatchingCancellable {
@@ -46,14 +47,14 @@ class BackupViewModel(
                 )
             }.onFailure { logger.w(TAG, "Reading settings for the backup failed; exporting data only", it) }.getOrNull()
             val json = BackupSerializer.serialize(repository.snapshot.value, dateProvider.nowEpochMillis(), settings)
-            withContext(callbackDispatcher) { backupService.exportBackup(json) }
+            withContext(callbackDispatcher) { backupService.exportBackup(json, onResult) }
         }
     }
 
-    fun exportCsv() {
+    fun exportCsv(onResult: (BackupResult) -> Unit = {}) {
         val snapshot = repository.snapshot.value
         val csv = CsvGenerator.generate(snapshot)
-        backupService.exportCsv(csv)
+        backupService.exportCsv(csv, onResult)
     }
 
     fun clearAllData() {
@@ -68,7 +69,9 @@ class BackupViewModel(
      * version 4 backup replaces the current link only when [applySheetLink] is true (the caller asks the person).
      */
     fun importBackup(onSuccess: () -> Unit, onError: (String) -> Unit, applySheetLink: Boolean = false) {
-        backupService.importBackup { json ->
+        backupService.importBackup(onFailure = { message ->
+            scope.launch { withContext(callbackDispatcher) { onError(message) } }
+        }, onImport = { json ->
             scope.launch {
                 val failure = runCatchingCancellable {
                     val backup = BackupSerializer.parse(json)
@@ -84,7 +87,7 @@ class BackupViewModel(
                     }
                 }
             }
-        }
+        })
     }
 
     fun close() {

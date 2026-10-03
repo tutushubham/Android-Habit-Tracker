@@ -15,9 +15,9 @@ class ResetDataTest {
     fun resetAllDataEndToEnd() = runTest {
         val repository = InMemoryHabitRepository()
         val backupService = object : BackupService {
-            override fun exportBackup(json: String) {}
-            override fun exportCsv(csv: String) {}
-            override fun importBackup(onImport: (String) -> Unit) {}
+            override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
+            override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
+            override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {}
         }
         val viewModel = BackupViewModel(repository, backupService, scope = backgroundScope)
 

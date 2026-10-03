@@ -24,6 +24,13 @@ fun DataBackupScreen(
     var showImportConfirmation by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    fun showResult(result: BackupResult) {
+        when (result) {
+            is BackupResult.Success -> { successMessage = result.message; errorMessage = null }
+            is BackupResult.Failure -> { errorMessage = result.message; successMessage = null }
+            BackupResult.Cancelled -> Unit
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -52,10 +59,7 @@ fun DataBackupScreen(
                 title = "Export Backup",
                 description = if (viewModel.usesClipboard) "Copy all habits, plans, and history as JSON." else "Save your categories, habits, plans, and entire completion history to a local file.",
                 buttonText = if (viewModel.usesClipboard) "Copy JSON backup" else "Export JSON",
-                onClick = {
-                    viewModel.exportBackup()
-                    if (viewModel.usesClipboard) successMessage = "Backup copied. Paste and save it somewhere safe before copying anything else."
-                }
+                onClick = { viewModel.exportBackup(onResult = ::showResult) }
             )
 
             Spacer(Modifier.height(24.dp))
@@ -64,10 +68,7 @@ fun DataBackupScreen(
                 title = "Export CSV",
                 description = if (viewModel.usesClipboard) "Copy your habit history as CSV." else "Export your daily and weekly habit history for use in Excel or Google Sheets.",
                 buttonText = if (viewModel.usesClipboard) "Copy CSV" else "Export CSV",
-                onClick = {
-                    viewModel.exportCsv()
-                    if (viewModel.usesClipboard) successMessage = "CSV copied to clipboard."
-                }
+                onClick = { viewModel.exportCsv(::showResult) }
             )
 
             Spacer(Modifier.height(24.dp))

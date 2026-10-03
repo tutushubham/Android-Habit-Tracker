@@ -30,9 +30,9 @@ class ProductionReadinessTest {
         val monthViewModel = MonthViewModel(repository, dateProvider, backgroundScope)
         val manageViewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
         val backupViewModel = BackupViewModel(repository, object : com.habitsheet.ui.BackupService {
-            override fun exportBackup(json: String) {}
-            override fun exportCsv(csv: String) {}
-            override fun importBackup(onImport: (String) -> Unit) {}
+            override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
+            override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
+            override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {}
         }, dateProvider, backgroundScope)
 
         // 2. Create categories and habits

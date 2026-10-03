@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         AndroidLogger.installUncaughtExceptionLogger(logger)
         graph = AppGraph(AndroidDriverFactory(applicationContext), AndroidSheetTokenProvider(this, logger), logger)
         val shareService = AndroidShareService(this)
-        val backupService = AndroidBackupService(this)
+        val backupService = AndroidBackupService(this, logger)
         setContent {
             HabitSheetApp(
                 graph.monthViewModel,

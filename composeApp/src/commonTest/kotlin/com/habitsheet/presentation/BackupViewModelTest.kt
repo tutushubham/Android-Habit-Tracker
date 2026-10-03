@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -103,6 +104,43 @@ class BackupViewModelTest {
                 repository.getSheetUrl(),
             )
         }
+    }
+
+    @Test
+    fun exportReportsTheServicesResultToTheCaller() = runTest {
+        for (result in listOf(BackupResult.Success("ok"), BackupResult.Failure("disk full"), BackupResult.Cancelled)) {
+            val viewModel = BackupViewModel(
+                repository = InMemoryHabitRepository(validSnapshot()),
+                backupService = RecordingBackupService(exportResult = result),
+                scope = backgroundScope,
+                callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+            )
+            val seen = mutableListOf<BackupResult>()
+            viewModel.exportBackup(onResult = { seen += it })
+            viewModel.exportCsv { seen += it }
+            assertEquals(listOf(result, result), seen)
+        }
+    }
+
+    @Test
+    fun unreadableFileOrEmptyClipboardIsReportedAndNothingIsWiped() = runTest {
+        val original = HabitSnapshot(categories = listOf(Category("old", "Old", 0, true, 1)))
+        val repository = InMemoryHabitRepository(original)
+        val viewModel = BackupViewModel(
+            repository = repository,
+            backupService = RecordingBackupService(importFailure = "The clipboard is empty."),
+            scope = backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        var succeeded = false
+        var error: String? = null
+
+        viewModel.importBackup(onSuccess = { succeeded = true }, onError = { error = it })
+        runCurrent()
+
+        assertFalse(succeeded)
+        assertEquals("The clipboard is empty.", error)
+        assertEquals(original, repository.snapshot.value)
     }
 
     @Test
@@ -211,19 +249,24 @@ class BackupViewModelTest {
 
 private class RecordingBackupService(
     private val importPayload: String? = null,
+    private val importFailure: String? = null,
+    private val exportResult: BackupResult = BackupResult.Success("saved"),
 ) : BackupService {
     var exportedBackup: String? = null
     var exportedCsv: String? = null
 
-    override fun exportBackup(json: String) {
+    override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) {
         exportedBackup = json
+        onResult(exportResult)
     }
 
-    override fun exportCsv(csv: String) {
+    override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) {
         exportedCsv = csv
+        onResult(exportResult)
     }
 
-    override fun importBackup(onImport: (String) -> Unit) {
+    override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {
+        importFailure?.let(onFailure)
         importPayload?.let(onImport)
     }
 }

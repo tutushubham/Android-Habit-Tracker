@@ -7,7 +7,7 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 - [Done] P0-A Product split & seed removal (on `master` via PR #1; manual device check, step 9, still owed)
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
 - [Done*] P0-C Release build config (steps 1–11 on `master`; *code, automated checks and docs complete; owed: release-APK device smoke test and the `[mac]` iOS verification, see below)
-- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–3 done)
+- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–5 done)
 - [ ] P1-2 Architecture & code quality
 - [ ] P1-3 Gaps in existing features
 - [ ] P2 Testing
@@ -76,6 +76,8 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 - P0-A step 9: install over the existing build on your phone; habits, plans and completions intact; sheet still connects.
 - P0-A: fresh emulator install is empty and shows the tutorial once.
 - P0-B (from the plan, section 4): (1) 20 quick check-offs produce one coalesced sync; (2) airplane mode, toggle, reconnect → uploaded (now also automatic); (3) edit a session in the sheet → appears after sync; (4) rename a habit in the sheet on all its rows → local habit renamed, no duplicate; (5) revoke app access in the Google Account → clear message, local data intact; also try **Disconnect**.
+- P1-1 steps 4–5 (device): (a) Android: export a backup, kill the app (`adb shell am kill com.habitsheet...` or swipe away) while the save picker is open, then save: a "Backup saved." toast appears and the file holds the full v4 JSON; (b) export to a full storage / revoked location shows an error and leaves no half-written file; (c) import a large multi-line v3 backup from an old build; (d) import a non-backup file, a 0-byte file and cancel the picker: data unchanged, clear message or nothing.
+- P1-1 steps 4–5 `[mac]`: iOS compile of `IosBackupService` passes on Windows (klib) but the clipboard flow was never run: export, copy something else, import (expect the "no backup text" or "isn't a valid backup" message and unchanged data); export then import on a second device; a v3 backup text from the old build imports.
 - iOS: build and run on a Mac (`[mac]`): the Swift token provider is wrapped by `SerializingTokenProvider` but not run on a device.
 
 ## Known limitations carried forward (not bugs in P0-A/P0-B/P0-C scope)
@@ -100,3 +102,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-03 · P0-C audit · full rebuild green (`--rerun-tasks`: debug + release + unit tests + iOS klib compile); dead check in `SyncError.kt` removed, AGP deprecation noise silenced via `gradle.properties` (that file is part of the still-uncommitted Gradle/AGP upgrade), docs refreshed
 2026-10-03 · P1-1 steps 1–2 · `Logger` (Android logcat / iOS NSLog / no-op), `runCatchingCancellable`, every `catch` in commonMain logs or rethrows cancellation, Android uncaught-exception logger; 201 JVM tests green · `prod/p1-1-robustness`
 2026-10-03 · P1-1 step 3 · backup v4 (settings, optional sheet link, SHA-256 over settings+data), v1–v3 still restore (frozen fixtures), restore clears sync state, tamper/unknown-version rejection; 222 JVM tests green · `prod/p1-1-robustness`
+2026-10-03 · P1-1 steps 4–5 · `BackupService` now reports results/failures; `AndroidBackupService` reads whole streams (`BackupStreams`, 32 MB cap, BOM, null/IO errors), exports via a private cache file so a save survives process death (toast if the screen is gone), deletes half-written files; iOS clipboard import refuses empty text, export is v4; 234 JVM tests green · `prod/p1-1-robustness`
