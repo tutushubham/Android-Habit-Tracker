@@ -16,7 +16,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        graph = AppGraph(AndroidDriverFactory(applicationContext), AndroidSheetTokenProvider(this))
+        val logger = AndroidLogger()
+        AndroidLogger.installUncaughtExceptionLogger(logger)
+        graph = AppGraph(AndroidDriverFactory(applicationContext), AndroidSheetTokenProvider(this, logger), logger)
         val shareService = AndroidShareService(this)
         val backupService = AndroidBackupService(this)
         setContent {

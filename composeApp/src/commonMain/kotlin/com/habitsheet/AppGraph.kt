@@ -3,6 +3,8 @@ package com.habitsheet
 import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.DriverFactory
 import com.habitsheet.data.LocalHabitRepository
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
@@ -19,19 +21,21 @@ import kotlinx.coroutines.cancel
 class AppGraph(
     driverFactory: DriverFactory,
     tokenProvider: SheetTokenProvider,
+    val logger: Logger = NoOpLogger,
 ) {
-    private val serializedTokens = SerializingTokenProvider(tokenProvider)
+    private val serializedTokens = SerializingTokenProvider(tokenProvider, logger = logger)
     val repository = LocalHabitRepository(driverFactory)
-    val sheetSync = SheetSync(repository, serializedTokens)
+    val sheetSync = SheetSync(repository, serializedTokens, logger = logger)
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     // "Will sync when online": while offline with check-offs still waiting, retry on its own (30 s, doubling to 5 min).
     private val syncScheduler = SyncScheduler(
         syncScope,
+        logger = logger,
         shouldRetry = { sheetSync.state.value.error is SyncError.Offline && repository.snapshot.value.pendingCompletions.isNotEmpty() },
     ) { interactive -> sheetSync.sync(interactive) }
-    val monthViewModel = MonthViewModel(repository, onLocalChange = syncScheduler::markDirty)
-    val manageHabitsViewModel = ManageHabitsViewModel(repository, DefaultIdGenerator())
-    val settingsViewModel = SettingsViewModel(repository, sheetSync = sheetSync)
+    val monthViewModel = MonthViewModel(repository, onLocalChange = syncScheduler::markDirty, logger = logger)
+    val manageHabitsViewModel = ManageHabitsViewModel(repository, DefaultIdGenerator(), logger = logger)
+    val settingsViewModel = SettingsViewModel(repository, sheetSync = sheetSync, logger = logger)
 
     fun syncOnForeground() = syncScheduler.syncNow()
 

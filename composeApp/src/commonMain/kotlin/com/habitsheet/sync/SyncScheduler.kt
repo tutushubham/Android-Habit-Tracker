@@ -1,5 +1,8 @@
 package com.habitsheet.sync
 
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -25,6 +28,7 @@ class SyncScheduler(
     private val retryDelayMillis: Long = DEFAULT_RETRY_MILLIS,
     private val maxRetryDelayMillis: Long = DEFAULT_MAX_RETRY_MILLIS,
     private val shouldRetry: () -> Boolean = { false },
+    private val logger: Logger = NoOpLogger,
     private val runSync: suspend (interactive: Boolean) -> Unit,
 ) {
     private sealed interface Trigger {
@@ -50,8 +54,9 @@ class SyncScheduler(
                     runSync(interactive)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // SheetSync reports its own failures; the scheduler must never die.
+                    logger.e("SyncScheduler", "Sync run threw", e)
                 }
                 retryDelay = if (shouldRetry()) {
                     ((retryDelay ?: (retryDelayMillis / 2)) * 2).coerceAtMost(maxRetryDelayMillis)

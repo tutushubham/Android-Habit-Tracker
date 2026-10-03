@@ -2,6 +2,10 @@ package com.habitsheet.presentation
 
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.model.SheetLink
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetSyncState
 import com.habitsheet.sync.SyncError
@@ -36,6 +40,7 @@ class SettingsViewModel(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
     private val sheetSync: SheetSync? = null,
+    private val logger: Logger = NoOpLogger,
 ) {
     private val _themeMode = MutableStateFlow(ThemeMode.System)
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
@@ -49,16 +54,19 @@ class SettingsViewModel(
 
     init {
         scope.launch(ioDispatcher) {
-            val mode = repository.getThemeMode()
-            _themeMode.value = ThemeMode.entries.getOrElse(mode) { ThemeMode.System }
-            _sheetUrl.value = repository.getSheetUrl()
+            runCatchingCancellable {
+                val mode = repository.getThemeMode()
+                _themeMode.value = ThemeMode.entries.getOrElse(mode) { ThemeMode.System }
+                _sheetUrl.value = repository.getSheetUrl()
+            }.onFailure { logger.e(TAG, "loading settings failed", it) }
         }
     }
 
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
         scope.launch(ioDispatcher) {
-            repository.setThemeMode(mode.ordinal)
+            runCatchingCancellable { repository.setThemeMode(mode.ordinal) }
+                .onFailure { logger.e(TAG, "setThemeMode failed", it) }
         }
     }
 
@@ -69,11 +77,12 @@ class SettingsViewModel(
             return
         }
         scope.launch(ioDispatcher) {
-            try {
+            runCatchingCancellable {
                 repository.setSheetUrl(canonical)
                 _sheetUrl.value = canonical
                 _sheetMessage.value = if (canonical.isEmpty()) "Sheet link removed." else "Sheet link saved. Tap Connect & sync to authorize Google."
-            } catch (_: Exception) {
+            }.onFailure {
+                logger.e(TAG, "saveSheetUrl failed", it)
                 _sheetMessage.value = "Could not save the sheet link."
             }
         }
@@ -82,12 +91,13 @@ class SettingsViewModel(
     /** Unlinks the sheet and forgets sync state. Habits, plans and check-offs on this device are kept. */
     fun disconnect() {
         scope.launch(ioDispatcher) {
-            try {
+            runCatchingCancellable {
                 repository.setSheetUrl("")
                 _sheetUrl.value = ""
                 sheetSync?.reset()
                 _sheetMessage.value = "Disconnected. Your habits and check-offs stay on this device."
-            } catch (_: Exception) {
+            }.onFailure {
+                logger.e(TAG, "disconnect failed", it)
                 _sheetMessage.value = "Could not disconnect. Please try again."
             }
         }
@@ -100,5 +110,9 @@ class SettingsViewModel(
 
     fun close() {
         scope.cancel()
+    }
+
+    private companion object {
+        const val TAG = "Settings"
     }
 }

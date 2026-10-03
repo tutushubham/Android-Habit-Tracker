@@ -19,6 +19,11 @@ import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.model.PlannedHabit
 import com.habitsheet.domain.model.plannedHabitsOn
 import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.runCatchingCancellable
+import com.habitsheet.platform.w
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -72,6 +77,7 @@ class MonthViewModel(
     private val dateProvider: DateProvider = SystemDateProvider,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val onLocalChange: (() -> Unit)? = null,
+    private val logger: Logger = NoOpLogger,
 ) {
     private val selectedMonth = MutableStateFlow(MonthKey.from(dateProvider.today()))
     private val selectedDay = MutableStateFlow(dateProvider.today())
@@ -92,11 +98,12 @@ class MonthViewModel(
 
     init {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 // Existing installs that already have habits are not shown the first-run tutorial.
                 onboardingVisible.value = !repository.isOnboardingCompleted() &&
                     repository.snapshot.value.dailyHabits.isEmpty()
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "loading onboarding state failed", it)
                 error.value = "Couldn't load app settings."
             }
         }
@@ -164,10 +171,11 @@ class MonthViewModel(
     fun completeOnboarding() {
         onboardingVisible.value = false
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.setOnboardingCompleted(true)
-            } catch (e: Exception) {
-                // Not critical, but we can log or ignore
+            }.onFailure {
+                // Not critical: the tutorial may show once more.
+                logger.w(TAG, "completeOnboarding failed", it)
             }
         }
     }
@@ -198,7 +206,7 @@ class MonthViewModel(
 
     fun togglePlanned(planId: String, date: LocalDate) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 completionMutex.withLock {
                     val planned = repository.snapshot.value.plannedHabitsOn(date).firstOrNull { it.id == planId && !it.skipped }
                         ?: return@withLock
@@ -210,7 +218,8 @@ class MonthViewModel(
                     )
                     onLocalChange?.invoke()
                 }
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "togglePlanned failed", it)
                 error.value = "Couldn't update habit. Please try again."
             }
         }
@@ -219,44 +228,55 @@ class MonthViewModel(
     fun saveDayPlan(habitId: String, date: LocalDate, detail: String, skipped: Boolean = false, id: String = "$habitId|$date") {
         if (detail.isBlank()) return
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.saveDayPlan(DayPlan(habitId, date, detail.trim(), skipped, dateProvider.nowEpochMillis(), id))
-            } catch (e: Exception) { error.value = "Couldn't save the day plan." }
+            }.onFailure {
+                logger.e(TAG, "saveDayPlan failed", it)
+                error.value = "Couldn't save the day plan."
+            }
         }
     }
 
     fun deleteDayPlan(habitId: String, date: LocalDate) {
         scope.launch {
-            try { repository.deleteDayPlan(habitId, date) }
-            catch (e: Exception) { error.value = "Couldn't remove the day plan." }
+            runCatchingCancellable { repository.deleteDayPlan(habitId, date) }.onFailure {
+                logger.e(TAG, "deleteDayPlan failed", it)
+                error.value = "Couldn't remove the day plan."
+            }
         }
     }
 
     fun deleteDayPlanById(id: String) {
         scope.launch {
-            try { repository.deleteDayPlanById(id) }
-            catch (e: Exception) { error.value = "Couldn't remove the day plan." }
+            runCatchingCancellable { repository.deleteDayPlanById(id) }.onFailure {
+                logger.e(TAG, "deleteDayPlanById failed", it)
+                error.value = "Couldn't remove the day plan."
+            }
         }
     }
 
     fun saveWeeklyPlan(habitId: String, weekday: Int, detail: String) {
         if (detail.isBlank()) return
         scope.launch {
-            try { repository.saveWeeklyPlan(WeeklyPlan(habitId, weekday, detail.trim(), dateProvider.nowEpochMillis())) }
-            catch (e: Exception) { error.value = "Couldn't save the weekly plan." }
+            runCatchingCancellable { repository.saveWeeklyPlan(WeeklyPlan(habitId, weekday, detail.trim(), dateProvider.nowEpochMillis())) }.onFailure {
+                logger.e(TAG, "saveWeeklyPlan failed", it)
+                error.value = "Couldn't save the weekly plan."
+            }
         }
     }
 
     fun deleteWeeklyPlan(habitId: String, weekday: Int) {
         scope.launch {
-            try { repository.deleteWeeklyPlan(habitId, weekday) }
-            catch (e: Exception) { error.value = "Couldn't remove the weekly plan." }
+            runCatchingCancellable { repository.deleteWeeklyPlan(habitId, weekday) }.onFailure {
+                logger.e(TAG, "deleteWeeklyPlan failed", it)
+                error.value = "Couldn't remove the weekly plan."
+            }
         }
     }
 
     fun toggleWeekly(habitId: String, weekStartDate: LocalDate) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 completionMutex.withLock {
                     val habit = repository.snapshot.value.weeklyHabits.firstOrNull { it.id == habitId }
                     val month = MonthKey.from(weekStartDate)
@@ -270,7 +290,8 @@ class MonthViewModel(
                         WeeklyHabitCompletion(habitId, weekStartDate, !completed, dateProvider.nowEpochMillis()),
                     )
                 }
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "toggleWeekly failed", it)
                 error.value = "Couldn't update weekly habit. Please try again."
             }
         }
@@ -278,6 +299,10 @@ class MonthViewModel(
 
     fun close() {
         scope.cancel()
+    }
+
+    private companion object {
+        const val TAG = "Month"
     }
 }
 

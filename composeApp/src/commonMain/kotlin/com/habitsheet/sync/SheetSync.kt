@@ -7,6 +7,11 @@ import com.habitsheet.presentation.SystemDateProvider
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.domain.model.SheetSyncChanges
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.i
+import com.habitsheet.platform.w
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +55,7 @@ class SheetSync(
     private val client: HttpClient = createSheetsHttpClient(),
     private val dateProvider: DateProvider = SystemDateProvider,
     private val retryPolicy: RetryPolicy = RetryPolicy(),
+    private val logger: Logger = NoOpLogger,
 ) {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(SheetSyncState())
@@ -74,7 +80,7 @@ class SheetSync(
                 }
                 return
             }
-            val api = SheetsApi(client, id, token, retryPolicy)
+            val api = SheetsApi(client, id, token, retryPolicy, logger)
             removeLegacyWeeklyPlaceholders()
             val snapshot = repository.snapshot.value
             val window = SheetSyncWindow.rolling(dateProvider.today())
@@ -108,6 +114,9 @@ class SheetSync(
             throw e
         } catch (e: Exception) {
             val error = e.toSyncError()
+            // Offline is routine (retried automatically); anything else needs a developer's attention.
+            val summary = "Sync failed: ${error::class.simpleName}" + ((error as? SyncError.Unknown)?.status?.let { " (HTTP $it)" } ?: "")
+            if (error is SyncError.Offline) logger.i(TAG, summary, error.cause) else logger.e(TAG, summary, error.cause ?: error)
             mutableState.value = mutableState.value.copy(busy = false, message = error.userMessage(), error = error)
         } finally {
             mutex.unlock()
@@ -120,7 +129,10 @@ class SheetSync(
         if (createdTabId != null) {
             try { api.formatPlanTab(createdTabId) }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { /* Formatting is optional; the data is already safe. */ }
+            catch (e: Exception) {
+                // Formatting is optional; the data is already safe.
+                logger.w(TAG, "Formatting the new Plan tab failed", e)
+            }
         }
         val now = Clock.System.now().toEpochMilliseconds()
         repository.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds, completionsToAcknowledge = upload.acknowledged), upload.syncedKeys, now)
@@ -161,4 +173,5 @@ class SheetSync(
     }
 }
 
+private const val TAG = "SheetSync"
 private const val LEGACY_WEEKLY_PLACEHOLDER = "Plan in OND sheet"

@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.uikit.LocalUIViewController
 import androidx.compose.ui.window.ComposeUIViewController
 import com.habitsheet.AppGraph
+import com.habitsheet.platform.IosLogger
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.ShareService
@@ -20,7 +21,7 @@ import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
 
 fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewController {
-    val graph = remember { AppGraph(IosDriverFactory(), tokenProvider) }
+    val graph = remember { AppGraph(IosDriverFactory(), tokenProvider, IosLogger()) }
     LaunchedEffect(graph) { graph.syncOnForeground() }
     val hostController = LocalUIViewController.current
     val shareService = remember(hostController) {

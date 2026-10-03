@@ -1,5 +1,8 @@
 package com.habitsheet.sync
 
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.w
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.HttpRequestBuilder
@@ -51,12 +54,15 @@ class RetryPolicy(
     }
 }
 
+private const val TAG = "SheetsApi"
+
 /** HTTP only: talks to the Sheets v4 REST API for one spreadsheet. Parsing lives in [PlanTable]. */
 internal class SheetsApi(
     private val client: HttpClient,
     id: String,
     private val token: String,
     private val retry: RetryPolicy = RetryPolicy(),
+    private val logger: Logger = NoOpLogger,
 ) {
     private val base = "https://sheets.googleapis.com/v4/spreadsheets/$id"
 
@@ -85,11 +91,13 @@ internal class SheetsApi(
                 if (status in 200..299) return body
                 retryAfterMillis = response.headers[HttpHeaders.RetryAfter]?.trim()?.toLongOrNull()?.let { it * 1000 }
                 failure = mapStatus(status, body, retryAfterMillis)
+                logger.w(TAG, "Sheets request failed: HTTP $status (attempt $attempt of ${retry.maxAttempts})")
                 retryable = failure is SyncError.RateLimited || status == 503 || (idempotent && status in 500..599)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 failure = e.toSyncError()
+                logger.w(TAG, "Sheets request failed before a response (attempt $attempt of ${retry.maxAttempts})", e)
                 retryable = idempotent && failure is SyncError.Offline
             }
             if (!retryable || attempt >= retry.maxAttempts) throw failure

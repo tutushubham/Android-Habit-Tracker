@@ -4,10 +4,13 @@ import com.habitsheet.domain.backup.BackupSerializer
 import com.habitsheet.domain.backup.BackupValidationException
 import com.habitsheet.domain.backup.CsvGenerator
 import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -21,6 +24,7 @@ class BackupViewModel(
     private val dateProvider: DateProvider = SystemDateProvider,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val logger: Logger = NoOpLogger,
 ) {
     val usesClipboard: Boolean get() = backupService.usesClipboard
 
@@ -38,22 +42,19 @@ class BackupViewModel(
 
     fun clearAllData() {
         scope.launch {
-            repository.clearAllData()
+            runCatchingCancellable { repository.clearAllData() }
+                .onFailure { logger.e(TAG, "clearAllData failed", it) }
         }
     }
 
     fun importBackup(onSuccess: () -> Unit, onError: (String) -> Unit) {
         backupService.importBackup { json ->
             scope.launch {
-                val failure = try {
+                val failure = runCatchingCancellable {
                     val snapshot = BackupSerializer.deserialize(json)
                     repository.restoreFromSnapshot(snapshot)
-                    null
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e
-                }
+                }.exceptionOrNull()
+                failure?.let { logger.e(TAG, "importBackup failed", it) }
 
                 withContext(callbackDispatcher) {
                     if (failure == null) {
@@ -69,9 +70,13 @@ class BackupViewModel(
     fun close() {
         scope.cancel()
     }
+
+    private companion object {
+        const val TAG = "Backup"
+    }
 }
 
-private fun Exception.toImportMessage(): String = when (this) {
+private fun Throwable.toImportMessage(): String = when (this) {
     is BackupValidationException -> message ?: "This backup contains invalid data."
     is SerializationException -> "This isn't a valid Habit Sheet backup file."
     else -> "The backup couldn't be restored. Your existing data was not changed."

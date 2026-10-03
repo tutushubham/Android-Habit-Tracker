@@ -9,6 +9,10 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.api.Scope
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.w
 import com.habitsheet.sync.SheetTokenProvider
 import java.io.IOException
 
@@ -19,7 +23,10 @@ import java.io.IOException
  * class), but this class is also defensive on its own: only one consent screen can be pending, a second
  * interactive request is refused instead of overwriting the first, and every completion is delivered once.
  */
-internal class AndroidSheetTokenProvider(private val activity: ComponentActivity) : SheetTokenProvider {
+internal class AndroidSheetTokenProvider(
+    private val activity: ComponentActivity,
+    private val logger: Logger = NoOpLogger,
+) : SheetTokenProvider {
     private val client = Identity.getAuthorizationClient(activity)
     private val lock = Any()
     private var pendingCompletion: ((String?, String?) -> Unit)? = null
@@ -33,11 +40,17 @@ internal class AndroidSheetTokenProvider(private val activity: ComponentActivity
             try {
                 completion(client.getAuthorizationResultFromIntent(result.data).accessToken, null)
             } catch (e: ApiException) {
+                logger.w(TAG, "Authorization result failed (status ${e.statusCode})", e)
                 completion(null, failureText(e))
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logger.e(TAG, "Authorization result could not be read", e)
                 completion(null, "Google authorization failed.")
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "GoogleAuth"
     }
 
     private fun takePending(): ((String?, String?) -> Unit)? = synchronized(lock) {
@@ -65,7 +78,10 @@ internal class AndroidSheetTokenProvider(private val activity: ComponentActivity
                     else -> launchConsent(result.pendingIntent, completion)
                 }
             }
-            .addOnFailureListener { completion(null, failureText(it)) }
+            .addOnFailureListener {
+                logger.w(TAG, "authorize() failed", it)
+                completion(null, failureText(it))
+            }
     }
 
     private fun launchConsent(pendingIntent: android.app.PendingIntent?, completion: (String?, String?) -> Unit) {
@@ -83,7 +99,8 @@ internal class AndroidSheetTokenProvider(private val activity: ComponentActivity
         activity.runOnUiThread {
             try {
                 launcher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logger.e(TAG, "Consent screen could not be launched", e)
                 // The Activity is finishing or the intent cannot be started: release the slot and report.
                 takePending()?.invoke(null, "Google authorization could not be opened.")
             }

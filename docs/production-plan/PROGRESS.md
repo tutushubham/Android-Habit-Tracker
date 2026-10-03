@@ -7,7 +7,7 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 - [Done] P0-A Product split & seed removal (on `master` via PR #1; manual device check, step 9, still owed)
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
 - [Done*] P0-C Release build config (steps 1–11 on `master`; *code, automated checks and docs complete; owed: release-APK device smoke test and the `[mac]` iOS verification, see below)
-- [ ] P1-1 Robustness & data safety
+- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–2 done)
 - [ ] P1-2 Architecture & code quality
 - [ ] P1-3 Gaps in existing features
 - [ ] P2 Testing
@@ -97,3 +97,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-03 · P0-A/B completion review · iOS compile fix, offline auto-retry, coverage gaps, docs refresh, graphify installed; 196 JVM tests green; work continues directly on `master`
 2026-10-03 · P0-C · steps 1–11 done directly on `master` (`0591134` … `9edcc91`); assembleDebug, assembleRelease/bundleRelease (test keystore) and unit tests OK; device + Mac verification pending
 2026-10-03 · P0-C audit · full rebuild green (`--rerun-tasks`: debug + release + unit tests + iOS klib compile); dead check in `SyncError.kt` removed, AGP deprecation noise silenced via `gradle.properties` (that file is part of the still-uncommitted Gradle/AGP upgrade), docs refreshed
+2026-10-03 · P1-1 steps 1–2 · `Logger` (Android logcat / iOS NSLog / no-op), `runCatchingCancellable`, every `catch` in commonMain logs or rethrows cancellation, Android uncaught-exception logger; 201 JVM tests green · `prod/p1-1-robustness`

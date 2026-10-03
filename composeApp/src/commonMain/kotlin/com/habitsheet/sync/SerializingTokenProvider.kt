@@ -1,5 +1,9 @@
 package com.habitsheet.sync
 
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.w
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +27,13 @@ class SerializingTokenProvider(
     private val interactiveTimeoutMillis: Long = 3 * 60_000L,
     private val backgroundTimeoutMillis: Long = 30_000L,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val logger: Logger = NoOpLogger,
 ) : SheetTokenProvider, AutoCloseable {
     private class Request(val interactive: Boolean, val completion: (String?, String?) -> Unit)
+
+    private companion object {
+        const val TAG = "TokenProvider"
+    }
 
     private val requests = Channel<Request>(Channel.UNLIMITED)
 
@@ -41,16 +50,20 @@ class SerializingTokenProvider(
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
+                            logger.e(TAG, "Platform token provider threw", e)
                             if (continuation.isActive) continuation.resume(null to (e.message ?: "Google authorization failed."))
                         }
                     }
-                } ?: (null to "Google authorization timed out.")
+                } ?: (null to "Google authorization timed out.").also {
+                    logger.w(TAG, "Token request timed out (interactive=${request.interactive})")
+                }
                 try {
                     request.completion(outcome.first, outcome.second)
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // A misbehaving caller must not stop the queue.
+                    logger.e(TAG, "Token completion callback threw", e)
                 }
             }
         }

@@ -6,6 +6,10 @@ import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.repository.IdGenerator
+import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.e
+import com.habitsheet.platform.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +24,7 @@ class ManageHabitsViewModel(
     private val idGenerator: IdGenerator,
     private val dateProvider: DateProvider = SystemDateProvider,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val logger: Logger = NoOpLogger,
 ) {
     val state: StateFlow<com.habitsheet.domain.model.HabitSnapshot> = repository.snapshot
     
@@ -35,9 +40,10 @@ class ManageHabitsViewModel(
         if (trimmed.isEmpty()) return
         val now = dateProvider.nowEpochMillis()
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.saveCategory(Category(id, trimmed, displayOrder, active, now))
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "saveCategory failed", it)
                 _error.value = "Couldn't save category."
             }
         }
@@ -60,9 +66,10 @@ class ManageHabitsViewModel(
 
     fun deleteCategory(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.deleteCategory(id)
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "deleteCategory failed", it)
                 _error.value = "Couldn't delete category."
             }
         }
@@ -77,7 +84,7 @@ class ManageHabitsViewModel(
         }
         val now = dateProvider.nowEpochMillis()
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.saveDailyHabit(
                     DailyHabit(
                         id = idGenerator.newId(),
@@ -93,7 +100,8 @@ class ManageHabitsViewModel(
                         datedOnly = datedOnly,
                     ),
                 )
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "addDailyHabit failed", it)
                 _error.value = "Couldn't create habit."
             }
         }
@@ -102,9 +110,10 @@ class ManageHabitsViewModel(
     fun updateDailyHabit(habit: DailyHabit) {
         if (habit.name.isBlank() || habit.monthlyGoal < 0) return
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.saveDailyHabit(habit.copy(updatedAtEpochMillis = dateProvider.nowEpochMillis()))
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "updateDailyHabit failed", it)
                 _error.value = "Couldn't update habit."
             }
         }
@@ -112,9 +121,10 @@ class ManageHabitsViewModel(
 
     fun archiveDailyHabit(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.archiveDailyHabit(id, dateProvider.today(), dateProvider.nowEpochMillis())
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "archiveDailyHabit failed", it)
                 _error.value = "Couldn't archive habit."
             }
         }
@@ -122,9 +132,10 @@ class ManageHabitsViewModel(
 
     fun restoreDailyHabit(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.restoreDailyHabit(id, dateProvider.nowEpochMillis())
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "restoreDailyHabit failed", it)
                 _error.value = "Couldn't restore habit."
             }
         }
@@ -132,9 +143,10 @@ class ManageHabitsViewModel(
 
     fun deleteDailyHabit(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.deleteDailyHabit(id)
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "deleteDailyHabit failed", it)
                 _error.value = "Couldn't delete habit."
             }
         }
@@ -149,9 +161,10 @@ class ManageHabitsViewModel(
         
         val newOrders = habits.mapIndexed { index, h -> h.id to index }.toMap()
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.updateDailyHabitOrders(newOrders, dateProvider.nowEpochMillis())
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "moveDailyHabit failed", it)
                 _error.value = "Couldn't reorder habits."
             }
         }
@@ -166,7 +179,7 @@ class ManageHabitsViewModel(
         }
         val now = dateProvider.nowEpochMillis()
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.saveWeeklyHabit(
                     WeeklyHabit(
                         id = idGenerator.newId(),
@@ -179,7 +192,8 @@ class ManageHabitsViewModel(
                         updatedAtEpochMillis = now,
                     ),
                 )
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "addWeeklyHabit failed", it)
                 _error.value = "Couldn't create weekly habit."
             }
         }
@@ -188,9 +202,10 @@ class ManageHabitsViewModel(
     fun updateWeeklyHabit(habit: WeeklyHabit) {
         if (habit.name.isBlank()) return
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.saveWeeklyHabit(habit.copy(updatedAtEpochMillis = dateProvider.nowEpochMillis()))
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "updateWeeklyHabit failed", it)
                 _error.value = "Couldn't update weekly habit."
             }
         }
@@ -198,9 +213,10 @@ class ManageHabitsViewModel(
 
     fun archiveWeeklyHabit(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.archiveWeeklyHabit(id, dateProvider.today(), dateProvider.nowEpochMillis())
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "archiveWeeklyHabit failed", it)
                 _error.value = "Couldn't archive weekly habit."
             }
         }
@@ -208,9 +224,10 @@ class ManageHabitsViewModel(
 
     fun restoreWeeklyHabit(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.restoreWeeklyHabit(id, dateProvider.nowEpochMillis())
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "restoreWeeklyHabit failed", it)
                 _error.value = "Couldn't restore weekly habit."
             }
         }
@@ -218,9 +235,10 @@ class ManageHabitsViewModel(
 
     fun deleteWeeklyHabit(id: String) {
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.deleteWeeklyHabit(id)
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "deleteWeeklyHabit failed", it)
                 _error.value = "Couldn't delete weekly habit."
             }
         }
@@ -235,9 +253,10 @@ class ManageHabitsViewModel(
         
         val newOrders = habits.mapIndexed { index, h -> h.id to index }.toMap()
         scope.launch {
-            try {
+            runCatchingCancellable {
                 repository.updateWeeklyHabitOrders(newOrders, dateProvider.nowEpochMillis())
-            } catch (e: Exception) {
+            }.onFailure {
+                logger.e(TAG, "moveWeeklyHabit failed", it)
                 _error.value = "Couldn't reorder weekly habits."
             }
         }
@@ -248,6 +267,7 @@ class ManageHabitsViewModel(
     }
 
     companion object {
+        private const val TAG = "ManageHabits"
         const val MaxCategories = 10
         const val MaxDailyHabits = 20
         const val MaxWeeklyHabits = 20
