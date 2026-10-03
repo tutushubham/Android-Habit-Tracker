@@ -58,3 +58,24 @@ package name + signing-certificate SHA-1, so a `.debug` suffix would need its ow
 (package `com.habitsheet.app.debug`, SHA-1 of `~/.android/debug.keystore`), and would start with an empty database next
 to any existing install. To opt in, add `debug { applicationIdSuffix = ".debug" }` to `buildTypes` and register that client.
 The release build needs a client for `com.habitsheet.app` with the release (or Play App Signing) SHA-1; see B2.
+
+## Backup decision
+
+The SQLite database (`habit-sheet.db`) and shared preferences are **excluded** from Android cloud backup and
+device-to-device transfer (`res/xml/data_extraction_rules.xml` for Android 12+, `res/xml/backup_rules.xml` for 11 and
+lower). Reason: the database holds sync state (connected sheet link, pending-upload flags, last-sync markers); restoring
+it onto a new device would resume syncing with state that does not match that device's Google sign-in.
+
+Consequence: a new or restored phone starts empty. User data lives in their Google Sheet (reconnect to pull it back)
+and in manual backups (Settings > Data & Backup export). `allowBackup` stays `true` so the rules are honoured, and the
+exclusion covers every file the app stores today.
+
+## Manifest notes
+
+- Theme `Theme.HabitSheet` is a day/night pair (`values/` light, `values-night/` dark) over the platform Material
+  NoActionBar themes, with transparent system bars and a window background matching the Compose theme to avoid a flash
+  at launch. `Theme.Material3.DayNight` was not used because it needs the Material Components library, which the app
+  does not depend on.
+- `android:enableOnBackInvokedCallback="true"` opts in to predictive back.
+- Exported flags: `MainActivity` is `exported=true` (launcher, required); the FileProvider and the widget receiver are
+  `exported=false`. The widget receiver only receives system broadcasts and in-app `setPackage` intents.
