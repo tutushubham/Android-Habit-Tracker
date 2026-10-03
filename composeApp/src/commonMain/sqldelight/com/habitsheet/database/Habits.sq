@@ -98,7 +98,7 @@ VALUES (?, ?, ?, ?, ?);
 
 updateCategory:
 UPDATE categoryEntity
-SET name = ?, display_order = ?, active = ?, updated_at = ?
+SET name = ?, display_order = ?, active = ?, updated_at = MAX(updated_at, :updated_at)
 WHERE id = ?;
 
 deleteCategory:
@@ -116,20 +116,20 @@ INSERT OR IGNORE INTO dailyHabitEntity(
 updateDailyHabit:
 UPDATE dailyHabitEntity
 SET name = ?, category_id = ?, monthly_goal = ?, display_order = ?, active = ?,
-    created_on = ?, archived_on = ?, updated_at = ?, kind = ?, dated_only = ?
+    created_on = ?, archived_on = ?, updated_at = MAX(updated_at, :updated_at), kind = ?, dated_only = ?
 WHERE id = ?;
 
 updateDailyHabitOrder:
-UPDATE dailyHabitEntity SET display_order = ?, updated_at = ? WHERE id = ?;
+UPDATE dailyHabitEntity SET display_order = ?, updated_at = MAX(updated_at, :updated_at) WHERE id = ?;
 
 archiveDailyHabit:
 UPDATE dailyHabitEntity
-SET active = 0, archived_on = ?, updated_at = ?
+SET active = 0, archived_on = ?, updated_at = MAX(updated_at, :updated_at)
 WHERE id = ?;
 
 restoreDailyHabit:
 UPDATE dailyHabitEntity
-SET active = 1, archived_on = NULL, updated_at = ?
+SET active = 1, archived_on = NULL, updated_at = MAX(updated_at, :updated_at)
 WHERE id = ?;
 
 deleteDailyHabit:
@@ -163,6 +163,18 @@ upsertDailyCompletion:
 INSERT OR REPLACE INTO dailyCompletionEntity(plan_id, habit_id, date, completed, updated_at, pending_upload)
 VALUES (?, ?, ?, ?, ?, ?);
 
+selectDailyCompletionUpdatedAt:
+SELECT updated_at FROM dailyCompletionEntity WHERE plan_id = ? AND date = ?;
+
+selectWeeklyCompletionUpdatedAt:
+SELECT updated_at FROM weeklyCompletionEntity WHERE weekly_habit_id = ? AND week_start_date = ?;
+
+selectDayPlanUpdatedAt:
+SELECT updated_at FROM dayPlanEntity WHERE id = ?;
+
+selectWeeklyPlanUpdatedAt:
+SELECT updated_at FROM weeklyPlanEntity WHERE habit_id = ? AND weekday = ?;
+
 isCompletionPending:
 SELECT pending_upload FROM dailyCompletionEntity WHERE plan_id = ? AND date = ?;
 
@@ -185,20 +197,20 @@ INSERT OR IGNORE INTO weeklyHabitEntity(
 updateWeeklyHabit:
 UPDATE weeklyHabitEntity
 SET name = ?, category_id = ?, display_order = ?, active = ?,
-    created_on = ?, archived_on = ?, updated_at = ?
+    created_on = ?, archived_on = ?, updated_at = MAX(updated_at, :updated_at)
 WHERE id = ?;
 
 updateWeeklyHabitOrder:
-UPDATE weeklyHabitEntity SET display_order = ?, updated_at = ? WHERE id = ?;
+UPDATE weeklyHabitEntity SET display_order = ?, updated_at = MAX(updated_at, :updated_at) WHERE id = ?;
 
 archiveWeeklyHabit:
 UPDATE weeklyHabitEntity
-SET active = 0, archived_on = ?, updated_at = ?
+SET active = 0, archived_on = ?, updated_at = MAX(updated_at, :updated_at)
 WHERE id = ?;
 
 restoreWeeklyHabit:
 UPDATE weeklyHabitEntity
-SET active = 1, archived_on = NULL, updated_at = ?
+SET active = 1, archived_on = NULL, updated_at = MAX(updated_at, :updated_at)
 WHERE id = ?;
 
 deleteWeeklyHabit:

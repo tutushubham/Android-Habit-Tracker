@@ -7,7 +7,7 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 - [Done] P0-A Product split & seed removal (on `master` via PR #1; manual device check, step 9, still owed)
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
 - [Done*] P0-C Release build config (steps 1–11 on `master`; *code, automated checks and docs complete; owed: release-APK device smoke test and the `[mac]` iOS verification, see below)
-- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–7 done)
+- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–8 done)
 - [ ] P1-2 Architecture & code quality
 - [ ] P1-3 Gaps in existing features
 - [ ] P2 Testing
@@ -78,6 +78,7 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 - P0-B (from the plan, section 4): (1) 20 quick check-offs produce one coalesced sync; (2) airplane mode, toggle, reconnect → uploaded (now also automatic); (3) edit a session in the sheet → appears after sync; (4) rename a habit in the sheet on all its rows → local habit renamed, no duplicate; (5) revoke app access in the Google Account → clear message, local data intact; also try **Disconnect**.
 - P1-1 steps 4–5 (device): (a) Android: export a backup, kill the app (`adb shell am kill com.habitsheet...` or swipe away) while the save picker is open, then save: a "Backup saved." toast appears and the file holds the full v4 JSON; (b) export to a full storage / revoked location shows an error and leaves no half-written file; (c) import a large multi-line v3 backup from an old build; (d) import a non-backup file, a 0-byte file and cancel the picker: data unchanged, clear message or nothing.
 - P1-1 steps 4–5 `[mac]`: iOS compile of `IosBackupService` passes on Windows (klib) but the clipboard flow was never run: export, copy something else, import (expect the "no backup text" or "isn't a valid backup" message and unchanged data); export then import on a second device; a v3 backup text from the old build imports.
+- P1-1 step 8 (device): with the app open, change the time zone (Android Settings → Date & time; iOS Settings → General → Date & Time) and cross midnight: the selected day, month grid and widget move at once. Change the device clock backwards, toggle a habit, sync: the check-off still uploads. `[mac]` iOS: `NSSystemTimeZoneDidChange` / `NSCalendarDayChanged` observers compile but were never run.
 - iOS: build and run on a Mac (`[mac]`): the Swift token provider is wrapped by `SerializingTokenProvider` but not run on a device.
 
 ## Known limitations carried forward (not bugs in P0-A/P0-B/P0-C scope)
@@ -104,3 +105,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-03 · P1-1 step 3 · backup v4 (settings, optional sheet link, SHA-256 over settings+data), v1–v3 still restore (frozen fixtures), restore clears sync state, tamper/unknown-version rejection; 222 JVM tests green · `prod/p1-1-robustness`
 2026-10-03 · P1-1 steps 4–5 · `BackupService` now reports results/failures; `AndroidBackupService` reads whole streams (`BackupStreams`, 32 MB cap, BOM, null/IO errors), exports via a private cache file so a save survives process death (toast if the screen is gone), deletes half-written files; iOS clipboard import refuses empty text, export is v4; 234 JVM tests green · `prod/p1-1-robustness`
 2026-10-03 · P1-1 steps 6–7 · reset now clears sheet link + sync state (Google Sheet untouched), named confirmations via `DestructiveAction`/`DestructiveConfirmDialog` incl. the two previously unguarded session removals, audit in `docs/production-plan/notes/p1-1-destructive-actions-audit.md`, `DestructiveCallSitesTest` guard; 247 JVM tests green · `prod/p1-1-robustness`
+2026-10-03 · P1-1 step 8 · `MonthViewModel.refreshToday()` (foreground, Android TIMEZONE/DATE/TIME broadcasts, iOS foreground + time-zone + day-change observers, 1-min poll kept as safety net), injectable `ClockDateProvider`, rollover/DST/travel tests, `updated_at` never moves backwards (SQL `MAX`, completions strictly increasing so upload acks stay correct); 266 JVM tests green · `prod/p1-1-robustness`

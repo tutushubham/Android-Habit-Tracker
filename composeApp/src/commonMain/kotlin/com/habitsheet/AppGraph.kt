@@ -39,6 +39,9 @@ class AppGraph(
 
     fun syncOnForeground() = syncScheduler.syncNow()
 
+    /** The app came to the foreground, or the system date / time zone changed: re-evaluate "today". */
+    fun refreshToday() = monthViewModel.refreshToday()
+
     fun close() {
         monthViewModel.close()
         manageHabitsViewModel.close()

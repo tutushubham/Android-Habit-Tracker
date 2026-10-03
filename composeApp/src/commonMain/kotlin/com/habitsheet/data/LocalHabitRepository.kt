@@ -14,6 +14,7 @@ import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.domain.model.monotonicUpdatedAt
 import com.habitsheet.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -234,7 +235,7 @@ class LocalHabitRepository(
                 habit_id = completion.habitId,
                 date = completion.date.toString(),
                 completed = completion.completed.toDbLong(),
-                updated_at = completion.updatedAtEpochMillis,
+                updated_at = nextCompletionTime(completion.planId, completion.date.toString(), completion.updatedAtEpochMillis),
                 pending_upload = 1L,
             )
             loadSnapshot()
@@ -244,7 +245,13 @@ class LocalHabitRepository(
     override suspend fun saveWeeklyPlan(plan: WeeklyPlan) {
         require(plan.weekday in 1..7 && plan.detail.isNotBlank())
         mutex.withLock {
-            database.habitsQueries.upsertWeeklyPlan(plan.habitId, plan.weekday.toLong(), plan.detail, plan.updatedAtEpochMillis)
+            database.habitsQueries.upsertWeeklyPlan(
+                plan.habitId, plan.weekday.toLong(), plan.detail,
+                monotonicUpdatedAt(
+                    plan.updatedAtEpochMillis,
+                    database.habitsQueries.selectWeeklyPlanUpdatedAt(plan.habitId, plan.weekday.toLong()).executeAsOneOrNull(),
+                ),
+            )
             loadSnapshot()
         }
     }
@@ -259,7 +266,10 @@ class LocalHabitRepository(
     override suspend fun saveDayPlan(plan: DayPlan) {
         require(plan.detail.isNotBlank())
         mutex.withLock {
-            database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), plan.updatedAtEpochMillis)
+            database.habitsQueries.upsertDayPlan(
+                plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(),
+                nextDayPlanTime(plan.id, plan.updatedAtEpochMillis),
+            )
             loadSnapshot()
         }
     }
@@ -284,7 +294,11 @@ class LocalHabitRepository(
                 weekly_habit_id = completion.weeklyHabitId,
                 week_start_date = completion.weekStartDate.toString(),
                 completed = completion.completed.toDbLong(),
-                updated_at = completion.updatedAtEpochMillis,
+                updated_at = monotonicUpdatedAt(
+                    completion.updatedAtEpochMillis,
+                    database.habitsQueries.selectWeeklyCompletionUpdatedAt(completion.weeklyHabitId, completion.weekStartDate.toString()).executeAsOneOrNull(),
+                    strict = true,
+                ),
             )
             loadSnapshot()
         }
@@ -367,7 +381,7 @@ class LocalHabitRepository(
                 }
                 changes.plansToSave.forEach { plan ->
                     require(plan.detail.isNotBlank())
-                    database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), plan.updatedAtEpochMillis)
+                    database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), nextDayPlanTime(plan.id, plan.updatedAtEpochMillis))
                 }
                 changes.completionsToSave.forEach { completion ->
                     // The user toggled this check after the sync read its snapshot: their change wins and stays pending.
@@ -378,7 +392,7 @@ class LocalHabitRepository(
                         habit_id = completion.habitId,
                         date = key,
                         completed = completion.completed.toDbLong(),
-                        updated_at = completion.updatedAtEpochMillis,
+                        updated_at = nextCompletionTime(completion.planId, key, completion.updatedAtEpochMillis),
                         pending_upload = 0L,
                     )
                 }
@@ -392,6 +406,15 @@ class LocalHabitRepository(
             loadSnapshot()
         }
     }
+
+    private fun nextCompletionTime(planId: String, date: String, candidate: Long): Long = monotonicUpdatedAt(
+        candidate,
+        database.habitsQueries.selectDailyCompletionUpdatedAt(planId, date).executeAsOneOrNull(),
+        strict = true,
+    )
+
+    private fun nextDayPlanTime(id: String, candidate: Long): Long =
+        monotonicUpdatedAt(candidate, database.habitsQueries.selectDayPlanUpdatedAt(id).executeAsOneOrNull())
 
     override suspend fun clearAllData() {
         mutex.withLock {

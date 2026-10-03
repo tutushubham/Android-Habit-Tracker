@@ -13,8 +13,12 @@ import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.ShareService
 import com.habitsheet.domain.calculation.DailyShareSummary
+import platform.Foundation.NSCalendarDayChangedNotification
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.Foundation.NSSystemTimeZoneDidChangeNotification
+import platform.Foundation.NSTimeZone
+import platform.Foundation.resetSystemTimeZone
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIViewController
@@ -47,13 +51,34 @@ fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewControl
         }
     }
     DisposableEffect(graph) {
-        val observer = NSNotificationCenter.defaultCenter.addObserverForName(
+        val center = NSNotificationCenter.defaultCenter
+        val foreground = center.addObserverForName(
             UIApplicationDidBecomeActiveNotification,
             null,
             NSOperationQueue.mainQueue,
-        ) { graph.syncOnForeground() }
+        ) {
+            // The system zone is cached by NSTimeZone until reset; a trip may have changed it while we were away.
+            NSTimeZone.resetSystemTimeZone()
+            graph.refreshToday()
+            graph.syncOnForeground()
+        }
+        val zoneChanged = center.addObserverForName(
+            NSSystemTimeZoneDidChangeNotification,
+            null,
+            NSOperationQueue.mainQueue,
+        ) {
+            NSTimeZone.resetSystemTimeZone()
+            graph.refreshToday()
+        }
+        val dayChanged = center.addObserverForName(
+            NSCalendarDayChangedNotification,
+            null,
+            NSOperationQueue.mainQueue,
+        ) { graph.refreshToday() }
         onDispose {
-            NSNotificationCenter.defaultCenter.removeObserver(observer)
+            center.removeObserver(foreground)
+            center.removeObserver(zoneChanged)
+            center.removeObserver(dayChanged)
             graph.close()
         }
     }

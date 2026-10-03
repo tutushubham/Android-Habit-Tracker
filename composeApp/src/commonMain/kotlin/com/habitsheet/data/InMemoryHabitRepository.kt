@@ -1,6 +1,7 @@
 package com.habitsheet.data
 
 import com.habitsheet.domain.backup.BackupSettings
+import com.habitsheet.domain.model.monotonicUpdatedAt
 import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionKey
@@ -25,8 +26,9 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun refresh() = Unit
 
     override suspend fun saveCategory(category: Category) {
+        val previous = mutableSnapshot.value.categories.firstOrNull { it.id == category.id }?.updatedAtEpochMillis
         mutableSnapshot.value = mutableSnapshot.value.copy(
-            categories = mutableSnapshot.value.categories.upsert(category) { it.id },
+            categories = mutableSnapshot.value.categories.upsert(category.copy(updatedAtEpochMillis = monotonicUpdatedAt(category.updatedAtEpochMillis, previous))) { it.id },
         )
     }
 
@@ -43,8 +45,9 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveDailyHabit(habit: DailyHabit) {
+        val previous = mutableSnapshot.value.dailyHabits.firstOrNull { it.id == habit.id }?.updatedAtEpochMillis
         mutableSnapshot.value = mutableSnapshot.value.copy(
-            dailyHabits = mutableSnapshot.value.dailyHabits.upsert(habit) { it.id },
+            dailyHabits = mutableSnapshot.value.dailyHabits.upsert(habit.copy(updatedAtEpochMillis = monotonicUpdatedAt(habit.updatedAtEpochMillis, previous))) { it.id },
         )
     }
 
@@ -140,8 +143,11 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
 
     override suspend fun setDailyCompletion(completion: DailyHabitCompletion) {
         require(mutableSnapshot.value.dailyHabits.any { it.id == completion.habitId }) { "Unknown daily habit" }
+        val previous = mutableSnapshot.value.dailyCompletions
+            .firstOrNull { it.planId == completion.planId && it.date == completion.date }?.updatedAtEpochMillis
+        val stored = completion.copy(updatedAtEpochMillis = monotonicUpdatedAt(completion.updatedAtEpochMillis, previous, strict = true))
         mutableSnapshot.value = mutableSnapshot.value.copy(
-            dailyCompletions = mutableSnapshot.value.dailyCompletions.upsert(completion) {
+            dailyCompletions = mutableSnapshot.value.dailyCompletions.upsert(stored) {
                 it.planId to it.date
             },
             pendingCompletions = mutableSnapshot.value.pendingCompletions + CompletionKey(completion.planId, completion.date),
@@ -149,7 +155,9 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveWeeklyPlan(plan: WeeklyPlan) {
-        mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.upsert(plan) { it.habitId to it.weekday })
+        val previous = mutableSnapshot.value.weeklyPlans.firstOrNull { it.habitId == plan.habitId && it.weekday == plan.weekday }?.updatedAtEpochMillis
+        val stored = plan.copy(updatedAtEpochMillis = monotonicUpdatedAt(plan.updatedAtEpochMillis, previous))
+        mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.upsert(stored) { it.habitId to it.weekday })
     }
 
     override suspend fun deleteWeeklyPlan(habitId: String, weekday: Int) {
@@ -157,7 +165,9 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveDayPlan(plan: DayPlan) {
-        mutableSnapshot.value = mutableSnapshot.value.copy(dayPlans = mutableSnapshot.value.dayPlans.upsert(plan) { it.id })
+        val previous = mutableSnapshot.value.dayPlans.firstOrNull { it.id == plan.id }?.updatedAtEpochMillis
+        val stored = plan.copy(updatedAtEpochMillis = monotonicUpdatedAt(plan.updatedAtEpochMillis, previous))
+        mutableSnapshot.value = mutableSnapshot.value.copy(dayPlans = mutableSnapshot.value.dayPlans.upsert(stored) { it.id })
     }
 
     override suspend fun deleteDayPlan(habitId: String, date: LocalDate) {
@@ -170,8 +180,11 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
 
     override suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion) {
         require(mutableSnapshot.value.weeklyHabits.any { it.id == completion.weeklyHabitId }) { "Unknown weekly habit" }
+        val previous = mutableSnapshot.value.weeklyCompletions
+            .firstOrNull { it.weeklyHabitId == completion.weeklyHabitId && it.weekStartDate == completion.weekStartDate }?.updatedAtEpochMillis
+        val stored = completion.copy(updatedAtEpochMillis = monotonicUpdatedAt(completion.updatedAtEpochMillis, previous, strict = true))
         mutableSnapshot.value = mutableSnapshot.value.copy(
-            weeklyCompletions = mutableSnapshot.value.weeklyCompletions.upsert(completion) {
+            weeklyCompletions = mutableSnapshot.value.weeklyCompletions.upsert(stored) {
                 it.weeklyHabitId to it.weekStartDate
             },
         )

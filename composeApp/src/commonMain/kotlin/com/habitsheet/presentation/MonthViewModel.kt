@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -87,16 +86,31 @@ class MonthViewModel(
     private val todayMode = MutableStateFlow(true)
     private val error = MutableStateFlow<String?>(null)
     private val completionMutex = Mutex()
-    private val today = flow {
-        while (true) {
-            val current = dateProvider.today()
-            if (followToday.value) selectedDay.value = current
-            emit(current)
-            delay(1.minutes) // Refresh today's date every minute
+    private val today = MutableStateFlow(dateProvider.today())
+
+    /**
+     * Re-reads today's date. Called every minute, when the app returns to the foreground and when the system
+     * reports a date or time-zone change. If the person is following today, the selected day moves with it, and
+     * so does the visible month if it was the month of the previous "today".
+     */
+    fun refreshToday() {
+        val current = dateProvider.today()
+        val previous = today.value
+        if (current == previous) return
+        if (followToday.value) {
+            selectedDay.value = current
+            if (selectedMonth.value == MonthKey.from(previous)) selectedMonth.value = MonthKey.from(current)
         }
+        today.value = current
     }
 
     init {
+        scope.launch {
+            while (true) {
+                delay(1.minutes) // Safety net; foreground and time-zone events call refreshToday() directly.
+                refreshToday()
+            }
+        }
         scope.launch {
             runCatchingCancellable {
                 // Existing installs that already have habits are not shown the first-run tutorial.
