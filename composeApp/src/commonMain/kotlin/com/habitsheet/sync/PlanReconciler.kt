@@ -184,7 +184,7 @@ internal object PlanReconciler {
             // Conflict rule: a local check that has not reached the sheet yet (explicit flag) is uploaded;
             // anything else takes the sheet's value. Equal values just clear the flag.
             val pending = localDone != null && CompletionKey(row.id, row.date) in snapshot.pendingCompletions
-            if (pending && localDone != null) {
+            if (pending) {
                 val ack = CompletionAck(row.id, row.date, localDone.updatedAtEpochMillis)
                 if (localDone.completed != row.done) uploads += DoneUpload(row.sheetRow, row.doneColumn, localDone.completed, ack)
                 else acks += ack
