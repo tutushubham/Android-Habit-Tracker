@@ -1,0 +1,5 @@
+// Copy to iosApp/Config/Local.xcconfig (gitignored) and fill in your own values.
+// Client IDs are public identifiers, not secrets, but are kept out of the repo so forks can use their own project.
+DEVELOPMENT_TEAM = YOUR_APPLE_TEAM_ID
+GOOGLE_IOS_CLIENT_ID = 0000000000-xxxxxxxx.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.0000000000-xxxxxxxx

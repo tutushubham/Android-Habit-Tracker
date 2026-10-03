@@ -21,13 +21,13 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GIDClientID</key>
-	<string>412589914724-409r1ph8o60ue3k6huaj26ob08po2ot8.apps.googleusercontent.com</string>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.412589914724-409r1ph8o60ue3k6huaj26ob08po2ot8</string>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
 			</array>
 		</dict>
 	</array>

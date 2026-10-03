@@ -15,3 +15,9 @@ personal/
 
 # Derived knowledge graph (rebuild with: python -m graphify update .)
 graphify-out/
+
+# Secrets and per-developer config; never commit
+keystore.properties
+*.jks
+*.keystore
+iosApp/Config/Local.xcconfig
