@@ -79,14 +79,14 @@ Run the whole plan: execute P1-1 steps 1-11 in order with a commit per step; sto
 Manual: export v3 backup from an old build → import into the new build; kill the app while the Android save picker is open; change device time zone while the app is open; force a corrupted DB (rename a file) and confirm the recovery screen.
 
 ## 5. Definition of done
-- [ ] Logger in place; no silent catches; CancellationException never swallowed; no PII in logs.
-- [ ] Backup v4 + v1–v3 restore tests; checksum; restore clears sync state.
-- [ ] Android backup IO robust; iOS path validated `[mac]`.
-- [ ] Reset and delete flows audited, all confirmed and tested.
-- [ ] Rollover/TZ/DST tests pass; foreground refresh works.
-- [ ] Migrations verified from v1/v2/v3; `verifyMigrations` on in the build.
-- [ ] Startup failure screen exists.
-- [ ] `PROGRESS.md` ticked.
+- [x] Logger in place; no silent catches; CancellationException never swallowed; no PII in logs.
+- [x] Backup v4 + v1–v3 restore tests; checksum; restore clears sync state.
+- [x] Android backup IO robust; iOS path validated `[mac]` (iOS code written and compiled; Mac verification owed).
+- [x] Reset and delete flows audited, all confirmed and tested (`notes/p1-1-destructive-actions-audit.md`).
+- [x] Rollover/TZ/DST tests pass; foreground refresh works (device check owed).
+- [x] Migrations verified from v1/v2/v3 (and v4); `verifyMigrations` on in the build.
+- [x] Startup failure screen exists (Android and iOS; device/Mac verification owed).
+- [x] `PROGRESS.md` ticked (as Done*, with the manual checks listed).
 
 ## 6. Handoff
 P1-2 gets a `Logger` to inject into new components and the measured `loadSnapshot()` numbers to decide whether incremental updates are needed.

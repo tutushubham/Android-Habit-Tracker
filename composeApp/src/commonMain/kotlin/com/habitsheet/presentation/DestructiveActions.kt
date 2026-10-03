@@ -95,6 +95,17 @@ sealed interface DestructiveAction {
         )
     }
 
+    /** Startup recovery: the unreadable database is moved aside (kept on the device) and the app starts empty. */
+    data object SetAsideDamagedData : DestructiveAction {
+        override val confirmation = ConfirmationText(
+            "Start with empty data?",
+            "The data file on this device can't be opened. This moves it aside and starts the app with no habits or history. " +
+                "The old file is kept on the device but you cannot open it from the app, so save a copy first if you want one. " +
+                "Your Google Sheet is untouched; connect it again to bring your plan back.",
+            "Start with empty data",
+        )
+    }
+
     companion object {
         fun delete(habit: DailyHabit, snapshot: HabitSnapshot) = DeleteDailyHabit(
             habit.name,

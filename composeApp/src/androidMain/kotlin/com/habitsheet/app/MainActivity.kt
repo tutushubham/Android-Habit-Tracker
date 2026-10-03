@@ -8,43 +8,70 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.habitsheet.AppGraph
+import com.habitsheet.AppStartup
+import com.habitsheet.StartupState
 import com.habitsheet.app.widget.HabitWidgetUpdater
 import com.habitsheet.ui.HabitSheetApp
+import com.habitsheet.ui.HabitSheetTheme
+import com.habitsheet.ui.StartupFailureScreen
 import kotlinx.coroutines.launch
 import java.util.TimeZone
 
 class MainActivity : ComponentActivity() {
-    private lateinit var graph: AppGraph
+    /** Set only while the database opened; every lifecycle hook below tolerates null (startup failure screen). */
+    private var graph: AppGraph? = null
+    private var startup by mutableStateOf<StartupState?>(null)
+
+    private lateinit var logger: AndroidLogger
+    private lateinit var tokenProvider: AndroidSheetTokenProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val logger = AndroidLogger()
+        logger = AndroidLogger()
         AndroidLogger.installUncaughtExceptionLogger(logger)
-        graph = AppGraph(AndroidDriverFactory(applicationContext), AndroidSheetTokenProvider(this, logger), logger)
+        // Everything that registers an activity-result launcher is created once, here, whether or not the database opens.
+        tokenProvider = AndroidSheetTokenProvider(this, logger)
         val shareService = AndroidShareService(this)
         val backupService = AndroidBackupService(this, logger)
+        val recovery = AndroidStartupRecovery(this, logger)
+        start()
         setContent {
-            HabitSheetApp(
-                graph.monthViewModel,
-                graph.manageHabitsViewModel,
-                shareService,
-                graph.settingsViewModel,
-                backupService,
-                graph.repository,
-                AndroidVersionProvider(this),
-            )
+            when (val state = startup) {
+                is StartupState.Ready -> HabitSheetApp(
+                    state.graph.monthViewModel,
+                    state.graph.manageHabitsViewModel,
+                    shareService,
+                    state.graph.settingsViewModel,
+                    backupService,
+                    state.graph.repository,
+                    AndroidVersionProvider(this),
+                )
+                is StartupState.Failed -> HabitSheetTheme { StartupFailureScreen(state.cause, recovery, onRetry = ::start) }
+                null -> Unit
+            }
         }
+    }
+
+    /** Opens the database and builds the app. On failure the recovery screen is shown instead of crashing. */
+    private fun start() {
+        val result = AppStartup.create(AndroidDriverFactory(applicationContext), tokenProvider, logger)
+        graph = (result as? StartupState.Ready)?.graph
+        startup = result
+        if (graph != null && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) onForeground()
     }
 
     private val clockChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             // The JVM caches the default zone; drop it so the next lookup sees the new system zone.
             if (intent.action == Intent.ACTION_TIMEZONE_CHANGED) TimeZone.setDefault(null)
-            graph.refreshToday()
+            graph?.refreshToday()
             HabitWidgetUpdater.requestUpdate(applicationContext)
         }
     }
@@ -66,6 +93,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        onForeground()
+    }
+
+    private fun onForeground() {
+        val graph = graph ?: return
         // Midnight or a zone change may have happened while the app was in the background.
         TimeZone.setDefault(null)
         graph.refreshToday()
@@ -80,12 +112,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         // Keep the launcher view in sync with edits made inside the app.
-        HabitWidgetUpdater.requestUpdate(applicationContext)
+        if (graph != null) HabitWidgetUpdater.requestUpdate(applicationContext)
         super.onPause()
     }
 
     override fun onDestroy() {
-        graph.close()
+        graph?.close()
         super.onDestroy()
     }
 }

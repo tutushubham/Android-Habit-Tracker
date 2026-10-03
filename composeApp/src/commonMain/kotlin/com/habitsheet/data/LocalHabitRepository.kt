@@ -34,10 +34,16 @@ class LocalHabitRepository(
     override val snapshot: StateFlow<HabitSnapshot> = mutableSnapshot.asStateFlow()
 
     init {
-        driver.execute(null, "PRAGMA foreign_keys = ON", 0)
-        database = HabitsDatabase(driver)
-        seedDefaultsIfEmpty()
-        loadSnapshot()
+        try {
+            driver.execute(null, "PRAGMA foreign_keys = ON", 0)
+            database = HabitsDatabase(driver)
+            seedDefaultsIfEmpty()
+            loadSnapshot()
+        } catch (e: Throwable) {
+            // Opening or migrating failed: release the file so the recovery screen can copy or move it.
+            runCatching { driver.close() }
+            throw e
+        }
     }
 
     override suspend fun refresh() {

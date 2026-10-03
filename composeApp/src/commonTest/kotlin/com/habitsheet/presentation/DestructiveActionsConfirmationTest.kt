@@ -85,6 +85,14 @@ class DestructiveActionsConfirmationTest {
     }
 
     @Test
+    fun startingWithEmptyDataSaysTheOldFileIsKeptAndTheSheetUntouched() {
+        val text = DestructiveAction.SetAsideDamagedData.confirmation
+        assertTrue("moves it aside" in text.message && "kept on the device" in text.message, text.message)
+        assertTrue("Google Sheet is untouched" in text.message && "save a copy first" in text.message, text.message)
+        assertEquals("Start with empty data", text.confirmLabel)
+    }
+
+    @Test
     fun importTextSaysWhatWillBeReplacedAndThatTheSheetIsUntouched() {
         val text = DestructiveAction.ReplaceWithBackup(DataSummary.of(snapshot)).confirmation.message
         assertTrue("replaces 1 daily habit, 1 weekly habit and 3 check-offs" in text, text)

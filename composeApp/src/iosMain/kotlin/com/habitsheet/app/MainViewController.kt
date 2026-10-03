@@ -2,15 +2,23 @@
 
 package com.habitsheet.app
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.uikit.LocalUIViewController
 import androidx.compose.ui.window.ComposeUIViewController
 import com.habitsheet.AppGraph
+import com.habitsheet.AppStartup
+import com.habitsheet.StartupState
 import com.habitsheet.platform.IosLogger
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.HabitSheetApp
+import com.habitsheet.ui.HabitSheetTheme
+import com.habitsheet.ui.StartupFailureScreen
 import com.habitsheet.ui.ShareService
 import com.habitsheet.domain.calculation.DailyShareSummary
 import platform.Foundation.NSCalendarDayChangedNotification
@@ -25,9 +33,23 @@ import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
 
 fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewController {
-    val graph = remember { AppGraph(IosDriverFactory(), tokenProvider, IosLogger()) }
-    LaunchedEffect(graph) { graph.syncOnForeground() }
+    val logger = remember { IosLogger() }
+    var attempt by remember { mutableIntStateOf(0) }
+    // Opening the database (and migrating it) can fail; then the recovery screen replaces the app.
+    val startup = remember(attempt) { AppStartup.create(IosDriverFactory(), tokenProvider, logger) }
     val hostController = LocalUIViewController.current
+    when (startup) {
+        is StartupState.Failed -> {
+            val recovery = remember(hostController) { IosStartupRecovery({ topViewController(hostController) }, logger) }
+            HabitSheetTheme { StartupFailureScreen(startup.cause, recovery, onRetry = { attempt++ }) }
+        }
+        is StartupState.Ready -> ReadyApp(startup.graph, hostController)
+    }
+}
+
+@Composable
+private fun ReadyApp(graph: AppGraph, hostController: UIViewController) {
+    LaunchedEffect(graph) { graph.syncOnForeground() }
     val shareService = remember(hostController) {
         object : ShareService {
             override fun shareDailySummary(summary: DailyShareSummary) {
