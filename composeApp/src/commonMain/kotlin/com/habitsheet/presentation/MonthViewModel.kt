@@ -320,7 +320,7 @@ class MonthViewModel(
     }
 }
 
-private fun HabitSnapshot.toUiState(
+internal fun HabitSnapshot.toUiState(
     month: MonthKey, 
     today: LocalDate, 
     selectedDay: LocalDate,
