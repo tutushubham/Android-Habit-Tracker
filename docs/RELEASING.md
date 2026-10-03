@@ -105,3 +105,22 @@ Then validate in Xcode Organizer (Window > Organizer > Validate App) before uplo
 - App icon: a single opaque 1024x1024 PNG (no alpha), full-bleed so iOS applies its own corner mask.
 - Orientations: iPhone portrait + landscape, iPad all four (needed for iPad multitasking).
 - Deployment target stays iOS 15.0.
+
+## Toolchain
+
+The Kotlin/Java toolchain is pinned to JDK 17 (`jvmToolchain(17)` in `composeApp/build.gradle.kts`). Gradle can run on a
+newer JDK; if 17 is not installed locally it is downloaded automatically (foojay resolver in `settings.gradle.kts`).
+The Gradle wrapper pins the Gradle version.
+
+## Release checklist
+
+1. Bump `appVersionName`/`appVersionCode` in `gradle.properties`; run `./gradlew :composeApp:syncIosVersion`; commit both.
+2. Run `./gradlew :composeApp:testDebugUnitTest`.
+3. Android: create `keystore.properties` (or set the env vars) and run `./gradlew :composeApp:bundleRelease`
+   (AAB for Play) / `assembleRelease` (APK for sideloading). Run the smoke checklist on the APK. Archive `mapping.txt`.
+4. iOS (Mac): fill `Local.xcconfig`, archive, validate in Organizer.
+5. Tag the release commit (`git tag v<appVersionName>`).
+
+Where secrets live: the Android keystore and `keystore.properties` stay outside git (back the keystore up somewhere
+safe; losing the upload key is painful). iOS team ID and Google client IDs live in `iosApp/Config/Local.xcconfig`.
+Nothing else is secret: OAuth client IDs are public identifiers.
