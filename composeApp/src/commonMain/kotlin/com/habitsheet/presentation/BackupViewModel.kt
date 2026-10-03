@@ -1,16 +1,19 @@
 package com.habitsheet.presentation
 
 import com.habitsheet.domain.backup.BackupSerializer
+import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.backup.BackupValidationException
 import com.habitsheet.domain.backup.CsvGenerator
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
+import com.habitsheet.platform.w
 import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -28,10 +31,23 @@ class BackupViewModel(
 ) {
     val usesClipboard: Boolean get() = backupService.usesClipboard
 
-    fun exportBackup() {
-        val snapshot = repository.snapshot.value
-        val json = BackupSerializer.serialize(snapshot, dateProvider.nowEpochMillis())
-        backupService.exportBackup(json)
+    /**
+     * Exports a version 4 backup: all habit data plus theme and onboarding. The sheet link is included only when
+     * [includeSheetLink] is true (default: no, so a shared backup file never reveals the person's sheet).
+     */
+    fun exportBackup(includeSheetLink: Boolean = false) {
+        // UNDISPATCHED: starts on the caller's thread; the repository reads below do not normally suspend.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val settings = runCatchingCancellable {
+                BackupSettings(
+                    themeMode = repository.getThemeMode(),
+                    onboardingCompleted = repository.isOnboardingCompleted(),
+                    sheetUrl = if (includeSheetLink) repository.getSheetUrl().ifBlank { null } else null,
+                )
+            }.onFailure { logger.w(TAG, "Reading settings for the backup failed; exporting data only", it) }.getOrNull()
+            val json = BackupSerializer.serialize(repository.snapshot.value, dateProvider.nowEpochMillis(), settings)
+            withContext(callbackDispatcher) { backupService.exportBackup(json) }
+        }
     }
 
     fun exportCsv() {
@@ -47,12 +63,16 @@ class BackupViewModel(
         }
     }
 
-    fun importBackup(onSuccess: () -> Unit, onError: (String) -> Unit) {
+    /**
+     * Restores any supported backup (version 1-4). Sheet sync state is always reset. A sheet link stored in a
+     * version 4 backup replaces the current link only when [applySheetLink] is true (the caller asks the person).
+     */
+    fun importBackup(onSuccess: () -> Unit, onError: (String) -> Unit, applySheetLink: Boolean = false) {
         backupService.importBackup { json ->
             scope.launch {
                 val failure = runCatchingCancellable {
-                    val snapshot = BackupSerializer.deserialize(json)
-                    repository.restoreFromSnapshot(snapshot)
+                    val backup = BackupSerializer.parse(json)
+                    repository.restoreFromSnapshot(backup.snapshot, backup.settings, applySheetLink)
                 }.exceptionOrNull()
                 failure?.let { logger.e(TAG, "importBackup failed", it) }
 

@@ -1,5 +1,6 @@
 package com.habitsheet.domain.repository
 
+import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
@@ -52,7 +53,13 @@ interface HabitRepository {
      */
     suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long)
     suspend fun clearAllData()
-    suspend fun restoreFromSnapshot(snapshot: HabitSnapshot)
+    /**
+     * Replaces all habit data with [snapshot] in one transaction (validated first, so a bad backup changes nothing).
+     * Sheet sync state is always cleared (synced keys, last sync, managed habits, pending flags) so the next sync
+     * is a clean "sheet wins" reconcile. The sheet link is left alone unless [restoreSheetLink] is true and
+     * [settings] carries one. A non-null [settings] also restores theme and onboarding.
+     */
+    suspend fun restoreFromSnapshot(snapshot: HabitSnapshot, settings: BackupSettings? = null, restoreSheetLink: Boolean = false)
 }
 
 fun interface IdGenerator {

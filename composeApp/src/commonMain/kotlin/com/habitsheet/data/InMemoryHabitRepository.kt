@@ -1,5 +1,6 @@
 package com.habitsheet.data
 
+import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionKey
@@ -245,9 +246,15 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         onboardingCompleted = false
     }
 
-    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
+    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot, settings: BackupSettings?, restoreSheetLink: Boolean) {
         BackupValidator.validate(snapshot)
-        mutableSnapshot.value = snapshot.copy(pendingCompletions = emptySet())
+        settings?.let(BackupValidator::validate)
+        sheetSyncedKeys = emptySet()
+        sheetLastSync = 0L
+        settings?.themeMode?.let { themeMode = it }
+        settings?.onboardingCompleted?.let { onboardingCompleted = it }
+        if (restoreSheetLink && !settings?.sheetUrl.isNullOrBlank()) sheetUrl = settings!!.sheetUrl!!
+        mutableSnapshot.value = snapshot.copy(sheetManagedHabitIds = emptySet(), pendingCompletions = emptySet())
     }
 }
 

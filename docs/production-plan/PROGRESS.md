@@ -7,7 +7,7 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 - [Done] P0-A Product split & seed removal (on `master` via PR #1; manual device check, step 9, still owed)
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
 - [Done*] P0-C Release build config (steps 1–11 on `master`; *code, automated checks and docs complete; owed: release-APK device smoke test and the `[mac]` iOS verification, see below)
-- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–2 done)
+- [ ] P1-1 Robustness & data safety (in progress on `prod/p1-1-robustness`: steps 1–3 done)
 - [ ] P1-2 Architecture & code quality
 - [ ] P1-3 Gaps in existing features
 - [ ] P2 Testing
@@ -79,7 +79,8 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 - iOS: build and run on a Mac (`[mac]`): the Swift token provider is wrapped by `SerializingTokenProvider` but not run on a device.
 
 ## Known limitations carried forward (not bugs in P0-A/P0-B/P0-C scope)
-- `restoreFromSnapshot` does not reset sync keys / last-sync; backup excludes sheet link and pending marks → **P1-1**.
+- ~~`restoreFromSnapshot` does not reset sync keys / last-sync~~ — fixed in P1-1 step 3 (restore now clears all sync state; backup v4 carries theme/onboarding and an optional sheet link, never sync state or pending marks).
+- After a restore, check-offs not yet uploaded are dropped from the pending set (sheet wins); the checked state itself comes from the backup. Restored theme shows after the next app start (`SettingsViewModel` loads it once); the UI has no prompt yet for restoring a backup's sheet link or including it on export (`exportBackup(includeSheetLink)` / `importBackup(applySheetLink)` exist, default false) → P1-3 copy.
 - Widget check-offs set the pending flag but do not themselves start a sync (uploaded on the next foreground / Sync now).
 - Debounce has no maximum wait (continuous tapping with gaps under 2.5 s delays the sync until a pause).
 - Android consent screen results after Activity recreation are not resumed (the queue times out after 3 min and the user taps Connect & sync again) → revisit in **P1-2**.
@@ -98,3 +99,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-03 · P0-C · steps 1–11 done directly on `master` (`0591134` … `9edcc91`); assembleDebug, assembleRelease/bundleRelease (test keystore) and unit tests OK; device + Mac verification pending
 2026-10-03 · P0-C audit · full rebuild green (`--rerun-tasks`: debug + release + unit tests + iOS klib compile); dead check in `SyncError.kt` removed, AGP deprecation noise silenced via `gradle.properties` (that file is part of the still-uncommitted Gradle/AGP upgrade), docs refreshed
 2026-10-03 · P1-1 steps 1–2 · `Logger` (Android logcat / iOS NSLog / no-op), `runCatchingCancellable`, every `catch` in commonMain logs or rethrows cancellation, Android uncaught-exception logger; 201 JVM tests green · `prod/p1-1-robustness`
+2026-10-03 · P1-1 step 3 · backup v4 (settings, optional sheet link, SHA-256 over settings+data), v1–v3 still restore (frozen fixtures), restore clears sync state, tamper/unknown-version rejection; 222 JVM tests green · `prod/p1-1-robustness`

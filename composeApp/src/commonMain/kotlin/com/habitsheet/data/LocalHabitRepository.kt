@@ -1,6 +1,7 @@
 package com.habitsheet.data
 
 import com.habitsheet.database.HabitsDatabase
+import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionKey
@@ -409,10 +410,11 @@ class LocalHabitRepository(
         }
     }
 
-    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot) {
+    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot, settings: BackupSettings?, restoreSheetLink: Boolean) {
         // Validate before opening the replacement transaction so corrupt or inconsistent
         // backups can never clear the user's current data.
         BackupValidator.validate(snapshot)
+        settings?.let(BackupValidator::validate)
         mutex.withLock {
             database.transaction {
                 database.habitsQueries.clearAllDailyCompletions()
@@ -422,8 +424,16 @@ class LocalHabitRepository(
                 database.habitsQueries.clearAllData()
                 database.habitsQueries.clearAllWeeklyHabits()
                 database.habitsQueries.clearAllCategories()
+                // The restored data no longer matches what the sheet last saw: forget all sync state.
                 database.habitsQueries.setTextSetting("sheet_managed_habits", "")
-                
+                database.habitsQueries.setTextSetting("sheet_synced_keys", "")
+                database.habitsQueries.setTextSetting("sheet_last_sync", "0")
+                settings?.themeMode?.let { database.habitsQueries.setSetting("theme_mode", it.toLong()) }
+                settings?.onboardingCompleted?.let { database.habitsQueries.setSetting("onboarding_completed", if (it) 1L else 0L) }
+                if (restoreSheetLink && !settings?.sheetUrl.isNullOrBlank()) {
+                    database.habitsQueries.setTextSetting("sheet_url", settings!!.sheetUrl!!)
+                }
+
                 snapshot.categories.forEach { category ->
                     database.habitsQueries.insertCategory(
                         id = category.id,

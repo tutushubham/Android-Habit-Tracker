@@ -70,7 +70,7 @@ class BackupRestoreTest {
 
     @Test
     fun deserializeThrowsOnUnsupportedVersion() {
-        val malformedJson = """{"version": 4, "timestamp": 0, "data": {}}"""
+        val malformedJson = """{"version": 5, "timestamp": 0, "data": {}}"""
         assertFailsWith<BackupValidationException> {
             BackupSerializer.deserialize(malformedJson)
         }

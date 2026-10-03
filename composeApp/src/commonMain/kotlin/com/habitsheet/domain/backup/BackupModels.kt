@@ -2,9 +2,20 @@ package com.habitsheet.domain.backup
 
 import com.habitsheet.domain.model.HabitSnapshot
 import kotlinx.datetime.LocalDate
+import com.habitsheet.domain.model.SheetLink
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
+/** Version 1-3 container. Kept so every older backup still restores; version 4 is read by [BackupSerializer.parse]. */
 @Serializable
 data class BackupContainer(
     val version: Int,
@@ -12,37 +23,99 @@ data class BackupContainer(
     val data: HabitSnapshot
 )
 
+/**
+ * Device settings carried by a version 4 backup. Every field is optional. Sync state (synced keys, last sync,
+ * managed habit ids, pending-upload flags) is deliberately NOT part of a backup: after a restore the next sync
+ * starts from a clean "sheet wins" reconcile.
+ */
+@Serializable
+data class BackupSettings(
+    val themeMode: Int? = null,
+    val onboardingCompleted: Boolean? = null,
+    /** Only present if the person chose to include it when exporting; applied only if they choose to restore it. */
+    val sheetUrl: String? = null,
+)
+
+/** A successfully read backup of any supported version. [settings] is null for versions 1-3. */
+data class ParsedBackup(
+    val version: Int,
+    val timestamp: Long,
+    val snapshot: HabitSnapshot,
+    val settings: BackupSettings?,
+)
+
 object BackupSerializer {
-    const val CURRENT_VERSION = 3
+    const val CURRENT_VERSION = 4
+    private const val CHECKSUM_PREFIX = "sha256:"
 
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
     }
 
-    fun serialize(snapshot: HabitSnapshot, timestamp: Long): String {
-        val container = BackupContainer(
-            version = CURRENT_VERSION,
-            timestamp = timestamp,
-            data = snapshot
-        )
-        return json.encodeToString(BackupContainer.serializer(), container)
+    /** Always writes the current version (4). */
+    fun serialize(snapshot: HabitSnapshot, timestamp: Long, settings: BackupSettings? = null): String {
+        val data = json.encodeToJsonElement(HabitSnapshot.serializer(), snapshot)
+        val settingsElement = json.encodeToJsonElement(BackupSettings.serializer(), settings ?: BackupSettings())
+        val root = buildJsonObject {
+            put("version", CURRENT_VERSION)
+            put("timestamp", timestamp)
+            put("checksum", CHECKSUM_PREFIX + checksum(settingsElement, data))
+            put("settings", settingsElement)
+            put("data", data)
+        }
+        return json.encodeToString(JsonElement.serializer(), root)
     }
 
-    fun deserialize(jsonString: String): HabitSnapshot {
+    fun deserialize(jsonString: String): HabitSnapshot = parse(jsonString).snapshot
+
+    fun parse(jsonString: String): ParsedBackup {
         if (jsonString.isBlank()) {
             throw BackupValidationException("The backup file is empty.")
         }
-        val container = json.decodeFromString(BackupContainer.serializer(), jsonString)
-        if (container.version !in 1..CURRENT_VERSION) {
-            throw BackupValidationException("Unsupported backup version: ${container.version}.")
+        val root = json.parseToJsonElement(jsonString) as? JsonObject
+            ?: throw SerializationException("The backup is not a JSON object.")
+        val version = (root["version"] as? JsonPrimitive)?.intOrNull
+            ?: throw BackupValidationException("The backup has no version.")
+        if (version !in 1..CURRENT_VERSION) {
+            throw BackupValidationException("Unsupported backup version: $version.")
         }
-        if (container.timestamp < 0) {
+        val parsed = if (version < 4) {
+            val container = json.decodeFromJsonElement(BackupContainer.serializer(), root)
+            ParsedBackup(version, container.timestamp, container.data, settings = null)
+        } else {
+            parseV4(root)
+        }
+        if (parsed.timestamp < 0) {
             throw BackupValidationException("The backup has an invalid timestamp.")
         }
-        BackupValidator.validate(container.data)
-        return container.data
+        BackupValidator.validate(parsed.snapshot)
+        parsed.settings?.let(BackupValidator::validate)
+        return parsed
     }
+
+    private fun parseV4(root: JsonObject): ParsedBackup {
+        val data = root["data"] ?: throw BackupValidationException("The backup has no data.")
+        val settingsElement = root["settings"] ?: JsonObject(emptyMap())
+        val expected = (root["checksum"] as? JsonPrimitive)?.contentOrNull
+            ?: throw BackupValidationException("The backup has no checksum.")
+        if (expected != CHECKSUM_PREFIX + checksum(settingsElement, data)) {
+            throw BackupValidationException("This backup file was changed or damaged and can't be restored.")
+        }
+        return ParsedBackup(
+            version = 4,
+            timestamp = (root["timestamp"] as? JsonPrimitive)?.longOrNull
+                ?: throw BackupValidationException("The backup has an invalid timestamp."),
+            snapshot = json.decodeFromJsonElement(HabitSnapshot.serializer(), data),
+            settings = json.decodeFromJsonElement(BackupSettings.serializer(), settingsElement),
+        )
+    }
+
+    /**
+     * SHA-256 over the compact JSON of `settings` and `data` as they appear in the file (not over a re-encoding
+     * of the decoded model), so a later app version that adds model fields still verifies old files.
+     */
+    private fun checksum(settings: JsonElement, data: JsonElement): String = Sha256.hex("$settings\n$data")
 }
 
 class BackupValidationException(message: String) : IllegalArgumentException(message)
@@ -52,6 +125,14 @@ class BackupValidationException(message: String) : IllegalArgumentException(mess
  * Keeping this separate from JSON decoding also lets repositories protect direct restore calls.
  */
 object BackupValidator {
+    fun validate(settings: BackupSettings) {
+        requireBackup(settings.themeMode == null || settings.themeMode in 0..2, "The backup has an invalid theme setting.")
+        requireBackup(
+            settings.sheetUrl.isNullOrBlank() || SheetLink.canonicalize(settings.sheetUrl) != null,
+            "The backup contains an invalid sheet link.",
+        )
+    }
+
     fun validate(snapshot: HabitSnapshot) {
         val categoryIds = uniqueIds(
             values = snapshot.categories.map { it.id },

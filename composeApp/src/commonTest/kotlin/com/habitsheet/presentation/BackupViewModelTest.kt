@@ -48,6 +48,64 @@ class BackupViewModelTest {
     }
 
     @Test
+    fun exportIncludesThemeAndOnboardingAndTheSheetLinkOnlyOnRequest() = runTest {
+        val repository = InMemoryHabitRepository(validSnapshot())
+        repository.setThemeMode(2)
+        repository.setOnboardingCompleted(true)
+        repository.setSheetUrl("https://docs.google.com/spreadsheets/d/mine/edit")
+        val service = RecordingBackupService()
+        val viewModel = BackupViewModel(
+            repository = repository,
+            backupService = service,
+            dateProvider = dateProvider,
+            scope = backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+
+        viewModel.exportBackup()
+        val plain = BackupSerializer.parse(assertNotNull(service.exportedBackup))
+        assertEquals(com.habitsheet.domain.backup.BackupSettings(themeMode = 2, onboardingCompleted = true), plain.settings)
+        assertFalse("docs.google.com" in service.exportedBackup.orEmpty())
+
+        viewModel.exportBackup(includeSheetLink = true)
+        val withLink = BackupSerializer.parse(assertNotNull(service.exportedBackup))
+        assertEquals("https://docs.google.com/spreadsheets/d/mine/edit", withLink.settings?.sheetUrl)
+    }
+
+    @Test
+    fun importOfV4BackupResetsSyncStateAndAppliesTheLinkOnlyWhenTheCallerSaysSo() = runTest {
+        val payload = BackupSerializer.serialize(
+            validSnapshot(), 4321,
+            com.habitsheet.domain.backup.BackupSettings(themeMode = 1, sheetUrl = "https://docs.google.com/spreadsheets/d/backup/edit"),
+        )
+        for (apply in listOf(false, true)) {
+            val repository = InMemoryHabitRepository()
+            repository.setSheetUrl("https://docs.google.com/spreadsheets/d/current/edit")
+            repository.setSheetSyncedKeys(setOf("a"))
+            repository.setSheetLastSync(55)
+            val viewModel = BackupViewModel(
+                repository = repository,
+                backupService = RecordingBackupService(importPayload = payload),
+                scope = backgroundScope,
+                callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+            )
+            var succeeded = false
+
+            viewModel.importBackup(onSuccess = { succeeded = true }, onError = { error("unexpected: $it") }, applySheetLink = apply)
+            runCurrent()
+
+            assertTrue(succeeded)
+            assertEquals(1, repository.getThemeMode())
+            assertEquals(emptySet(), repository.getSheetSyncedKeys())
+            assertEquals(0L, repository.getSheetLastSync())
+            assertEquals(
+                if (apply) "https://docs.google.com/spreadsheets/d/backup/edit" else "https://docs.google.com/spreadsheets/d/current/edit",
+                repository.getSheetUrl(),
+            )
+        }
+    }
+
+    @Test
     fun validImportReplacesDataAndCallsSuccessOnce() = runTest {
         val replacement = validSnapshot()
         val service = RecordingBackupService(
