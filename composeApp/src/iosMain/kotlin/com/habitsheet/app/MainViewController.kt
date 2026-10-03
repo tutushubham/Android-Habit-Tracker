@@ -105,12 +105,9 @@ private fun ReadyApp(graph: AppGraph, hostController: UIViewController) {
         }
     }
     HabitSheetApp(
-        graph.monthViewModel,
-        graph.manageHabitsViewModel,
+        graph,
         shareService,
-        graph.settingsViewModel,
         IosBackupService(),
-        graph.repository,
         IosVersionProvider(),
     )
 }

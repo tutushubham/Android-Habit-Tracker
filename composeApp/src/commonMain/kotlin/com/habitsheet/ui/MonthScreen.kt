@@ -45,7 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -94,7 +94,7 @@ fun MonthScreen(
     shareService: ShareService? = null,
     tabletLayout: Boolean = false,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var showSharePreview by remember { mutableStateOf(false) }
     var showMonthPicker by remember { mutableStateOf(false) }
     val targetPositions = remember { mutableStateMapOf<String, Rect>() }

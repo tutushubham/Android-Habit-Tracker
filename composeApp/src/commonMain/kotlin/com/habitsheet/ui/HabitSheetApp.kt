@@ -20,12 +20,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,37 +35,33 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.AppGraph
 import com.habitsheet.presentation.VersionProvider
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.ThemeMode
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
+import com.habitsheet.presentation.BackupViewModel
 
 private enum class Destination { Tracker, Manage, Plan, Settings, Backup, About }
 
 @Composable
 fun HabitSheetApp(
-    monthViewModel: MonthViewModel,
-    manageHabitsViewModel: ManageHabitsViewModel,
+    graph: AppGraph,
     shareService: ShareService,
-    settingsViewModel: SettingsViewModel,
     backupService: BackupService? = null,
-    repository: HabitRepository,
     versionProvider: VersionProvider,
 ) {
     var destination by remember { mutableStateOf(Destination.Tracker) }
     var openCategories by remember { mutableStateOf(false) }
-    val backupViewModel = remember(backupService) {
-        backupService?.let { com.habitsheet.presentation.BackupViewModel(
-            repository = repository,
-            backupService = it,
-            onDataReplaced = settingsViewModel::reloadFromStorage,
-        ) }
-    }
-    DisposableEffect(backupViewModel) { onDispose { backupViewModel?.close() } }
+    // The ViewModels belong to the graph (created on first use, cleared with the graph), see AppGraph.
+    val factory = remember(graph, backupService) { graph.viewModelProviderFactory(backupService) }
+    val monthViewModel = viewModel<MonthViewModel>(viewModelStoreOwner = graph, factory = factory)
+    val manageHabitsViewModel = viewModel<ManageHabitsViewModel>(viewModelStoreOwner = graph, factory = factory)
+    val settingsViewModel = viewModel<SettingsViewModel>(viewModelStoreOwner = graph, factory = factory)
+    val backupViewModel = if (backupService != null) viewModel<BackupViewModel>(viewModelStoreOwner = graph, factory = factory) else null
 
-    val themeMode by settingsViewModel.themeMode.collectAsState()
+    val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
     HabitSheetTheme(darkTheme = when (themeMode) {
         ThemeMode.System -> androidx.compose.foundation.isSystemInDarkTheme()
         ThemeMode.Light -> false
@@ -124,7 +120,7 @@ private fun AppDestination(
     manageHabitsViewModel: ManageHabitsViewModel,
     shareService: ShareService,
     settingsViewModel: SettingsViewModel,
-    backupViewModel: com.habitsheet.presentation.BackupViewModel?,
+    backupViewModel: BackupViewModel?,
     versionProvider: VersionProvider,
     navigate: (Destination) -> Unit,
 ) {
@@ -145,7 +141,7 @@ private fun AppDestination(
                 onCategoriesOpened = onCategoriesOpened,
             )
             Destination.Plan -> {
-                val sheetUrl by settingsViewModel.sheetUrl.collectAsState()
+                val sheetUrl by settingsViewModel.sheetUrl.collectAsStateWithLifecycle()
                 PlanScreen(monthViewModel, onBack = { navigate(Destination.Tracker) }, showBack = !tabletLayout, sheetUrl = sheetUrl)
             }
             Destination.Settings -> SettingsScreen(

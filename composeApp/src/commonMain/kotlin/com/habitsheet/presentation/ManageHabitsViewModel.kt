@@ -1,5 +1,7 @@
 package com.habitsheet.presentation
 
+import androidx.lifecycle.ViewModel
+
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitKind
@@ -11,9 +13,6 @@ import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,9 +22,11 @@ class ManageHabitsViewModel(
     private val repository: HabitRepository,
     private val idGenerator: IdGenerator,
     private val dateProvider: DateProvider = SystemDateProvider,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    scope: CoroutineScope? = null,
     private val logger: Logger = NoOpLogger,
-) {
+) : ViewModel() {
+    /** Defaults to the ViewModel's own background scope; tests inject theirs. */
+    private val scope: CoroutineScope = scope ?: backgroundScope()
     val state: StateFlow<com.habitsheet.domain.model.HabitSnapshot> = repository.snapshot
     
     private val _error = MutableStateFlow<String?>(null)
@@ -260,10 +261,6 @@ class ManageHabitsViewModel(
                 _error.value = "Couldn't reorder weekly habits."
             }
         }
-    }
-
-    fun close() {
-        scope.cancel()
     }
 
     companion object {

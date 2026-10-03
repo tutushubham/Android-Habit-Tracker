@@ -45,12 +45,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             when (val state = startup) {
                 is StartupState.Ready -> HabitSheetApp(
-                    state.graph.monthViewModel,
-                    state.graph.manageHabitsViewModel,
+                    state.graph,
                     shareService,
-                    state.graph.settingsViewModel,
                     backupService,
-                    state.graph.repository,
                     AndroidVersionProvider(this),
                 )
                 is StartupState.Failed -> HabitSheetTheme { StartupFailureScreen(state.cause, recovery, onRetry = ::start) }

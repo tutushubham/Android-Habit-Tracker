@@ -1,5 +1,7 @@
 package com.habitsheet.presentation
 
+import androidx.lifecycle.ViewModel
+
 import com.habitsheet.domain.calculation.CategorySummary
 import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.domain.calculation.DailySummary
@@ -25,9 +27,6 @@ import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.platform.w
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -74,10 +73,12 @@ data class MonthUiState(
 class MonthViewModel(
     private val repository: HabitRepository,
     private val dateProvider: DateProvider = SystemDateProvider,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    scope: CoroutineScope? = null,
     private val onLocalChange: (() -> Unit)? = null,
     private val logger: Logger = NoOpLogger,
-) {
+) : ViewModel() {
+    /** Defaults to the ViewModel's own background scope; tests inject theirs. */
+    private val scope: CoroutineScope = scope ?: backgroundScope()
     private val selectedMonth = MutableStateFlow(MonthKey.from(dateProvider.today()))
     private val selectedDay = MutableStateFlow(dateProvider.today())
     private val followToday = MutableStateFlow(true)
@@ -105,13 +106,13 @@ class MonthViewModel(
     }
 
     init {
-        scope.launch {
+        this.scope.launch {
             while (true) {
                 delay(1.minutes) // Safety net; foreground and time-zone events call refreshToday() directly.
                 refreshToday()
             }
         }
-        scope.launch {
+        this.scope.launch {
             runCatchingCancellable {
                 // Existing installs that already have habits are not shown the first-run tutorial.
                 onboardingVisible.value = !repository.isOnboardingCompleted() &&
@@ -143,7 +144,7 @@ class MonthViewModel(
         val currentError = args[7] as String?
         snapshot.toUiState(month, currentToday, day, onboarding, trigger, mode, currentError)
     }.stateIn(
-        scope = scope,
+        scope = this.scope,
         started = SharingStarted.Eagerly,
         initialValue = repository.snapshot.value.toUiState(selectedMonth.value, dateProvider.today(), selectedDay.value, false, 0, true, null),
     )
@@ -309,10 +310,6 @@ class MonthViewModel(
                 error.value = "Couldn't update weekly habit. Please try again."
             }
         }
-    }
-
-    fun close() {
-        scope.cancel()
     }
 
     private companion object {

@@ -1,5 +1,7 @@
 package com.habitsheet.presentation
 
+import androidx.lifecycle.ViewModel
+
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.platform.Logger
@@ -12,8 +14,6 @@ import com.habitsheet.sync.SyncError
 import com.habitsheet.sync.userMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,11 +37,13 @@ enum class ThemeMode {
 
 class SettingsViewModel(
     private val repository: HabitRepository,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    scope: CoroutineScope? = null,
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
     private val sheetSync: SheetSync? = null,
     private val logger: Logger = NoOpLogger,
-) {
+) : ViewModel() {
+    /** Defaults to the ViewModel's own background scope; tests inject theirs. */
+    private val scope: CoroutineScope = scope ?: backgroundScope()
     private val _themeMode = MutableStateFlow(ThemeMode.System)
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
     private val _sheetUrl = MutableStateFlow("")
@@ -50,10 +52,10 @@ class SettingsViewModel(
     val sheetMessage: StateFlow<String?> = _sheetMessage.asStateFlow()
     val sheetSyncState: StateFlow<SheetSyncState> = sheetSync?.state ?: MutableStateFlow(SheetSyncState())
     val sheetSyncStatus: StateFlow<SyncStatus> = sheetSyncState.map { it.toStatus() }
-        .stateIn(scope, SharingStarted.Eagerly, sheetSyncState.value.toStatus())
+        .stateIn(this.scope, SharingStarted.Eagerly, sheetSyncState.value.toStatus())
 
     init {
-        scope.launch(ioDispatcher) {
+        this.scope.launch(ioDispatcher) {
             runCatchingCancellable {
                 val mode = repository.getThemeMode()
                 _themeMode.value = ThemeMode.entries.getOrElse(mode) { ThemeMode.System }
@@ -118,10 +120,6 @@ class SettingsViewModel(
     fun syncNow() {
         val service = sheetSync ?: return
         scope.launch(ioDispatcher) { service.sync(interactive = true) }
-    }
-
-    fun close() {
-        scope.cancel()
     }
 
     private companion object {

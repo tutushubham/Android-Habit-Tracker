@@ -48,7 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -93,8 +93,8 @@ fun ManageHabitsScreen(
     openCategories: Boolean = false,
     onCategoriesOpened: () -> Unit = {},
 ) {
-    val state by viewModel.state.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     var editor by remember { mutableStateOf<HabitEditor?>(null) }
     var showCategories by remember { mutableStateOf(false) }
     var showArchived by remember { mutableStateOf(false) }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,11 +32,11 @@ fun SettingsScreen(
     onAbout: () -> Unit,
     showBack: Boolean = true,
 ) {
-    val themeMode by viewModel.themeMode.collectAsState()
-    val sheetUrl by viewModel.sheetUrl.collectAsState()
-    val sheetMessage by viewModel.sheetMessage.collectAsState()
-    val syncState by viewModel.sheetSyncState.collectAsState()
-    val syncStatus by viewModel.sheetSyncStatus.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val sheetUrl by viewModel.sheetUrl.collectAsStateWithLifecycle()
+    val sheetMessage by viewModel.sheetMessage.collectAsStateWithLifecycle()
+    val syncState by viewModel.sheetSyncState.collectAsStateWithLifecycle()
+    val syncStatus by viewModel.sheetSyncStatus.collectAsStateWithLifecycle()
     var sheetDraft by remember(sheetUrl) { mutableStateOf(sheetUrl) }
 
     Scaffold(

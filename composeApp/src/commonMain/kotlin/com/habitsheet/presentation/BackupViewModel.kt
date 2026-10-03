@@ -1,5 +1,7 @@
 package com.habitsheet.presentation
 
+import androidx.lifecycle.ViewModel
+
 import com.habitsheet.domain.backup.BackupSerializer
 import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.backup.BackupValidationException
@@ -16,8 +18,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
@@ -26,12 +26,15 @@ class BackupViewModel(
     private val repository: HabitRepository,
     private val backupService: BackupService,
     private val dateProvider: DateProvider = SystemDateProvider,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    scope: CoroutineScope? = null,
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val logger: Logger = NoOpLogger,
     /** Called on the callback dispatcher after a reset or restore succeeded (settings screens re-read storage). */
     private val onDataReplaced: () -> Unit = {},
-) {
+) : ViewModel() {
+    /** Defaults to the ViewModel's own background scope; tests inject theirs. */
+    private val scope: CoroutineScope = scope ?: backgroundScope()
+
     /** What would be lost by a reset or an import right now. */
     fun currentDataSummary(): DataSummary = DataSummary.of(repository.snapshot.value)
 
@@ -95,10 +98,6 @@ class BackupViewModel(
                 }
             }
         })
-    }
-
-    fun close() {
-        scope.cancel()
     }
 
     private companion object {
