@@ -14,7 +14,7 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 - [Done] P0-B Sync correctness (on `master`; manual two-device checks still owed)
 - [Done*] P0-C Release build config (steps 1–11 on `master`; *code, automated checks and docs complete; owed: release-APK device smoke test and the `[mac]` iOS verification, see below)
 - [Done*] P1-1 Robustness & data safety (steps 1–11 on `master`; *code, automated checks and docs complete; owed: the device checks and `[mac]` iOS checks listed under "Manual checks still owed")
-- [ ] P1-2 Architecture & code quality
+- [ ] P1-2 Architecture & code quality (in progress: steps 1–2 done on `master`)
 - [ ] P1-3 Gaps in existing features
 - [ ] P2 Testing
 - [ ] **Part 1 exit gate** (see README)
@@ -131,3 +131,4 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 2026-10-03 · P1-1 step 11 · `AppStartup.create` returns Ready/Failed instead of throwing; `StartupFailureScreen` (Try again / Save a copy of the data file / Start with empty data, confirmed, moves the file aside and keeps the newest 3 copies) on Android (`AndroidStartupRecovery`, zip via picker) and iOS (`IosStartupRecovery`, share sheet, unverified); Android no longer deletes a corrupt database (`onCorruption` no-op); failed open closes its driver; 291 JVM tests green · master (then on `prod/p1-1-robustness`)
 2026-10-03 · P1-1 review · progress and docs checked against the code (291 JVM tests, migration verification, iOS compile green); `PROJECT_CONTEXT.md`, `PROGRESS.md`, `ARCHITECTURE.md`, `README.md`, `SHEET_SYNC.md` and the P1-2/P1-3/P2 plans updated for the next session · master
 2026-10-03 · branch policy · `prod/p1-1-robustness` fast-forwarded into `master` (`b0224f8`); docs updated: only `master` is used and no new branches are created
+2026-10-03 · P1-2 steps 1–2 · `MonthUiStateGoldenTest` (11 hand-derived golden tests for `toUiState`, which is now `internal`); `MultiSessionCountingTest` (12). Finding: the app's month/day/habit/category/Today numbers were already per-session (`planId`) and stayed unchanged; the real mismatch was the Android widget (rows and toggles keyed by habit id, so with two sessions both rows shared one state and a toggle wrote a completion the app did not show). Fixed through shared `todaySessions` / `sessionToToggle`; old widget buttons without a plan id fall back to the habit's first session. Habit-keyed `HabitCalculations` functions are unused by the app and documented as such. Rule in `WORKBOOK_MAPPING.md`. 314 JVM tests green, assembleDebug and both iOS klib compiles OK · master

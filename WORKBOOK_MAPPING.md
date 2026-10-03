@@ -25,3 +25,16 @@ Workbook-specific behavior retained:
 - Category remaining is clamped at zero, matching the hidden workbook formula.
 - The fifth block contains only the real days 29–31 when applicable.
 - The month total is daily completions divided by the sum of monthly habit goals.
+
+## Sessions: what is counted (multi-session days)
+
+A day can hold several sessions of one habit (for example "Easy run" and "Mobility"). They have different `planId`s, and the rule is the same everywhere:
+
+- **The unit is the session, not the habit.** `plannedHabitsOn(date)` decides which sessions are due; skipped rest notes are shown but never due.
+- A check-off belongs to one session, identified by `(planId, date)`. Completing "Easy run" does not complete "Mobility".
+- Day summary: due = sessions due that day, done = those with a completion. Habit summary: goal = sessions due this month, done = those completed. Category and month totals are sums of the habit summaries. The Today list, the share summary and the Android widget list one row per session with its own done state.
+- A completion for a session that is not due (removed, skipped, other day) is kept as history but counts nowhere.
+- For a habit with one session per day (a weekly plan or no schedule) `planId` is `<habitId>|<date>`, so nothing changes for single-session habits.
+- `HabitCalculations.dailySummaries`, `habitSummaries` and `dailyShareSummary` (habit-keyed, from the original workbook model) are not used by the app; they cannot represent two sessions of one habit. The app computes month figures in `MonthViewModel.toUiState` from the planned sessions. Do not use the habit-keyed functions for new code.
+- Tests: `MonthUiStateGoldenTest` (fixed snapshot, hand-derived numbers) and `MultiSessionCountingTest`.
+

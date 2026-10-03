@@ -84,6 +84,11 @@ data class DailyShareSummary(
     val leftHabits: List<DailyShareHabit>
 )
 
+/**
+ * Note: [dailyShareSummary], [dailySummaries] and [habitSummaries] are keyed by habit id and cannot represent two
+ * sessions of one habit on a day. The app does not use them; month figures come from the planned sessions
+ * (`MonthViewModel.toUiState`). See WORKBOOK_MAPPING.md, "Sessions: what is counted".
+ */
 object HabitCalculations {
     fun dailyShareSummary(
         date: LocalDate,

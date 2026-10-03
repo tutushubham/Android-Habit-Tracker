@@ -17,7 +17,8 @@ import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.domain.model.WeeklyHabitCompletion
-import com.habitsheet.domain.model.plannedHabitsOn
+import com.habitsheet.domain.model.sessionToToggle
+import com.habitsheet.domain.model.todaySessions
 import com.habitsheet.presentation.SystemDateProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +77,7 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
                     val today = SystemDateProvider.today()
                     val renderedDate = intent.getStringExtra(EXTRA_RENDERED_DATE)
                     val habitId = intent.getStringExtra(EXTRA_HABIT_ID)
+                    val planId = intent.getStringExtra(EXTRA_PLAN_ID)
                     if (renderedDate != today.toString() || habitId.isNullOrBlank()) {
                         // A launcher can retain yesterday's RemoteViews after midnight.
                         // Refresh instead of recording a completion for an unseen date.
@@ -84,7 +86,7 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
 
                     withRepository(context) { repository ->
                         when (intent.action) {
-                            ACTION_TOGGLE_DAILY -> toggleDaily(repository, habitId, today)
+                            ACTION_TOGGLE_DAILY -> toggleDaily(repository, planId, habitId, today)
                             ACTION_TOGGLE_WEEKLY -> toggleWeekly(repository, habitId, today)
                         }
                     }
@@ -101,20 +103,22 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
 
     private suspend fun toggleDaily(
         repository: LocalHabitRepository,
+        planId: String?,
         habitId: String,
         today: LocalDate,
     ) {
         val snapshot = repository.snapshot.value
-        if (snapshot.plannedHabitsOn(today).none { it.habit.id == habitId && !it.skipped }) return
+        val session = snapshot.sessionToToggle(today, planId, habitId) ?: return
         val completed = snapshot.dailyCompletions.any {
-            it.habitId == habitId && it.date == today && it.completed
+            it.planId == session.id && it.date == today && it.completed
         }
         repository.setDailyCompletion(
             DailyHabitCompletion(
-                habitId = habitId,
+                habitId = session.habit.id,
                 date = today,
                 completed = !completed,
                 updatedAtEpochMillis = SystemDateProvider.nowEpochMillis(),
+                planId = session.id,
             ),
         )
     }
@@ -167,6 +171,7 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
         private const val ACTION_TOGGLE_WEEKLY =
             "com.habitsheet.app.action.WIDGET_TOGGLE_WEEKLY"
         private const val EXTRA_HABIT_ID = "habit_id"
+        private const val EXTRA_PLAN_ID = "plan_id"
         private const val EXTRA_RENDERED_DATE = "rendered_date"
 
         private val widgetScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -195,28 +200,23 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
         ): RemoteViews {
             val today = SystemDateProvider.today()
             val currentWeekStart = MonthKey.from(today).weekStartFor(today)
-            val dailyCompletionIds = snapshot.dailyCompletions.asSequence()
-                .filter { it.date == today && it.completed }
-                .map { it.habitId }
-                .toSet()
             val weeklyCompletionIds = snapshot.weeklyCompletions.asSequence()
                 .filter { it.weekStartDate == currentWeekStart && it.completed }
                 .map { it.weeklyHabitId }
                 .toSet()
 
             val items = buildList {
-                snapshot.plannedHabitsOn(today)
-                    .filterNot { it.skipped }
-                    .forEach { plan ->
-                        add(
-                            WidgetHabit(
-                                id = plan.habit.id,
-                                name = listOfNotNull(plan.habit.name, plan.detail).joinToString(" · "),
-                                weekly = false,
-                                completed = plan.habit.id in dailyCompletionIds,
-                            ),
-                        )
-                    }
+                snapshot.todaySessions(today).forEach { session ->
+                    add(
+                        WidgetHabit(
+                            id = session.habitId,
+                            planId = session.planId,
+                            name = session.label,
+                            weekly = false,
+                            completed = session.completed,
+                        ),
+                    )
+                }
                 snapshot.weeklyHabits
                     .filter { it.isActiveOn(today) }
                     .sortedBy { it.displayOrder }
@@ -341,9 +341,10 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
                 this.action = action
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 putExtra(EXTRA_HABIT_ID, item.id)
+                item.planId?.let { putExtra(EXTRA_PLAN_ID, it) }
                 putExtra(EXTRA_RENDERED_DATE, today.toString())
             }
-            val requestCode = "$widgetId:$action:${item.id}".hashCode()
+            val requestCode = "$widgetId:$action:${item.planId ?: item.id}".hashCode()
             return PendingIntent.getBroadcast(
                 context,
                 requestCode,
@@ -403,6 +404,7 @@ object HabitWidgetUpdater {
 
 private data class WidgetHabit(
     val id: String,
+    val planId: String? = null,
     val name: String,
     val weekly: Boolean,
     val completed: Boolean,
