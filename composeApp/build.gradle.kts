@@ -124,6 +124,10 @@ sqldelight {
     databases {
         create("HabitsDatabase") {
             packageName.set("com.habitsheet.database")
+            // One .db snapshot per released schema version; verifyMigrations opens each, applies the .sqm files up to
+            // the current schema and fails the build if the result differs. Never edit or delete a committed snapshot.
+            schemaOutputDirectory.set(file("src/commonMain/sqldelight/databases"))
+            verifyMigrations.set(true)
         }
     }
 }

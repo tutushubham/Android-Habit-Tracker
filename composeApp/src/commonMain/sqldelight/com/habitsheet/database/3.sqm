@@ -26,5 +26,8 @@ CREATE TABLE dailyCompletionEntity (
 );
 INSERT INTO dailyCompletionEntity(plan_id, habit_id, date, completed, updated_at)
 SELECT habit_id || '|' || date, habit_id, date, completed, updated_at FROM oldDailyCompletionEntity;
+-- The index of the old table is dropped with it; spelling it out lets SQLDelight (which compiles migrations
+-- against the version 1 snapshot) see that the name is free again. No effect on the resulting database.
+DROP INDEX IF EXISTS dailyCompletionDateIndex;
 DROP TABLE oldDailyCompletionEntity;
 CREATE INDEX dailyCompletionDateIndex ON dailyCompletionEntity(date);

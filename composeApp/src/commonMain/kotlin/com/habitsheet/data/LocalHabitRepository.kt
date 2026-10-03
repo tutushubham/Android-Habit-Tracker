@@ -68,7 +68,11 @@ class LocalHabitRepository(
 
     override suspend fun deleteCategory(id: String) {
         mutex.withLock {
-            database.habitsQueries.deleteCategory(id)
+            database.transaction {
+                database.habitsQueries.clearCategoryFromDailyHabits(id)
+                database.habitsQueries.clearCategoryFromWeeklyHabits(id)
+                database.habitsQueries.deleteCategory(id)
+            }
             loadSnapshot()
         }
     }
@@ -135,7 +139,12 @@ class LocalHabitRepository(
 
     override suspend fun deleteDailyHabit(id: String) {
         mutex.withLock {
-            database.habitsQueries.deleteDailyHabit(id)
+            database.transaction {
+                database.habitsQueries.deleteDailyCompletionsForHabit(id)
+                database.habitsQueries.deleteDayPlansForHabit(id)
+                database.habitsQueries.deleteWeeklyPlansForHabit(id)
+                database.habitsQueries.deleteDailyHabit(id)
+            }
             loadSnapshot()
         }
     }
@@ -207,7 +216,10 @@ class LocalHabitRepository(
 
     override suspend fun deleteWeeklyHabit(id: String) {
         mutex.withLock {
-            database.habitsQueries.deleteWeeklyHabit(id)
+            database.transaction {
+                database.habitsQueries.deleteWeeklyCompletionsForHabit(id)
+                database.habitsQueries.deleteWeeklyHabit(id)
+            }
             loadSnapshot()
         }
     }

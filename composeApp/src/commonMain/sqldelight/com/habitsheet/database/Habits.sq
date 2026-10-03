@@ -104,6 +104,14 @@ WHERE id = ?;
 deleteCategory:
 DELETE FROM categoryEntity WHERE id = ?;
 
+-- The foreign keys already say ON DELETE SET NULL / CASCADE, but PRAGMA foreign_keys is a per-connection setting
+-- that not every driver keeps (the JVM driver does not). Deletes therefore state their cascades explicitly.
+clearCategoryFromDailyHabits:
+UPDATE dailyHabitEntity SET category_id = NULL WHERE category_id = ?;
+
+clearCategoryFromWeeklyHabits:
+UPDATE weeklyHabitEntity SET category_id = NULL WHERE category_id = ?;
+
 selectAllDailyHabits:
 SELECT * FROM dailyHabitEntity ORDER BY display_order, id;
 
@@ -134,6 +142,15 @@ WHERE id = ?;
 
 deleteDailyHabit:
 DELETE FROM dailyHabitEntity WHERE id = ?;
+
+deleteDailyCompletionsForHabit:
+DELETE FROM dailyCompletionEntity WHERE habit_id = ?;
+
+deleteDayPlansForHabit:
+DELETE FROM dayPlanEntity WHERE habit_id = ?;
+
+deleteWeeklyPlansForHabit:
+DELETE FROM weeklyPlanEntity WHERE habit_id = ?;
 
 selectAllDailyCompletions:
 SELECT * FROM dailyCompletionEntity ORDER BY date, habit_id;
@@ -215,6 +232,9 @@ WHERE id = ?;
 
 deleteWeeklyHabit:
 DELETE FROM weeklyHabitEntity WHERE id = ?;
+
+deleteWeeklyCompletionsForHabit:
+DELETE FROM weeklyCompletionEntity WHERE weekly_habit_id = ?;
 
 selectAllWeeklyCompletions:
 SELECT * FROM weeklyCompletionEntity ORDER BY week_start_date, weekly_habit_id;
