@@ -3,7 +3,7 @@
 **Goal:** enough automated coverage that you can ship updates confidently: logic, persistence, sync failures, UI flows, accessibility semantics, Android + iOS smoke.
 
 **Depends on:** P1-2/P1-3 (stable structure).
-**Branch:** `prod/p2-testing`
+**Branch:** none — work directly on `master` (no branches).
 **Out of scope:** load/perf testing beyond what P1-1 added; third-party device farms (Part 2 may add Firebase Test Lab / Xcode Cloud optionally).
 
 ## 1. Code analysis
@@ -32,7 +32,7 @@ Gaps (verified by listing): no Compose UI tests, no Android instrumented/widget 
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P2-testing.md. Confirm P1-2/P1-3 are merged. Branch prod/p2-testing. Do not change production code except for testability seams (inject DateProvider/Logger/dispatchers) and genuine bugs you find — list each bug separately. Summarise the plan in 8 lines and wait.
+Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P2-testing.md. Confirm P1-2/P1-3 are on master. Work directly on master (no branches). Do not change production code except for testability seams (inject DateProvider/Logger/dispatchers) and genuine bugs you find — list each bug separately. Summarise the plan in 8 lines and wait.
 ```
 
 ### Step prompts

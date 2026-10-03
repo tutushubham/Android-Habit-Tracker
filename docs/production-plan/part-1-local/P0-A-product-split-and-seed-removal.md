@@ -3,7 +3,7 @@
 **Goal:** the shared app contains **no personal data, plan, names or hard-coded habits**. A fresh install is neutral. Your own plan lives in your Google Sheet. Your existing installs keep working with their data untouched.
 
 **Depends on:** decisions D1 (default A) and D2 in `00-context/DECISIONS.md`.
-**Branch:** `prod/p0-a-product-split` (merged into `master` as PR #1)
+**Branch:** done on `prod/p0-a-product-split` (historical, merged into `master` as PR #1); from now on work only on `master`
 **Status 2026-10-03:** steps 2–8 complete and verified by the completion review; step 9 (manual check on your own device) is still owed — see `PROGRESS.md`.
 **Out of scope:** changing sync algorithm (P0-B), build/signing (P0-C), new features.
 
@@ -47,7 +47,7 @@ Important invariants to protect:
 
 ### Session starter (paste first)
 ```
-You are working in the Habit Sheet KMP repo. Read, in order: docs/production-plan/README.md, docs/production-plan/00-context/PROJECT_CONTEXT.md, docs/production-plan/00-context/DECISIONS.md and docs/production-plan/part-1-local/P0-A-product-split-and-seed-removal.md. If graphify-out/GRAPH_REPORT.md exists use it to navigate. Create branch prod/p0-a-product-split. Rules: no new features; never delete user data; existing installs that already seeded OND must keep all data. Confirm you understood by summarising the plan in 8 lines, then wait for my go.
+You are working in the Habit Sheet KMP repo. Read, in order: docs/production-plan/README.md, docs/production-plan/00-context/PROJECT_CONTEXT.md, docs/production-plan/00-context/DECISIONS.md and docs/production-plan/part-1-local/P0-A-product-split-and-seed-removal.md. If graphify-out/GRAPH_REPORT.md exists use it to navigate. Work directly on master (no branches). Rules: no new features; never delete user data; existing installs that already seeded OND must keep all data. Confirm you understood by summarising the plan in 8 lines, then wait for my go.
 ```
 
 ### Step prompts
@@ -81,7 +81,7 @@ Manual: (a) fresh emulator install → empty, neutral, tutorial appears once and
 - [x] Fresh install = zero habits, neutral onboarding, first-run tutorial shown once (not for installs that already have habits).
 - [x] Characterization tests prove existing seeded DBs are untouched.
 - [x] Personal files live under gitignored `personal/` with usage instructions.
-- [x] Tests green (87). Session log line added in `PROGRESS.md`; tick it after the manual device checks (step 9) and merge.
+- [x] Tests green (87). Session log line added in `PROGRESS.md`; tick it after the manual device checks (step 9).
 
 ## 6. Handoff to next plan
 P0-B inherits a `planRowsFor(snapshot, window)` function and a `SheetSync` that is free of OND rules but still has the old algorithm (name matching, non-atomic writes, chatty sync).

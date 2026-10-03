@@ -2,8 +2,8 @@
 
 **Goal:** a maintainable, lifecycle-correct, lint-clean codebase using idiomatic KMP patterns — **without changing behaviour or adding features**. Refactors are guarded by tests written first.
 
-**Depends on:** P0-A/B/C, P1-1 (**P1-1 is on `prod/p1-1-robustness` and may not be merged yet: merge it into `master` first, or branch from it**).
-**Branch:** `prod/p1-2-architecture`
+**Depends on:** P0-A/B/C, P1-1 (all merged into `master`).
+**Branch:** none — work directly on `master` (no branches).
 **Out of scope:** new screens, redesign, new libraries beyond those named here, moving to multi-module unless you explicitly choose to.
 
 ## 0. Handoff from P1-1 (read first; these change the steps below)
@@ -58,7 +58,7 @@ State at handoff: 291 JVM tests, schema v5 with verified migrations, `check` run
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, docs/production-plan/PROGRESS.md ("Next session: P1-2"), 00-context/PROJECT_CONTEXT.md (Status and "Facts from P1-1") and part-1-local/P1-2-architecture-and-code-quality.md including section 0 "Handoff from P1-1". Confirm P0-A/B/C are merged and check whether prod/p1-1-robustness is merged into master; if not, ask me whether to merge it (fast-forward) before you branch prod/p1-2-architecture. Hard rules: zero behaviour/visual change except the multi-session counting fix; every refactor step is preceded by tests that fail if behaviour changes; commit after each step; use graphify-out if present. Summarise the plan in 8 lines and wait.
+Read docs/production-plan/README.md, docs/production-plan/PROGRESS.md ("Next session: P1-2"), 00-context/PROJECT_CONTEXT.md (Status and "Facts from P1-1") and part-1-local/P1-2-architecture-and-code-quality.md including section 0 "Handoff from P1-1". Confirm P0-A/B/C and P1-1 are on master. Work only on master and never create branches. Hard rules: zero behaviour/visual change except the multi-session counting fix; every refactor step is preceded by tests that fail if behaviour changes; commit after each step; use graphify-out if present. Summarise the plan in 8 lines and wait.
 ```
 
 ### Step prompts

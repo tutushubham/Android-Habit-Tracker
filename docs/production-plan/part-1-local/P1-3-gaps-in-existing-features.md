@@ -3,7 +3,7 @@
 **Goal:** the features that already exist are finished enough to ship: localisable strings, accessible controls, a proper file-based backup on iOS, and a neutral first-run. Nothing new is added.
 
 **Depends on:** P1-2 (decomposed screens).
-**Branch:** `prod/p1-3-feature-gaps`
+**Branch:** none — work directly on `master` (no branches).
 
 ## Scope decision gate
 Reminders/notifications and an iOS widget are **not implemented** and **not part of this plan** (D4). If you later decide to build them, make that a separate release plan. Do not start them here.
@@ -43,7 +43,7 @@ Reminders/notifications and an iOS widget are **not implemented** and **not part
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P1-3-gaps-in-existing-features.md. Confirm P1-2 is merged. Branch prod/p1-3-feature-gaps. Hard rule: do not add any new feature (no reminders, no iOS widget, no stats). Only finish existing features. Summarise the plan in 8 lines and wait.
+Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P1-3-gaps-in-existing-features.md. Confirm P1-2 is on master. Work directly on master (no branches). Hard rule: do not add any new feature (no reminders, no iOS widget, no stats). Only finish existing features. Summarise the plan in 8 lines and wait.
 ```
 
 ### Step prompts

@@ -1,6 +1,6 @@
 # B1 — CI/CD (GitHub Actions)
 
-**Start only after the Part 1 exit gate.** Goal: every PR is built, linted and tested automatically on both platforms; releases are reproducible from tags; secrets live only in the CI secret store.
+**Start only after the Part 1 exit gate.** Goal: every push to `master` is built, linted and tested automatically on both platforms; releases are reproducible from tags; secrets live only in the CI secret store.
 
 **Inputs from Part 1:** `./gradlew check`, `assembleRelease`/`bundleRelease`, `docs/RELEASING.md`, `keystore.properties` + `Local.xcconfig` conventions, `docs/TESTING.md`.
 **No backend:** CI uses hosted runners only.
@@ -12,8 +12,8 @@
 - Kotlin/Native on macOS runners is slow without caching `~/.konan`.
 
 ## 2. Steps
-1. **Branch policy:** protect `main` (require PR, require CI, linear history). Decide repo visibility (D2) first.
-2. **Workflow `ci.yml` (on PR + push to main):**
+1. **Branch policy:** single branch, `master`; no feature branches or PRs (project rule). CI runs on every push to `master`; enable branch protection only if you later change this rule. Decide repo visibility (D2) first.
+2. **Workflow `ci.yml` (on push to master):**
    - Job `android`: checkout → setup JDK 17 → `gradle/actions/setup-gradle` (caching) → `./gradlew check` → `assembleDebug` → upload test/lint/Kover reports.
    - Job `ios` (macOS): setup Xcode → cache `~/.konan` + Gradle → `./gradlew :composeApp:compileKotlinIosSimulatorArm64 :composeApp:iosSimulatorArm64Test` → `xcodebuild build -scheme iosApp -destination 'generic/platform=iOS Simulator'` (no signing).
    - Job `instrumented` (optional, nightly): Android emulator runner executing `connectedDebugAndroidTest`.
@@ -30,7 +30,7 @@
 
 ### Session starter
 ```
-Read docs/production-plan/README.md and part-2-beyond-code/B1-ci-cd.md and docs/RELEASING.md. Part 1 is complete. Create .github/ workflows described in B1 on a branch ci/setup. Never write real secrets into any file; use the secret names in the plan. Summarise the plan in 6 lines and wait.
+Read docs/production-plan/README.md and part-2-beyond-code/B1-ci-cd.md and docs/RELEASING.md. Part 1 is complete. Create .github/ workflows described in B1 directly on master (no branches). Never write real secrets into any file; use the secret names in the plan. Summarise the plan in 6 lines and wait.
 ```
 
 ### Step prompts
@@ -41,14 +41,14 @@ Create .github/workflows/ci.yml with jobs: android (JDK17, gradle caching, ./gra
 Create release-android.yml (tag v*): verify tag equals appVersionName, decode ANDROID_KEYSTORE_BASE64, build the signed AAB, upload as artifact and optionally to the Play internal track via a service account; and release-ios.yml (tag v*) that archives, exports an IPA and uploads to TestFlight using an App Store Connect API key. Gate both behind a protected "release" environment with manual approval. Write docs for every required secret in docs/RELEASING.md (names only).
 ```
 ```
-Add Dependabot (or Renovate) config for gradle, github-actions and swift packages with grouped Kotlin/Compose/AGP updates, add README build badges, and add CODEOWNERS plus branch-protection instructions to docs/RELEASING.md.
+Add Dependabot (or Renovate) config for gradle, github-actions and swift packages with grouped Kotlin/Compose/AGP updates, add README build badges, (no branch protection or PR flow: master-only).
 ```
 
 ## 4. Verification
-Open a PR with a trivial change → both jobs green; intentionally break a test → PR blocked; push a `v0.0.0-test` tag on a fork/test repo → artefacts produced (without store upload).
+Push a trivial change to master → both jobs green; intentionally break a test (locally, do not push it) and confirm the job would fail; push a `v0.0.0-test` tag on a fork/test repo → artefacts produced (without store upload).
 
 ## 5. Definition of done
-- [ ] CI green on PRs for Android + iOS; branch protection on.
+- [ ] CI green on every push to `master` for Android + iOS.
 - [ ] Release workflows produce signed AAB and TestFlight-ready IPA from a tag.
 - [ ] Secrets only in GitHub secrets; gitleaks passes; documentation lists them.
 - [ ] Dependabot/Renovate active.

@@ -9,7 +9,7 @@ Everything here was derived from an audit of the repo at commit `53d074e` (see `
 1. Do the plans **in order**. Each plan is sized for one working session (some may take two).
 2. For each plan: open a fresh Claude Code session in the repo root, paste the **Session starter prompt** from the plan file, then paste the step prompts one by one (or the single "Run the whole plan" prompt if you trust it).
 3. A plan is finished only when its **Definition of done** is met and `PROGRESS.md` is ticked. Then start the next plan in a *new* session — each plan carries its own context, so nothing needs to be remembered between sessions.
-4. Work on a branch per plan (`prod/p0-a-...`). Merge only after the plan's verification passes.
+4. **Work only on `master`. Do not create branches** (no feature, plan or hotfix branches). Commit directly to `master`, one concern per commit, and run the plan's verification before each commit that completes a step.
 
 ## Order of execution
 

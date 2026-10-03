@@ -3,7 +3,7 @@
 **Goal:** the Sheet-as-backend loop is correct, safe against partial failure, quiet on the network, and understandable to a non-technical user. Phone and iPad can both write without corrupting each other's data in realistic use.
 
 **Depends on:** P0-A (OND rules removed).
-**Branch:** `prod/p0-b-sync` (merged into `master`; further work continues on `master`)
+**Branch:** none — work directly on `master` (no branches).
 **Out of scope:** real-time collaboration, merge UIs, conflict history, new sync features. Keep "last upload wins" semantics but make them deterministic and honest.
 
 ## 1. Code analysis
@@ -40,7 +40,7 @@ Findings:
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md, 00-context/DECISIONS.md and part-1-local/P0-B-sync-correctness.md. P0-A must already be merged (verify: no OndSeedData in commonMain). Create branch prod/p0-b-sync. Use graphify-out/GRAPH_REPORT.md if present. No new features; keep documented Plan-tab schema compatibility. Summarise the plan in 8 lines and wait for my go.
+Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md, 00-context/DECISIONS.md and part-1-local/P0-B-sync-correctness.md. P0-A must already be merged (verify: no OndSeedData in commonMain). Work directly on master (no branches). Use graphify-out/GRAPH_REPORT.md if present. No new features; keep documented Plan-tab schema compatibility. Summarise the plan in 8 lines and wait for my go.
 ```
 
 ### Step prompts

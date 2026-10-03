@@ -18,7 +18,7 @@ Goal: a stranger can understand the idea in 60 seconds, set up their sheet in 2 
    - "Month-end review" tips in the Sheet (optional filters/pivot instructions — documentation only, no new features).
    - Troubleshooting: access denied, wrong link, quota, malformed Plan tab, unverified-app warning click-through (until B2 verification).
 2. **FAQ & privacy plain-language summary** (links to the full policy).
-3. **Contributor/maintainer docs:** `CONTRIBUTING.md` (setup, branches, tests, style), `SECURITY.md` (how to report vulnerabilities by email), `CODE_OF_CONDUCT.md` (optional), issue/PR templates (`.github/ISSUE_TEMPLATE/bug.yml` asking for platform, version, sync error message — never sheet content).
+3. **Contributor/maintainer docs:** `CONTRIBUTING.md` (setup, working on `master` only, tests, style), `SECURITY.md` (how to report vulnerabilities by email), `CODE_OF_CONDUCT.md` (optional), issue templates (`.github/ISSUE_TEMPLATE/bug.yml` asking for platform, version, sync error message — never sheet content).
 4. **README rewrite:** product pitch, screenshots, quick start for users, build instructions for developers, link to docs. Move the personal OND instructions to `personal/README.md` (gitignored).
 5. **Support process:** support email alias; response SLA you can keep; macros for common issues; a 'known issues' page.
 6. **Launch checklist:** soft launch to friends via testers (B4) → fix → public store listing; announcement copy (honest, no medical claims); landing page link; screenshots; short demo GIF/video.
@@ -31,7 +31,7 @@ Goal: a stranger can understand the idea in 60 seconds, set up their sheet in 2 
 Read docs/production-plan/README.md, PROJECT_CONTEXT.md, SHEET_SYNC.md and part-2-beyond-code/B5-docs-support-and-launch.md. Write docs/user-guide.md and the matching site/ pages: a 3-step "Create your Sheet and connect" guide, a Plan-tab column reference (what to edit vs leave alone, adding one-off events like parties/festivals as new rows with unique IDs, marking rest days with Skip), offline/conflict behaviour, and troubleshooting mapped to the app's actual SyncError messages. Short sentences, numbered steps, no jargon (ADHD-friendly). Mark screenshot slots as [SCREENSHOT: description].
 ```
 ```
-Create CONTRIBUTING.md, SECURITY.md, issue templates (bug report asking platform/app version/sync error text and warning never to paste sheet contents; feature request) and a PR template with a checklist (tests, strings externalised, no personal data). Rewrite README.md for end users and developers; keep personal instructions only in personal/README.md.
+Create CONTRIBUTING.md, SECURITY.md, issue templates (bug report asking platform/app version/sync error text and warning never to paste sheet contents; feature request) and a commit checklist in CONTRIBUTING.md (tests, strings externalised, no personal data). Rewrite README.md for end users and developers; keep personal instructions only in personal/README.md.
 ```
 ```
 Create docs/maintenance-calendar.md (recurring tasks: dependency reviews, Apple membership renewal, certificate/profile expiry, TestFlight 90-day expiry for my personal builds, Play targetSdk yearly bump, Xcode/SDK minimums, privacy-policy and OAuth review dates, Google verification status) and docs/roadmap.md listing deferred items (reminders, iOS widget, statistics) clearly marked out of scope for v1.

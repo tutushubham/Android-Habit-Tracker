@@ -21,7 +21,7 @@ Goal: get the app to real devices and then the public in controlled stages — *
 7. **Production submission:** Play: production release with **staged rollout** (e.g. 10% → 50% → 100%) once crash-free; App Store: submit with review notes (B3), **phased release** (7-day) enabled.
 8. **Versioning discipline:** tag `vX.Y.Z`, update `CHANGELOG.md`, bump via P0-C procedure; never reuse a build number.
 9. **Post-release monitoring (no backend):** Play Console vitals/ANR/crash clusters; Xcode Organizer crashes; App Store Connect metrics; user feedback email; review replies.
-10. **Rollback/hotfix plan:** Play: halt rollout/ship patch; iOS: can't roll back — keep expedited-review procedure; keep previous AAB/IPA artefacts; documented hotfix branch flow.
+10. **Rollback/hotfix plan:** Play: halt rollout/ship patch; iOS: can't roll back — keep expedited-review procedure; keep previous AAB/IPA artefacts; documented hotfix flow (a normal commit on `master`, no hotfix branch).
 11. **Update compatibility policy:** every release must pass: install-over-previous-version test with a populated DB (migration test fixtures from P1-1/P2).
 
 ## 3. Prompts

@@ -3,7 +3,7 @@
 **Goal:** a signed, minified, reproducible release build on both platforms from a clean checkout, with **no secrets, personal IDs or team IDs in the repo**, one source of truth for version numbers, and the iOS privacy manifest in place.
 
 **Depends on:** P0-A (personal data out). Independent of P0-B except `AppGraph`.
-**Branch:** `prod/p0-c-release-config`
+**Branch:** none — work directly on `master` (no branches).
 **Out of scope:** actually uploading to stores, creating accounts, CI (Part 2: B1, B4).
 
 ## 1. Code analysis
@@ -42,7 +42,7 @@ Shared: version is read by `AndroidVersionProvider` / `IosVersionProvider` (Abou
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md, 00-context/DECISIONS.md and part-1-local/P0-C-release-build-config.md. Confirm P0-A is merged. Branch prod/p0-c-release-config. Never commit keystores, passwords, local.properties or personal team IDs. iOS steps are [mac]; if you cannot run Xcode here, list the commands for me. Summarise the plan in 8 lines and wait.
+Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md, 00-context/DECISIONS.md and part-1-local/P0-C-release-build-config.md. Confirm P0-A is merged. Work directly on master (no branches). Never commit keystores, passwords, local.properties or personal team IDs. iOS steps are [mac]; if you cannot run Xcode here, list the commands for me. Summarise the plan in 8 lines and wait.
 ```
 
 ### Step prompts

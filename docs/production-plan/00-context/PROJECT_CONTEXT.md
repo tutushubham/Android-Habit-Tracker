@@ -20,7 +20,7 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **P1-1 done in code** (device and `[mac]` verification owed): `Logger`, cancellation-safe error handling, backup v4 (checksum, settings, optional sheet link), robust Android backup I/O, consistent reset, named confirmations for every destructive action, `refreshToday()` + injectable clock, monotonic `updated_at`, verified migrations (schema v5, snapshots `1.db`–`5.db`), explicit delete cascades, startup failure screen. Audit items under "P1 — robustness" below are **resolved** except where marked.
 - Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, P1-2, P1-3, P2.
 - Verification state: **291 JVM tests green**, `verifyCommonMainHabitsDatabaseMigration`, `assembleDebug`, and the iOS klib compile (main + test) OK on Windows; `assembleRelease`/`bundleRelease` last verified in P0-C (not re-run since); device and Mac checks owed (see `PROGRESS.md`).
-- Branching: P0 work went directly to `master`. **P1-1 is on `prod/p1-1-robustness` and not merged yet** (7 commits ahead of `master`); merge it (fast-forward) or branch P1-2 from it. P1-2 uses `prod/p1-2-architecture`.
+- Branching: **single-branch policy — everything lives on `master`, no branches are created.** P0 and P1-1 are on `master`; P1-2 and later commit directly to `master`, one commit per step, with the full test run before each commit.
 
 ## Tech snapshot (verified in repo)
 

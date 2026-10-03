@@ -3,7 +3,7 @@
 **Goal:** the app never silently loses or corrupts a user's history; failures are logged and visible to the developer (locally), understandable to the user; dates/time zones, migrations, backups and destructive actions behave predictably.
 
 **Depends on:** P0-A, P0-B (typed sync errors), P0-C (backup rules).
-**Branch:** `prod/p1-1-robustness`
+**Branch:** none — work directly on `master` (no branches).
 **Out of scope:** remote crash reporting services/analytics (no backend; decide in Part 2 whether to use platform-provided crash reports only: Play Console vitals, Xcode Organizer).
 
 ## 1. Code analysis
@@ -43,7 +43,7 @@
 
 ### Session starter
 ```
-Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P1-1-robustness-and-data-safety.md. Confirm P0-A/B/C are merged. Branch prod/p1-1-robustness. Rule: never reduce what existing backups (v1-v3) can restore; never drop user data. Summarise the plan in 8 lines and wait.
+Read docs/production-plan/README.md, 00-context/PROJECT_CONTEXT.md and part-1-local/P1-1-robustness-and-data-safety.md. Confirm P0-A/B/C are merged. Work directly on master (no branches). Rule: never reduce what existing backups (v1-v3) can restore; never drop user data. Summarise the plan in 8 lines and wait.
 ```
 
 ### Step prompts
