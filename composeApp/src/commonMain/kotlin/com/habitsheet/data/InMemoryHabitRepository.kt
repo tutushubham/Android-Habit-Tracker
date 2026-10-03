@@ -244,6 +244,9 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun clearAllData() {
         mutableSnapshot.value = HabitSnapshot()
         onboardingCompleted = false
+        sheetUrl = ""
+        sheetSyncedKeys = emptySet()
+        sheetLastSync = 0L
     }
 
     override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot, settings: BackupSettings?, restoreSheetLink: Boolean) {

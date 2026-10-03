@@ -5,6 +5,7 @@ import com.habitsheet.database.HabitsDatabase
 import com.habitsheet.domain.backup.BackupFixtures
 import com.habitsheet.domain.backup.BackupSerializer
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetSyncChanges
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -72,6 +73,30 @@ class BackupRestoreSqliteTest {
             repo.restoreFromSnapshot(backup.snapshot, backup.settings, restoreSheetLink = true)
             assertEquals("https://docs.google.com/spreadsheets/d/FIXTURESHEETID/edit", repo.getSheetUrl())
             assertEquals(emptySet(), repo.getSheetSyncedKeys())
+        }
+    }
+
+    @Test
+    fun resetClearsTheSheetLinkAndSyncStateInTheDatabaseAndAfterRestart() = runTest {
+        withSyncedDatabase { url, repo ->
+            repo.setThemeMode(2)
+
+            repo.clearAllData()
+
+            assertEquals("", repo.getSheetUrl())
+            assertEquals(emptySet(), repo.getSheetSyncedKeys())
+            assertEquals(0L, repo.getSheetLastSync())
+            assertEquals(HabitSnapshot(categories = emptyList()), repo.snapshot.value)
+            repo.close()
+
+            val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) })
+            assertEquals("", reopened.getSheetUrl())
+            assertEquals(emptySet(), reopened.getSheetSyncedKeys())
+            assertEquals(0L, reopened.getSheetLastSync())
+            assertTrue(reopened.snapshot.value.pendingCompletions.isEmpty())
+            assertTrue(reopened.snapshot.value.dailyHabits.isEmpty())
+            assertEquals(2, reopened.getThemeMode())
+            reopened.close()
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.habitsheet.presentation.BackupViewModel
+import com.habitsheet.presentation.DestructiveAction
 
 @Composable
 fun DataBackupScreen(
@@ -87,34 +88,22 @@ fun DataBackupScreen(
 
             BackupActionCard(
                 title = "Reset all data",
-                description = "Permanently remove all habits, history, and categories from this device. This cannot be undone.",
+                description = "Permanently remove all habits, history, and categories from this device and disconnect the sheet link. Your Google Sheet is untouched. This cannot be undone.",
                 buttonText = "Reset everything",
                 onClick = { showResetConfirmation = true },
                 isDestructive = true
             )
 
             if (showResetConfirmation) {
-                AlertDialog(
-                    onDismissRequest = { showResetConfirmation = false },
-                    title = { Text("Reset all data?") },
-                    text = { Text("This will permanently delete all your habits, completion history, categories, and local data. This cannot be undone.") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showResetConfirmation = false
-                                viewModel.clearAllData()
-                                successMessage = "All data has been reset"
-                                errorMessage = null
-                            }
-                        ) {
-                            Text("Reset all data", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                        }
+                DestructiveConfirmDialog(
+                    action = DestructiveAction.ResetAllData(viewModel.currentDataSummary()),
+                    onConfirm = {
+                        showResetConfirmation = false
+                        viewModel.clearAllData()
+                        successMessage = "All data on this device has been reset"
+                        errorMessage = null
                     },
-                    dismissButton = {
-                        TextButton(onClick = { showResetConfirmation = false }) {
-                            Text("Cancel")
-                        }
-                    }
+                    onDismiss = { showResetConfirmation = false },
                 )
             }
 
@@ -139,34 +128,22 @@ fun DataBackupScreen(
     }
 
     if (showImportConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showImportConfirmation = false },
-            title = { Text("Replace existing data?") },
-            text = { Text(if (viewModel.usesClipboard) "Importing the copied JSON will permanently replace your current habits, plans, and history. This cannot be undone." else "Importing a backup will permanently replace all your current habits, plans, and history. This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showImportConfirmation = false
-                        viewModel.importBackup(
-                            onSuccess = { 
-                                successMessage = "Data restored successfully"
-                                errorMessage = null
-                            },
-                            onError = { 
-                                errorMessage = it 
-                                successMessage = null
-                            }
-                        )
-                    }
-                ) {
-                    Text("Import & Replace", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
+        DestructiveConfirmDialog(
+            action = DestructiveAction.ReplaceWithBackup(viewModel.currentDataSummary()),
+            onConfirm = {
+                showImportConfirmation = false
+                viewModel.importBackup(
+                    onSuccess = {
+                        successMessage = "Data restored successfully"
+                        errorMessage = null
+                    },
+                    onError = {
+                        errorMessage = it
+                        successMessage = null
+                    },
+                )
             },
-            dismissButton = {
-                TextButton(onClick = { showImportConfirmation = false }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { showImportConfirmation = false },
         )
     }
 }

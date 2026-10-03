@@ -60,6 +60,7 @@ fun HabitSheetApp(
         backupService?.let { com.habitsheet.presentation.BackupViewModel(
             repository = repository,
             backupService = it,
+            onDataReplaced = settingsViewModel::reloadFromStorage,
         ) }
     }
     DisposableEffect(backupViewModel) { onDispose { backupViewModel?.close() } }

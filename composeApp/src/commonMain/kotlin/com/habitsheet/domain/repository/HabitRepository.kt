@@ -52,6 +52,10 @@ interface HabitRepository {
      * Either everything is written (and the snapshot reloaded once) or nothing is.
      */
     suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long)
+    /**
+     * Removes all habits, plans, categories and history, and also forgets the sheet link and all sync state
+     * (the tutorial shows again; theme is kept). Local only: the Google Sheet is never touched.
+     */
     suspend fun clearAllData()
     /**
      * Replaces all habit data with [snapshot] in one transaction (validated first, so a bad backup changes nothing).

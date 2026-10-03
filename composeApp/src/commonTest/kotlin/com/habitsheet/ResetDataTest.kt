@@ -19,7 +19,7 @@ class ResetDataTest {
             override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
             override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {}
         }
-        val viewModel = BackupViewModel(repository, backupService, scope = backgroundScope)
+        val viewModel = BackupViewModel(repository, backupService, scope = backgroundScope, callbackDispatcher = kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler))
 
         // 1. Setup data
         repository.saveCategory(Category("c1", "Cat", 0, true, 0))

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.data.DefaultIdGenerator
+import com.habitsheet.presentation.DestructiveAction
 import com.habitsheet.presentation.MonthViewModel
 
 private val weekdays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -45,6 +46,7 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
     val uriHandler = LocalUriHandler.current
     var weeklyMode by remember { mutableStateOf(false) }
     var editor by remember { mutableStateOf<PlanEditor?>(null) }
+    var pendingRemoval by remember { mutableStateOf<Pair<DestructiveAction, () -> Unit>?>(null) }
     val selectedDate = state.selectedDay
     val activeHabits = state.allDailyHabits.filter { it.isActiveOn(selectedDate) }.sortedBy { it.displayOrder }
 
@@ -144,9 +146,13 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
                     }
                     val canRemove = if (isWeekly) recurring != null else dayPlan != null
                     if (canRemove) TextButton(onClick = {
-                        if (isWeekly) viewModel.deleteWeeklyPlan(selected.habit.id, selected.weekday)
-                        else dayPlan?.let { viewModel.deleteDayPlanById(it.id) }
-                        editor = null
+                        pendingRemoval = if (isWeekly) {
+                            DestructiveAction.RemoveWeeklySession(selected.habit.name, weekdays[selected.weekday - 1], recurring?.detail.orEmpty()) to
+                                { viewModel.deleteWeeklyPlan(selected.habit.id, selected.weekday) }
+                        } else {
+                            DestructiveAction.RemoveDaySession(selected.habit.name, selectedDate, dayPlan?.detail.orEmpty()) to
+                                { dayPlan?.let { viewModel.deleteDayPlanById(it.id) }; Unit }
+                        }
                     }) { Text(if (isWeekly) "Remove weekly session" else "Remove plan for this day") }
                 }
             },
@@ -159,6 +165,18 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
                 }, enabled = detail.isNotBlank()) { Text("Save session") }
             },
             dismissButton = { TextButton(onClick = { editor = null }) { Text("Cancel") } },
+        )
+    }
+
+    pendingRemoval?.let { (action, perform) ->
+        DestructiveConfirmDialog(
+            action = action,
+            onConfirm = {
+                perform()
+                pendingRemoval = null
+                editor = null
+            },
+            onDismiss = { pendingRemoval = null },
         )
     }
 }

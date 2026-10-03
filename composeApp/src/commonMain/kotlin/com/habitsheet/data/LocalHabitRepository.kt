@@ -404,7 +404,12 @@ class LocalHabitRepository(
                 database.habitsQueries.clearAllWeeklyHabits()
                 database.habitsQueries.clearAllCategories()
                 database.habitsQueries.setSetting("onboarding_completed", 0L)
+                // The sheet link and everything learned from it belongs to the data that was just removed.
+                // (Pending-upload flags went with the completions.) The Google Sheet itself is never touched.
+                database.habitsQueries.setTextSetting("sheet_url", "")
                 database.habitsQueries.setTextSetting("sheet_managed_habits", "")
+                database.habitsQueries.setTextSetting("sheet_synced_keys", "")
+                database.habitsQueries.setTextSetting("sheet_last_sync", "0")
             }
             loadSnapshot()
         }

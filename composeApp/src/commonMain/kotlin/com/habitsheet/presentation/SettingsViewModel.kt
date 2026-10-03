@@ -62,6 +62,18 @@ class SettingsViewModel(
         }
     }
 
+    /** Re-reads theme and sheet link and forgets the last sync result, after data was reset or restored. */
+    fun reloadFromStorage() {
+        scope.launch(ioDispatcher) {
+            runCatchingCancellable {
+                val mode = repository.getThemeMode()
+                _themeMode.value = ThemeMode.entries.getOrElse(mode) { ThemeMode.System }
+                _sheetUrl.value = repository.getSheetUrl()
+                sheetSync?.reset()
+            }.onFailure { logger.e(TAG, "reloadFromStorage failed", it) }
+        }
+    }
+
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
         scope.launch(ioDispatcher) {

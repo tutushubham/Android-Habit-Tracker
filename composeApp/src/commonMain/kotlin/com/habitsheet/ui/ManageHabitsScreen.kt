@@ -77,6 +77,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.WeeklyHabit
+import com.habitsheet.presentation.DestructiveAction
 import com.habitsheet.presentation.ManageHabitsViewModel
 
 private sealed interface HabitEditor {
@@ -262,48 +263,34 @@ fun ManageHabitsScreen(
     }
 
     itemToDelete?.let { item ->
-        val title = when (item) {
-            is DailyHabit -> "Delete habit?"
-            is WeeklyHabit -> "Delete habit?"
-            is Category -> "Delete category?"
-            else -> "Delete?"
+        val action = when (item) {
+            is DailyHabit -> DestructiveAction.delete(item, state)
+            is WeeklyHabit -> DestructiveAction.delete(item, state)
+            is Category -> DestructiveAction.delete(item, state)
+            else -> null
         }
-        val name = when (item) {
-            is DailyHabit -> item.name
-            is WeeklyHabit -> item.name
-            is Category -> item.name
-            else -> ""
-        }
-        AlertDialog(
-            onDismissRequest = { itemToDelete = null },
-            title = { Text(title) },
-            text = { Text("Delete '$name'? This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        when (item) {
-                            is DailyHabit -> {
-                                viewModel.deleteDailyHabit(item.id)
-                                editor = null
-                            }
-                            is WeeklyHabit -> {
-                                viewModel.deleteWeeklyHabit(item.id)
-                                editor = null
-                            }
-                            is Category -> viewModel.deleteCategory(item.id)
+        if (action == null) {
+            itemToDelete = null
+        } else {
+            DestructiveConfirmDialog(
+                action = action,
+                onConfirm = {
+                    when (item) {
+                        is DailyHabit -> {
+                            viewModel.deleteDailyHabit(item.id)
+                            editor = null
                         }
-                        itemToDelete = null
+                        is WeeklyHabit -> {
+                            viewModel.deleteWeeklyHabit(item.id)
+                            editor = null
+                        }
+                        is Category -> viewModel.deleteCategory(item.id)
                     }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
+                    itemToDelete = null
+                },
+                onDismiss = { itemToDelete = null },
+            )
+        }
     }
 
     error?.let { msg ->

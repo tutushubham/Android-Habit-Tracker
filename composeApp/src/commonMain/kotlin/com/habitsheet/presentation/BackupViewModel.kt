@@ -29,7 +29,12 @@ class BackupViewModel(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val logger: Logger = NoOpLogger,
+    /** Called on the callback dispatcher after a reset or restore succeeded (settings screens re-read storage). */
+    private val onDataReplaced: () -> Unit = {},
 ) {
+    /** What would be lost by a reset or an import right now. */
+    fun currentDataSummary(): DataSummary = DataSummary.of(repository.snapshot.value)
+
     val usesClipboard: Boolean get() = backupService.usesClipboard
 
     /**
@@ -60,6 +65,7 @@ class BackupViewModel(
     fun clearAllData() {
         scope.launch {
             runCatchingCancellable { repository.clearAllData() }
+                .onSuccess { withContext(callbackDispatcher) { onDataReplaced() } }
                 .onFailure { logger.e(TAG, "clearAllData failed", it) }
         }
     }
@@ -81,6 +87,7 @@ class BackupViewModel(
 
                 withContext(callbackDispatcher) {
                     if (failure == null) {
+                        onDataReplaced()
                         onSuccess()
                     } else {
                         onError(failure.toImportMessage())
