@@ -1,0 +1,4 @@
+seeded.db
+shots/
+.venv/
+__pycache__/

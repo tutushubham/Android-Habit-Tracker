@@ -6,6 +6,27 @@
 **Branch:** none — work directly on `master` (no branches).
 **Out of scope:** load/perf testing beyond what P1-1 added; third-party device farms (Part 2 may add Firebase Test Lab / Xcode Cloud optionally).
 
+## 0. Handoff from P1-2 (read first)
+
+State after P1-2: **359 JVM tests** (`testDebugUnitTest`) and **281 common tests passing on the iOS simulator**
+(`iosSimulatorArm64Test`, part of `./gradlew check` on a Mac). The list in section 1 below is the audit-time state;
+much of step 4–6 and 9 already exists:
+
+- Repository: `SnapshotParityTest` (every write = a fresh read, list order), `ApplySheetSyncTest`,
+  `DeleteCascadeSqliteTest`, `MonotonicUpdatedAtTest`, `BackupRestoreSqliteTest`, `SchemaMigrationTest`,
+  `LoadSnapshotPerformanceTest` (prints timings). The stores are split (`HabitStore`, `SettingsStore`, `BackupStore`);
+  `NarrowStoresTest` builds every consumer from one store.
+- Presentation: `MonthUiStateGoldenTest`, `MonthStateWiringTest`, `MultiSessionCountingTest`, `ViewModelLifecycleTest`,
+  `DateHandlingTest`, `DestructiveActionsConfirmationTest`.
+- Navigation and UI structure: `AppBackStackTest`, `NavigationWiringTest`, `UiStructureTest`, `MonthLayoutRulesTest`.
+- Widget: `HabitWidgetLogicTest` (rows, toggles, pending flag on SQLite, damaged database, timeout, double tap).
+- Visual: `scripts/screenshots/` is a working emulator-based comparison (40 screens, light/dark/fresh, phone/tablet)
+  and a back-navigation/process-death check; step 10 (Roborazzi/Paparazzi goldens) can start from the same screens.
+- Compose UI tests (step 7) can target the leaf composables in `ui/month/*` and `ui/manage/*`, which take plain values
+  and lambdas; `MonthPreviewData` builds a realistic `MonthUiState` through the real `toUiState`.
+- `./gradlew check` also runs Spotless, detekt (baseline in `composeApp/detekt-baseline.xml`) and Android lint; keep
+  test code warning-free too (main code is compiled with `allWarningsAsErrors`).
+
 ## 1. Code analysis
 
 Existing (83 `@Test`):

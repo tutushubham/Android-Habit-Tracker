@@ -52,11 +52,14 @@ The shared Kotlin/Native target supports Apple silicon simulators and physical a
 ## Verify
 
 ```bash
-./gradlew :composeApp:testDebugUnitTest
-./gradlew :composeApp:compileKotlinIosSimulatorArm64
+./gradlew check
+./gradlew :composeApp:assembleDebug :composeApp:compileKotlinIosSimulatorArm64
 ```
 
-The second command validates shared and iOS Kotlin sources without launching a simulator. Linking and running the Apple app requires full Xcode.
+`check` runs the JVM tests, the database migration verification, Android lint, Spotless (formatting; fix with
+`./gradlew spotlessApply`) and detekt; on a Mac it also runs the shared tests on the iOS simulator. The second command
+builds the Android app and validates the shared and iOS Kotlin sources without a simulator. Linking and running the
+Apple app requires full Xcode. `scripts/screenshots/` compares every screen of two builds on an Android emulator.
 
 ## Key source locations
 
@@ -65,7 +68,8 @@ The second command validates shared and iOS Kotlin sources without launching a s
 - `composeApp/src/commonMain/sqldelight` — SQLite schema, migrations (`*.sqm`) and queries; `databases/` holds the committed schema snapshots used by `verifyMigrations`
 - `docs/production-plan` — the production plan, `PROGRESS.md` and working notes
 - `composeApp/src/commonMain/kotlin/com/habitsheet/presentation` — view models and derived UI state
-- `composeApp/src/commonMain/kotlin/com/habitsheet/ui` — responsive shared Compose screens
+- `composeApp/src/commonMain/kotlin/com/habitsheet/ui` — responsive shared Compose screens (`ui/month`, `ui/manage` split into leaf composables with previews; `ui/navigation` back stack)
+- `docs/adr` — architecture decision records
 - `composeApp/src/androidMain` and `composeApp/src/iosMain` — minimal platform drivers/entry points
 - `iosApp` — native SwiftUI host project
 - `stitch` — design reference screens (code, images, metadata)

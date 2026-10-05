@@ -95,12 +95,17 @@ Run the whole plan: execute P1-2 steps 1-12 in order with commit per step; after
 Manual: rotate/resize/split-screen on tablet; background the app and kill the process → relaunch returns sensibly; Android back button from every screen; iPad sidebar layout unchanged; widget toggles still work.
 
 ## 5. Definition of done
-- [ ] All ViewModels lifecycle-aware; no manual scopes; state collected lifecycle-aware.
-- [ ] Repository split behind narrow interfaces; no file > ~500 lines in `ui/` or `data/`.
-- [ ] Navigation with back stack; single destination host.
-- [ ] Multi-session counting consistent and tested.
-- [ ] Spotless + detekt + `check` green; warnings clean.
-- [ ] `ARCHITECTURE.md` + ADRs updated; `PROGRESS.md` ticked.
+- [x] All ViewModels lifecycle-aware; no manual scopes; state collected lifecycle-aware. (step 3)
+- [x] Repository split behind narrow interfaces; no file > ~500 lines in `ui/` or `data/`. (steps 4–5, 7; enforced by `UiStructureTest`, largest `ui/month/MonthGrid.kt`)
+- [x] Navigation with back stack; single destination host. (step 6, ADR 0003)
+- [x] Multi-session counting consistent and tested. (step 2)
+- [x] Spotless + detekt + `check` green; warnings clean. (step 10; `allWarningsAsErrors` for main code, detekt baseline for pre-existing findings)
+- [x] `ARCHITECTURE.md` + ADRs updated; `PROGRESS.md` ticked. (step 12)
+
+Owed on devices (not automatable here): rotate/resize/split-screen on a real tablet, the iPad sidebar and edge swipe on
+a real iPad/iPhone, the widget on a physical launcher. Done on an Android emulator: 40-screen pixel comparison (light,
+dark, fresh install; phone and tablet), system back from every screen, process death, widget toggle and
+damaged-database handling. Done on an iPhone 17 simulator: the Xcode app builds and runs, edge swipe goes up one level.
 
 ## 6. Handoff
 P1-3 edits UI strings and semantics — easier now that screens are decomposed. P2 builds UI tests on the new leaf composables.

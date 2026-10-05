@@ -5,6 +5,31 @@
 **Depends on:** P1-2 (decomposed screens).
 **Branch:** none — work directly on `master` (no branches).
 
+## 0. Handoff from P1-2 (read first)
+
+- **Where the strings are now:** the month screen is `ui/month/*` (`MonthHeader`, `MonthGrid`, `MonthSummary`,
+  `WeeklyBlock`, `TodayList`, `MonthYearPickerDialog`; entry `MonthScreen`), Habits is `ui/manage/*`
+  (`ManageSections`, `HabitEditorDialog`, `CategoryEditorDialog`; entry `ManageHabitsScreen`), shared pieces are in
+  `ui/Components.kt`. `ui/MonthScreen.kt` and `ui/ManageHabitsScreen.kt` no longer exist. Leaves take values and lambdas
+  (`MonthActions`), never a ViewModel (`UiStructureTest`), and every leaf file has `@Preview`s with sample data
+  (`MonthPreviewData`), handy to check translated or enlarged text.
+- **Guards that will fail on purpose:** `UiStructureTest` (no `ui/` or `data/` file over 500 lines, no ViewModel in
+  leaves, previews present), `DestructiveCallSitesTest` (recursive over `ui/**`, keys are paths such as
+  `manage/ManageHabitsScreen.kt`), `NavigationWiringTest` (one `AppDestination`, `BackHandler`, saveable back stack),
+  `MonthLayoutRulesTest` (grid widths and the day-plan sections, which match English category names: localising those
+  needs a different rule, not just translated strings).
+- **Navigation:** `ui/navigation/AppBackStack` (ADR 0003). System back and the iOS edge swipe go up one level; the
+  current screen survives process death. A screen added for P1-3 (licences, tutorial replay) needs a `Destination` with
+  a `parent` and a line in `AppBackStackTest`.
+- **Accessibility starting point:** month cells already have `Role.Checkbox`, `stateDescription` and a description
+  (`MonthGrid.CompletionCell`), day rows likewise (`TodayList.TodayHabitRow`); `DateHeader` merges its semantics.
+- **Build rules:** `./gradlew check` must stay green: Spotless (ktlint), detekt with `composeApp/detekt-baseline.xml`
+  (do not regenerate it to hide new findings), Android lint, and `allWarningsAsErrors` for main code. Moving strings to
+  `composeResources` creates generated code; it is outside `src/` and not linted.
+- **Visual check:** `scripts/screenshots/` (README there) compares 40 screens of two builds on an emulator; P1-3
+  changes *are* visual, so use it to review differences rather than to require none.
+- **Widget:** strings stay in `androidMain/res/values/widget_strings.xml`; its logic is `widget/HabitWidgetLogic.kt`.
+
 ## Scope decision gate
 Reminders/notifications and an iOS widget are **not implemented** and **not part of this plan** (D4). If you later decide to build them, make that a separate release plan. Do not start them here.
 

@@ -12,22 +12,23 @@ Read this at the start of every plan session. It is the shared memory for all pl
   1. **The owner** — uses it with his OND 2026 plan and own data on his own phone + iPad.
   2. **Everyone else** — a neutral app with none of the owner's data, plan, names or credentials.
 
-## Status (updated 2026-10-03, after P1-1)
+## Status (updated 2026-10-05, after P1-2)
 
 - **P0-A done**: no personal data/seed in shared code; neutral first run; personal files in gitignored `personal/`. Audit finding P0-1 below is **resolved**.
 - **P0-B done**: sync split into `SheetsApi` / `PlanTable` / `PlanReconciler` / `SheetSync` + `SyncScheduler` + `SerializingTokenProvider`; atomic apply, explicit pending flag (migration `4.sqm`), typed errors, retries, offline auto-retry, Disconnect. Audit finding P0-5 is **resolved**.
 - **P0-C done in code** (device smoke test and `[mac]` verification owed): one version source in `gradle.properties`, signing/IDs externalised, R8 release build, backup exclusion, iOS privacy manifest, `docs/RELEASING.md`. Audit findings P0-2 and P0-3 are **resolved** (the iOS archive itself is unverified without a Mac).
 - **P1-1 done in code** (device and `[mac]` verification owed): `Logger`, cancellation-safe error handling, backup v4 (checksum, settings, optional sheet link), robust Android backup I/O, consistent reset, named confirmations for every destructive action, `refreshToday()` + injectable clock, monotonic `updated_at`, verified migrations (schema v5, snapshots `1.db`–`5.db`), explicit delete cascades, startup failure screen. Audit items under "P1 — robustness" below are **resolved** except where marked.
-- Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, P1-2, P1-3, P2.
-- Verification state: **291 JVM tests green**, `verifyCommonMainHabitsDatabaseMigration`, `assembleDebug`, and the iOS klib compile (main + test) OK on Windows; `assembleRelease`/`bundleRelease` last verified in P0-C (not re-run since); device and Mac checks owed (see `PROGRESS.md`).
+- **P1-2 done** (device/iPad checks owed, see `PROGRESS.md`): narrow stores and a split repository with a fast snapshot, hierarchical back stack with system back, screens split into leaf composables with previews, typed UI state, crash-safe widget, Spotless/ktlint + detekt + warnings as errors, `./gradlew check` green, ADRs in `docs/adr/`.
+- Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, P1-3, P2.
+- Verification state (2026-10-05, on a Mac): **`./gradlew check` green** = 359 JVM tests, migration verification, Android lint, Spotless, detekt, and **281 common tests on the iOS simulator**; `assembleDebug` and the iOS klib compiles OK; P1-2 refactors compared on an Android emulator (40 screenshots pixel-identical, back navigation and process death checked, widget toggles and a damaged database checked). The iOS app itself builds with Xcode for the simulator and runs (navigation and edge swipe checked). `assembleRelease`/`bundleRelease` last verified in P0-C. Device checks owed (see `PROGRESS.md`).
 - Branching: **single-branch policy — everything lives on `master`, no branches are created.** P0 and P1-1 are on `master`; P1-2 and later commit directly to `master`, one commit per step, with the full test run before each commit.
 
 ## Tech snapshot (verified in repo)
 
-- Kotlin Multiplatform: Kotlin 2.3.20, Compose Multiplatform 1.11.1, AGP 8.9.1, Gradle 8.14.4, SQLDelight 2.3.2, Ktor 3.3.3, kotlinx-datetime 0.8.0, kotlinx-serialization 1.8.0. Android min 23 / target+compile 35; iOS deployment target 15; JVM 17.
-- One module `:composeApp` (+ `iosApp` SwiftUI host, GoogleSignIn via SPM). ~9.7k lines of main Kotlin plus ~6.6k of tests, **291 JVM tests** (83 at audit time), 4 SQLDelight migrations (`1.sqm`–`4.sqm`, schema version **5**, committed snapshots in `composeApp/src/commonMain/sqldelight/databases/`, `verifyMigrations` part of `check`).
-- Layers: `domain` (models, `HabitCalculations`, `PlanResolver`, `backup/` v1–v4 + `Sha256`, `monotonicUpdatedAt`) → `data` (`LocalHabitRepository`, `InMemoryHabitRepository`, `DatabaseFileNames`) → `presentation` (plain-class ViewModels with own scopes; `DestructiveAction`, `DateProvider`/`ClockDateProvider`) → `ui` (shared Compose; `DestructiveConfirmDialog`, `StartupFailureScreen`, `BackupService`/`StartupRecovery` interfaces) ; `platform/` (`Logger`, `runCatchingCancellable`) ; `sync/` (`SheetsApi`, `PlanTable`, `PlanReconciler`, `SheetSync`, `SyncScheduler`, `SyncError`, `SerializingTokenProvider`); `androidMain` (driver, token provider, `AndroidBackupService`/`BackupStreams`, `AndroidStartupRecovery`/`DatabaseFiles`, `AndroidLogger`, share, widget) ; `iosMain` (`IosBackupService`, `IosStartupRecovery`, `IosLogger`).
-- Wiring: `AppGraph(driverFactory, tokenProvider, logger)` (hand-rolled DI), created through `AppStartup.create(...)` which returns `Ready(graph)` or `Failed(cause)`; `MainActivity` keeps a nullable graph + startup state, iOS `MainViewController` renders `ReadyApp` or the failure screen. `BackupViewModel` is built by `AppGraph.viewModelProviderFactory(backupService)`. Navigation: a single `enum Destination` in `ui/HabitSheetApp.kt`.
+- Kotlin Multiplatform: Kotlin 2.3.20, Compose Multiplatform 1.11.1, AGP 9.3.3, Gradle 9.5.0, SQLDelight 2.3.2, Ktor 3.3.3, kotlinx-datetime 0.8.0, kotlinx-serialization 1.8.0, lifecycle (KMP) 2.9.6. Android min 23 / target+compile 35; iOS deployment target 15; JVM 17. Code quality: Spotless 8.10.3 + ktlint 1.8.0, detekt 1.23.8. Upgrade recommendations: `notes/p1-2-dependency-review.md`.
+- One module `:composeApp` (+ `iosApp` SwiftUI host, GoogleSignIn via SPM). **359 JVM tests** (83 at audit time), 4 SQLDelight migrations (`1.sqm`–`4.sqm`, schema version **5**, committed snapshots in `composeApp/src/commonMain/sqldelight/databases/`, `verifyMigrations` part of `check`).
+- Layers: `domain` (models, `HabitCalculations`, `PlanResolver`, `backup/` v1–v4 + `Sha256`, `monotonicUpdatedAt`; `repository/` = `HabitStore`, `SettingsStore`, `BackupStore`, union `HabitRepository`) → `data` (`LocalHabitRepository` = `LocalDatabase` + `RowMappers` + `SettingsStoreImpl` + `BackupStoreImpl`; `InMemoryHabitRepository`, `DatabaseFileNames`) → `presentation` (lifecycle ViewModels; `DestructiveAction`, `DateProvider`/`ClockDateProvider`) → `ui` (shared Compose; `navigation/AppBackStack`, `month/*`, `manage/*`, `Components.kt`, `DestructiveConfirmDialog`, `StartupFailureScreen`, `BackupService`/`StartupRecovery` interfaces) ; `platform/` (`Logger`, `runCatchingCancellable`) ; `sync/` (`SheetsApi`, `PlanTable`, `PlanReconciler`, `SheetSync`, `SyncScheduler`, `SyncError`, `SerializingTokenProvider`); `androidMain` (driver, token provider, `AndroidBackupService`/`BackupStreams`, `AndroidStartupRecovery`/`DatabaseFiles`, `AndroidLogger`, share, widget) ; `iosMain` (`IosBackupService`, `IosStartupRecovery`, `IosLogger`).
+- Wiring: `AppGraph(driverFactory, tokenProvider, logger)` (hand-rolled DI), created through `AppStartup.create(...)` which returns `Ready(graph)` or `Failed(cause)`; `MainActivity` keeps a nullable graph + startup state, iOS `MainViewController` renders `ReadyApp` or the failure screen. `BackupViewModel` is built by `AppGraph.viewModelProviderFactory(backupService)`. Navigation: `ui/navigation/AppBackStack` (hierarchical back stack, `rememberSaveable`, `BackHandler`), one `AppDestination` host for phone and tablet.
 - Docs already in repo: `README.md`, `ARCHITECTURE.md`, `SHEET_SYNC.md`, `WORKBOOK_MAPPING.md`.
 - A knowledge graph exists in `graphify-out/` (if present) — use `GRAPH_REPORT.md` / `graph.json` to navigate; refresh with `graphify update .`.
 
@@ -50,6 +51,27 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **Android SQLite:** `AndroidDriverFactory` overrides `onCorruption` (no-op) so the framework does not delete a corrupt database; the startup failure screen decides. `DATABASE_NAME` lives there.
 - **`loadSnapshot()` cost:** 209 ms median for 36k completions (target 100). Proposal in `notes/p1-1-load-snapshot-timings.md`: read completions once, drop the `ORDER BY`, update in memory for single check-offs.
 - **Test-only trap:** `Map.merge` and other JVM-only APIs compile in `androidUnitTest` and `commonTest` on the JVM but break the iOS compile (`compileTestKotlinIosSimulatorArm64`); run both before declaring done.
+
+## Facts from P1-2 that later plans must respect
+
+- **Stores:** depend on the narrowest of `HabitStore` / `SettingsStore` / `BackupStore`; `HabitRepository` is for the
+  composition root and tests (`NarrowStoresTest`). `BackupStore.backupSettings(includeSheetLink)` reads what a backup
+  carries.
+- **Snapshot:** every write is one transaction and reloads, except single check-offs, which patch the in-memory
+  snapshot. Daily completions are ordered by date, habit id, **plan id** (`DAILY_COMPLETION_ORDER`), weekly by week
+  start, habit id; reload and patch use the same comparators (`SnapshotParityTest`). A write by another repository
+  instance (the widget) shows after `refresh()` (on resume) or the next reloading write.
+- **Navigation:** add a screen as a `Destination` with a `parent`; Back always goes to the parent (ADR 0003).
+  `BackHandler` from `ui-backhandler` is deprecated in favour of `NavigationEventHandler`; switch when
+  `navigationevent-compose` is in the graph (with activity 1.12+ / CMP upgrade).
+- **UI structure:** entry composable collects state, leaves take values + lambdas, `@Preview` in every leaf file,
+  ≤ 500 lines per file in `ui/` and `data/` (`UiStructureTest`).
+- **Widget:** logic in `HabitWidgetLogic`, all database work through `runWidgetWork` (lock covers opening the store,
+  8 s bound, never throws).
+- **Build:** `./gradlew check` must stay green (tests, lint, Spotless, detekt, iOS simulator tests on a Mac); main code
+  has `allWarningsAsErrors`; the detekt baseline is not regenerated to hide new findings; formatting-only commits go in
+  `.git-blame-ignore-revs`. The release-signing check only guards the tasks that produce signed artifacts.
+- **Visual verification:** `scripts/screenshots/` (emulator, seeded data, 40 screens, pixel comparison).
 
 ## Audit findings (the source for every plan)
 
@@ -77,7 +99,7 @@ Legend: **V** = verified by reading code/config; **I** = inferred.
 - `SystemDateProvider` uses device TZ; midnight rollover/travel untested (I).
 - 3 SQLDelight migrations (`1.sqm`–`3.sqm`); only `PlanMigrationTest` covers a step (V).
 
-### P1 — architecture & code quality
+### P1 — architecture & code quality (**resolved in P1-2**, details in `PROGRESS.md`; the string literals are P1-3)
 - ViewModels are plain classes each owning `CoroutineScope(Dispatchers.Default)`; no lifecycle/restoration (V).
 - Navigation = `enum Destination` in a `remember`; no back stack, no system-back handling (V).
 - God files: `ui/MonthScreen.kt` 1,396 lines; `ManageHabitsScreen.kt` 763; `SheetSync.kt` 370 (API client + reconcile + rules); `LocalHabitRepository.kt` 685 (CRUD + seed + settings + restore) (V).

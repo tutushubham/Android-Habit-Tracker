@@ -12,7 +12,9 @@ SQLDelight stores categories, daily habits, weekly habits, and completion record
 
 The schema is at version 5 (`1.sqm`–`4.sqm`); `composeApp/src/commonMain/sqldelight/databases/N.db` are committed snapshots of every released version and `verifyCommonMainHabitsDatabaseMigration` (part of `check`) migrates each one to the current schema and compares. `SchemaMigrationTest` migrates databases filled with rows as each version stored them. Deletes state their cascades explicitly (one transaction) instead of relying on `PRAGMA foreign_keys`, and `updated_at` never moves backwards (SQL `MAX`; completions strictly increase).
 
-`HabitRepository` is the contract used by presentation code. `LocalHabitRepository` is the production implementation. `SheetSync` uses the repository's local cache and the Google Sheets API without changing the presentation data model. A whole sync is applied locally through `HabitRepository.applySheetSync`, which writes every change in one SQLDelight transaction and reloads the snapshot once.
+The data contract is split by role (`domain/repository`): `HabitStore` (habits, categories, plans, check-offs and the `snapshot` they publish), `SettingsStore` (theme, tutorial, sheet link, sync state and `applySheetSync`) and `BackupStore` (`snapshot`, `backupSettings`, `clearAllData`, `restoreFromSnapshot`). `HabitRepository` is their union, used only by `AppGraph`, the platform shells and tests; every ViewModel and `SheetSync` depends on the narrow store(s) it uses (`NarrowStoresTest`).
+
+`LocalHabitRepository` is the production implementation, assembled from `LocalDatabase` (driver, the single lock, the transaction helper, open/seed, snapshot reload), `RowMappers.kt` (SQL rows <-> domain, list order), `SettingsStoreImpl` and `BackupStoreImpl` (delegated). Every write is one transaction and reloads the snapshot, except a single check-off (`setDailyCompletion`/`setWeeklyCompletion`), which patches the in-memory snapshot with the same comparators the reload sorts by; `SnapshotParityTest` checks that every kind of write leaves the snapshot equal to a fresh read. Another instance writing the same file (the Android widget) becomes visible on `refresh()` (called on resume) or the next reloading write. A whole sync is applied through `applySheetSync`: one transaction, one reload. `SheetSync` uses the local cache and the Google Sheets API without changing the presentation data model.
 
 ## Robustness and data safety
 
@@ -21,7 +23,7 @@ The schema is at version 5 (`1.sqm`–`4.sqm`); `composeApp/src/commonMain/sqlde
 - **Backups:** `BackupSerializer` writes v4 (`version`, `timestamp`, `checksum` = SHA-256 over compact `settings` + `data` as written, `settings` = theme/onboarding/optional sheet link, `data`) and reads v1–v4 (`BackupContainer` for v1–v3). No sync state is ever written. `restoreFromSnapshot` validates first, replaces everything in one transaction and always clears sync state (synced keys, last sync, managed habits, pending flags); the sheet link is replaced only when asked. `BackupService` reports `BackupResult`; Android reads whole streams (`BackupStreams`) and exports via a private cache file so it survives process death.
 - **Destructive actions:** each has a `DestructiveAction` text naming what is affected, shown by `DestructiveConfirmDialog`. `clearAllData` also clears the sheet link and sync state (local only; the Google Sheet is never touched). `DestructiveCallSitesTest` fails when a screen gains an unreviewed destructive call. Audit: `docs/production-plan/notes/p1-1-destructive-actions-audit.md`.
 - **Dates:** `DateProvider.today()` is derived from a clock and the zone at the moment of the call (`ClockDateProvider`); `MonthViewModel.refreshToday()` is triggered by the one-minute poll, app foreground, and Android `ACTION_TIMEZONE_CHANGED`/`DATE_CHANGED`/`TIME_CHANGED` or iOS `NSSystemTimeZoneDidChange`/`NSCalendarDayChanged`. Recorded dates are plain `LocalDate`s and never move when the device changes zone.
-- **Known cost:** every write reloads the whole snapshot; 209 ms for 36k completions (`docs/production-plan/notes/p1-1-load-snapshot-timings.md`).
+- **Cost:** a full reload of 36k completions takes about 37 ms on an Apple-silicon Mac (was 82 ms on the same machine, 209 ms on the original Windows desktop); a check-off about 1 ms, independent of history size (`docs/production-plan/notes/p1-1-load-snapshot-timings.md`).
 
 ## Calculations
 
@@ -29,7 +31,13 @@ The schema is at version 5 (`1.sqm`–`4.sqm`); `composeApp/src/commonMain/sqlde
 
 ## UI and presentation
 
-Compose Multiplatform UI is shared across Android and iOS. The four ViewModels (`MonthViewModel`, `ManageHabitsViewModel`, `SettingsViewModel`, `BackupViewModel`) are `androidx.lifecycle.ViewModel`s (KMP artifacts). `AppGraph` is their `ViewModelStoreOwner` and provides the factory (`viewModelProviderFactory(backupService)`); `HabitSheetApp(graph, …)` obtains them with `viewModel(viewModelStoreOwner = graph, factory = …)` and screens collect state with `collectAsStateWithLifecycle()`. They live as long as the graph (cleared in `AppGraph.close()`), which on Android is the Activity's: they are not retained across an Activity re-creation because the token provider is bound to the Activity. Their work runs in `viewModelScope`'s job on `Dispatchers.Default` (`ViewModel.backgroundScope()`), so repository calls stay off the main thread. `MonthViewModel` and `ManageHabitsViewModel` combine repository state with pure calculations into immutable UI state. Width-based layout primitives size the month grid and day plan; phone vs tablet is a breakpoint on available width, not device-specific business logic. The month grid shows only habits planned in that month and marks unplanned days as non-actionable (not empty checkboxes).
+Compose Multiplatform UI is shared across Android and iOS.
+
+**Navigation** (`ui/navigation/AppBackStack`, ADR 0003): the back stack is the chain of parents to the current screen (Tracker > Settings > Backup). Back, on-screen or system (Android back and predictive back, the iOS edge swipe, via Compose's `BackHandler`), always goes up one level; on the Tracker the platform handles it. The stack is `rememberSaveable`, so the current screen survives Android process death. Phone and tablet share one destination host (`AppDestination`); `AdaptiveFrame` adds the tablet sidebar. The startup failure screen is outside navigation on purpose.
+
+**Screens** are split into an entry composable that collects ViewModel state and leaf composables that take plain values and lambdas: `ui/month/` (`MonthScreen`, `MonthHeader`, `MonthGrid`, `MonthSummary`, `WeeklyBlock`, `TodayList`, `MonthYearPickerDialog`; callbacks bundled in `MonthActions`) and `ui/manage/` (`ManageHabitsScreen`, `ManageSections`, `HabitEditorDialog`, `CategoryEditorDialog`). Every leaf file has `@Preview`s (sample data in `MonthPreviewData`); `UiStructureTest` enforces this and the 500-line limit for `ui/` and `data/`.
+
+**ViewModels** (ADR 0002): the four ViewModels (`MonthViewModel`, `ManageHabitsViewModel`, `SettingsViewModel`, `BackupViewModel`) are `androidx.lifecycle.ViewModel`s (KMP artifacts). `AppGraph` is their `ViewModelStoreOwner` and provides the factory (`viewModelProviderFactory(backupService)`); `HabitSheetApp(graph, …)` obtains them with `viewModel(viewModelStoreOwner = graph, factory = …)` and screens collect state with `collectAsStateWithLifecycle()`. They live as long as the graph (cleared in `AppGraph.close()`), which on Android is the Activity's: they are not retained across an Activity re-creation because the token provider is bound to the Activity. Their work runs in `viewModelScope`'s job on `Dispatchers.Default` (`ViewModel.backgroundScope()`), so repository calls stay off the main thread. `MonthViewModel` and `ManageHabitsViewModel` combine repository state with pure calculations into immutable UI state; `MonthViewModel` combines typed groups (`Selection`, `Chrome`) with the snapshot into an `@Immutable` `MonthUiState` (`MonthStateWiringTest` pins which input feeds which field). Width-based layout primitives size the month grid and day plan; phone vs tablet is a breakpoint on available width, not device-specific business logic. The month grid shows only habits planned in that month and marks unplanned days as non-actionable (not empty checkboxes).
 
 ## Module boundaries
 
@@ -37,12 +45,12 @@ The project intentionally uses one shared application module rather than many Gr
 
 - `domain.model`: persistent-history concepts
 - `domain.calculation`: workbook formula translation
-- `domain.repository`: data contract
+- `domain.repository`: data contract (`HabitStore`, `SettingsStore`, `BackupStore`, their union `HabitRepository`)
 - `domain.backup`: backup format v1–v4, validation, `Sha256`
 - `platform`: `Logger`, `runCatchingCancellable`
-- `data`: SQLDelight mapping and local repository, `DatabaseFileNames`
+- `data`: SQLDelight mapping (`RowMappers`), `LocalDatabase`, the local repository and its parts, `DatabaseFileNames`
 - `presentation`: UI state and view models
-- `ui`: shared Compose screens and design system
+- `ui`: shared Compose screens and design system; `ui.navigation` (back stack), `ui.month`, `ui.manage` (split screens)
 - `sync`: the Sheet-as-backend loop, split so the decisions are pure:
   - `SheetsApi`: HTTP only (timeouts, bounded backoff with jitter, `Retry-After`; maps statuses to `SyncError`)
   - `PlanTable`: parse/serialize the `Plan` tab (pure)
@@ -51,9 +59,23 @@ The project intentionally uses one shared application module rather than many Gr
   - `SyncScheduler`: debounces triggers (2.5 s), one follow-up run, immediate on foreground / Sync now, automatic retry while offline with pending check-offs
   - `SyncError` / `SerializingTokenProvider`: typed failures with user messages; queues platform sign-in requests
 - `androidMain` / `iosMain`: database drivers, platform entry points, backup and startup-recovery implementations, loggers, and the Google authorization bridge
+- `androidMain/.../widget`: the home-screen widget. `HabitWidgetLogic` (what it lists, what a tap writes) works on a `HabitStore`; `runWidgetWork` opens the app's own database for one action under the widget lock, always closes it, gives up after 8 s (inside the broadcast window of `goAsync()`) and turns any failure (for example a damaged database) into the widget's "unavailable" state instead of a crash. Widget check-offs set the pending-upload flag like the app's; they do not start a sync themselves.
 
 ## Sync limits
 
 The `Plan` tab is authoritative for dated sessions. Check-offs made on the device carry a *pending upload* flag until their value is written to the sheet; pending checks are uploaded, every other check takes the sheet's value (no device clocks are compared). A row's habit is found by its plan `ID` first and by name second; a sheet-side rename of all of a habit's rows renames the local habit. The client tracks previously imported keys to apply Sheet row deletions without clearing unrelated local plans, and keeps local plans if the `Plan` tab is suddenly empty. A `Plan` tab that does not match the documented schema is never modified, and other tabs are never touched.
 
 It does not merge simultaneous edits to one row (the last device to sync wins), sync weekly-habit definitions/categories, or provide a change-history UI. See `SHEET_SYNC.md` for the user-facing rules, error messages and offline behaviour.
+
+## Code quality
+
+`./gradlew check` runs everything a change must pass: the JVM tests, the migration verification,
+Android lint, Spotless (ktlint 1.8, IntelliJ IDEA style; `./gradlew spotlessApply` formats), detekt (default rules plus
+`config/detekt/detekt.yml`; findings that predate it are in `composeApp/detekt-baseline.xml`) and, on a Mac, the common
+tests on the iOS simulator. Production code compiles with `allWarningsAsErrors` (every Android and iOS main
+compilation). Formatting-only commits are listed in `.git-blame-ignore-revs`. Dependency updates come as grouped
+Dependabot PRs (`.github/dependabot.yml`).
+
+## Decisions
+
+Architecture decision records live in `docs/adr/`: Google Sheet as the backend (0001), lifecycle ViewModels (0002), the navigation back stack (0003), no DI framework (0004).
