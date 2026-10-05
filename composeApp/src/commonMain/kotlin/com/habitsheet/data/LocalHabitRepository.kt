@@ -1,652 +1,188 @@
 package com.habitsheet.data
 
-import com.habitsheet.database.HabitsDatabase
-import com.habitsheet.domain.backup.BackupSettings
-import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
-import com.habitsheet.domain.model.HabitKind
-import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.model.monotonicUpdatedAt
+import com.habitsheet.domain.repository.BackupStore
 import com.habitsheet.domain.repository.HabitRepository
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.habitsheet.domain.repository.SettingsStore
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
-import kotlin.time.Clock
 
-class LocalHabitRepository(
-    driverFactory: DriverFactory,
-) : HabitRepository {
-    private val driver = driverFactory.createDriver()
-    private val database: HabitsDatabase
-    private val mutex = Mutex()
-    private val mutableSnapshot = MutableStateFlow(HabitSnapshot())
-    override val snapshot: StateFlow<HabitSnapshot> = mutableSnapshot.asStateFlow()
+/**
+ * The SQLite repository. Habit data (this class), settings and sync state ([SettingsStoreImpl]) and reset/restore
+ * ([BackupStoreImpl]) share one [LocalDatabase]: one lock, one transaction helper, one snapshot.
+ *
+ * Every write reloads the snapshot, except a single check-off, which patches it (a tap stays fast however long the
+ * history is). Changes made by another instance on the same file (the Android widget) show after [refresh].
+ */
+class LocalHabitRepository private constructor(
+    private val db: LocalDatabase,
+    settings: SettingsStoreImpl = SettingsStoreImpl(db),
+) : HabitRepository, SettingsStore by settings, BackupStore by BackupStoreImpl(db, settings) {
 
-    init {
-        try {
-            driver.execute(null, "PRAGMA foreign_keys = ON", 0)
-            database = HabitsDatabase(driver)
-            seedDefaultsIfEmpty()
-            loadSnapshot()
-        } catch (e: Throwable) {
-            // Opening or migrating failed: release the file so the recovery screen can copy or move it.
-            runCatching { driver.close() }
-            throw e
-        }
+    constructor(driverFactory: DriverFactory) : this(LocalDatabase.open(driverFactory))
+
+    override val snapshot: StateFlow<HabitSnapshot> get() = db.snapshot
+
+    override suspend fun refresh() = db.refresh()
+
+    override suspend fun saveCategory(category: Category) = db.write {
+        insert(category)
+        update(category)
     }
 
-    override suspend fun refresh() {
-        mutex.withLock { loadSnapshot() }
-    }
-
-    override suspend fun saveCategory(category: Category) {
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.insertCategory(
-                    id = category.id,
-                    name = category.name,
-                    display_order = category.displayOrder.toLong(),
-                    active = category.active.toDbLong(),
-                    updated_at = category.updatedAtEpochMillis,
-                )
-                database.habitsQueries.updateCategory(
-                    name = category.name,
-                    display_order = category.displayOrder.toLong(),
-                    active = category.active.toDbLong(),
-                    updated_at = category.updatedAtEpochMillis,
-                    id = category.id,
-                )
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun deleteCategory(id: String) {
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.clearCategoryFromDailyHabits(id)
-                database.habitsQueries.clearCategoryFromWeeklyHabits(id)
-                database.habitsQueries.deleteCategory(id)
-            }
-            loadSnapshot()
-        }
+    override suspend fun deleteCategory(id: String) = db.write {
+        clearCategoryFromDailyHabits(id)
+        clearCategoryFromWeeklyHabits(id)
+        deleteCategory(id)
     }
 
     override suspend fun saveDailyHabit(habit: DailyHabit) {
         require(habit.monthlyGoal >= 0)
-        mutex.withLock {
-            database.transaction { writeDailyHabit(habit) }
-            loadSnapshot()
+        db.write { write(habit) }
+    }
+
+    override suspend fun archiveDailyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) = db.write {
+        archiveDailyHabit(archived_on = archivedOn.toString(), updated_at = updatedAtEpochMillis, id = id)
+    }
+
+    override suspend fun restoreDailyHabit(id: String, updatedAtEpochMillis: Long) = db.write {
+        restoreDailyHabit(updated_at = updatedAtEpochMillis, id = id)
+    }
+
+    override suspend fun deleteDailyHabit(id: String) = db.write {
+        deleteDailyCompletionsForHabit(id)
+        deleteDayPlansForHabit(id)
+        deleteWeeklyPlansForHabit(id)
+        deleteDailyHabit(id)
+    }
+
+    override suspend fun updateDailyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) = db.write {
+        orders.forEach { (id, order) ->
+            updateDailyHabitOrder(display_order = order.toLong(), updated_at = updatedAtEpochMillis, id = id)
         }
     }
 
-    /** Insert-or-update; must be called inside a transaction. */
-    private fun writeDailyHabit(habit: DailyHabit) {
-        database.habitsQueries.insertDailyHabit(
-            id = habit.id,
-            name = habit.name,
-            category_id = habit.categoryId,
-            monthly_goal = habit.monthlyGoal.toLong(),
-            display_order = habit.displayOrder.toLong(),
-            active = habit.active.toDbLong(),
-            created_on = habit.createdOn.toString(),
-            archived_on = habit.archivedOn?.toString(),
-            created_at = habit.createdAtEpochMillis,
-            updated_at = habit.updatedAtEpochMillis,
-            kind = habit.kind.name,
-            dated_only = habit.datedOnly.toDbLong(),
-        )
-        database.habitsQueries.updateDailyHabit(
-            name = habit.name,
-            category_id = habit.categoryId,
-            monthly_goal = habit.monthlyGoal.toLong(),
-            display_order = habit.displayOrder.toLong(),
-            active = habit.active.toDbLong(),
-            created_on = habit.createdOn.toString(),
-            archived_on = habit.archivedOn?.toString(),
-            updated_at = habit.updatedAtEpochMillis,
-            kind = habit.kind.name,
-            dated_only = habit.datedOnly.toDbLong(),
-            id = habit.id,
-        )
+    override suspend fun saveWeeklyHabit(habit: WeeklyHabit) = db.write {
+        insert(habit)
+        update(habit)
     }
 
-    override suspend fun archiveDailyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) {
-        mutex.withLock {
-            database.habitsQueries.archiveDailyHabit(
-                archived_on = archivedOn.toString(),
-                updated_at = updatedAtEpochMillis,
-                id = id,
-            )
-            loadSnapshot()
+    override suspend fun archiveWeeklyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) = db.write {
+        archiveWeeklyHabit(archived_on = archivedOn.toString(), updated_at = updatedAtEpochMillis, id = id)
+    }
+
+    override suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long) = db.write {
+        restoreWeeklyHabit(updated_at = updatedAtEpochMillis, id = id)
+    }
+
+    override suspend fun deleteWeeklyHabit(id: String) = db.write {
+        deleteWeeklyCompletionsForHabit(id)
+        deleteWeeklyHabit(id)
+    }
+
+    override suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) = db.write {
+        orders.forEach { (id, order) ->
+            updateWeeklyHabitOrder(display_order = order.toLong(), updated_at = updatedAtEpochMillis, id = id)
         }
     }
 
-    override suspend fun restoreDailyHabit(id: String, updatedAtEpochMillis: Long) {
-        mutex.withLock {
-            database.habitsQueries.restoreDailyHabit(
-                updated_at = updatedAtEpochMillis,
-                id = id,
-            )
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun deleteDailyHabit(id: String) {
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.deleteDailyCompletionsForHabit(id)
-                database.habitsQueries.deleteDayPlansForHabit(id)
-                database.habitsQueries.deleteWeeklyPlansForHabit(id)
-                database.habitsQueries.deleteDailyHabit(id)
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun updateDailyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
-        mutex.withLock {
-            database.transaction {
-                orders.forEach { (id, order) ->
-                    database.habitsQueries.updateDailyHabitOrder(
-                        display_order = order.toLong(),
-                        updated_at = updatedAtEpochMillis,
-                        id = id
-                    )
-                }
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun saveWeeklyHabit(habit: WeeklyHabit) {
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.insertWeeklyHabit(
-                    id = habit.id,
-                    name = habit.name,
-                    category_id = habit.categoryId,
-                    display_order = habit.displayOrder.toLong(),
-                    active = habit.active.toDbLong(),
-                    created_on = habit.createdOn.toString(),
-                    archived_on = habit.archivedOn?.toString(),
-                    created_at = habit.createdAtEpochMillis,
-                    updated_at = habit.updatedAtEpochMillis,
-                )
-                database.habitsQueries.updateWeeklyHabit(
-                    name = habit.name,
-                    category_id = habit.categoryId,
-                    display_order = habit.displayOrder.toLong(),
-                    active = habit.active.toDbLong(),
-                    created_on = habit.createdOn.toString(),
-                    archived_on = habit.archivedOn?.toString(),
-                    updated_at = habit.updatedAtEpochMillis,
-                    id = habit.id,
-                )
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun archiveWeeklyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) {
-        mutex.withLock {
-            database.habitsQueries.archiveWeeklyHabit(
-                archived_on = archivedOn.toString(),
-                updated_at = updatedAtEpochMillis,
-                id = id,
-            )
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long) {
-        mutex.withLock {
-            database.habitsQueries.restoreWeeklyHabit(
-                updated_at = updatedAtEpochMillis,
-                id = id,
-            )
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun deleteWeeklyHabit(id: String) {
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.deleteWeeklyCompletionsForHabit(id)
-                database.habitsQueries.deleteWeeklyHabit(id)
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
-        mutex.withLock {
-            database.transaction {
-                orders.forEach { (id, order) ->
-                    database.habitsQueries.updateWeeklyHabitOrder(
-                        display_order = order.toLong(),
-                        updated_at = updatedAtEpochMillis,
-                        id = id
-                    )
-                }
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun setDailyCompletion(completion: DailyHabitCompletion) {
-        mutex.withLock {
+    override suspend fun setDailyCompletion(completion: DailyHabitCompletion) = db.writeAndPatch(
+        block = {
             // A user/widget write: it still has to reach the sheet.
-            database.habitsQueries.upsertDailyCompletion(
-                plan_id = completion.planId,
-                habit_id = completion.habitId,
-                date = completion.date.toString(),
-                completed = completion.completed.toDbLong(),
-                updated_at = nextCompletionTime(completion.planId, completion.date.toString(), completion.updatedAtEpochMillis),
+            val stored = completion.copy(
+                updatedAtEpochMillis = nextCompletionTime(completion.planId, completion.date.toString(), completion.updatedAtEpochMillis),
+            )
+            upsertDailyCompletion(
+                plan_id = stored.planId,
+                habit_id = stored.habitId,
+                date = stored.date.toString(),
+                completed = stored.completed.toDbLong(),
+                updated_at = stored.updatedAtEpochMillis,
                 pending_upload = 1L,
             )
-            loadSnapshot()
-        }
-    }
+            stored
+        },
+        patch = { stored ->
+            copy(
+                dailyCompletions = dailyCompletions.replaceSorted(stored, DAILY_COMPLETION_ORDER) {
+                    it.planId == stored.planId && it.date == stored.date
+                },
+                pendingCompletions = pendingCompletions + CompletionKey(stored.planId, stored.date),
+            )
+        },
+    )
 
     override suspend fun saveWeeklyPlan(plan: WeeklyPlan) {
         require(plan.weekday in 1..7 && plan.detail.isNotBlank())
-        mutex.withLock {
-            database.habitsQueries.upsertWeeklyPlan(
+        db.write {
+            upsertWeeklyPlan(
                 plan.habitId, plan.weekday.toLong(), plan.detail,
                 monotonicUpdatedAt(
                     plan.updatedAtEpochMillis,
-                    database.habitsQueries.selectWeeklyPlanUpdatedAt(plan.habitId, plan.weekday.toLong()).executeAsOneOrNull(),
+                    selectWeeklyPlanUpdatedAt(plan.habitId, plan.weekday.toLong()).executeAsOneOrNull(),
                 ),
             )
-            loadSnapshot()
         }
     }
 
-    override suspend fun deleteWeeklyPlan(habitId: String, weekday: Int) {
-        mutex.withLock {
-            database.habitsQueries.deleteWeeklyPlan(habitId, weekday.toLong())
-            loadSnapshot()
-        }
+    override suspend fun deleteWeeklyPlan(habitId: String, weekday: Int) = db.write {
+        deleteWeeklyPlan(habitId, weekday.toLong())
     }
 
     override suspend fun saveDayPlan(plan: DayPlan) {
         require(plan.detail.isNotBlank())
-        mutex.withLock {
-            database.habitsQueries.upsertDayPlan(
+        db.write {
+            upsertDayPlan(
                 plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(),
                 nextDayPlanTime(plan.id, plan.updatedAtEpochMillis),
             )
-            loadSnapshot()
         }
     }
 
-    override suspend fun deleteDayPlan(habitId: String, date: LocalDate) {
-        mutex.withLock {
-            database.habitsQueries.deleteDayPlan(habitId, date.toString())
-            loadSnapshot()
-        }
+    override suspend fun deleteDayPlan(habitId: String, date: LocalDate) = db.write {
+        deleteDayPlan(habitId, date.toString())
     }
 
-    override suspend fun deleteDayPlanById(id: String) {
-        mutex.withLock {
-            database.habitsQueries.deleteDayPlanById(id)
-            loadSnapshot()
-        }
+    override suspend fun deleteDayPlanById(id: String) = db.write {
+        deleteDayPlanById(id)
     }
 
-    override suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion) {
-        mutex.withLock {
-            database.habitsQueries.upsertWeeklyCompletion(
-                weekly_habit_id = completion.weeklyHabitId,
-                week_start_date = completion.weekStartDate.toString(),
-                completed = completion.completed.toDbLong(),
-                updated_at = monotonicUpdatedAt(
+    override suspend fun setWeeklyCompletion(completion: WeeklyHabitCompletion) = db.writeAndPatch(
+        block = {
+            val stored = completion.copy(
+                updatedAtEpochMillis = monotonicUpdatedAt(
                     completion.updatedAtEpochMillis,
-                    database.habitsQueries.selectWeeklyCompletionUpdatedAt(completion.weeklyHabitId, completion.weekStartDate.toString()).executeAsOneOrNull(),
+                    selectWeeklyCompletionUpdatedAt(completion.weeklyHabitId, completion.weekStartDate.toString()).executeAsOneOrNull(),
                     strict = true,
                 ),
             )
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun isOnboardingCompleted(): Boolean {
-        return mutex.withLock {
-            database.habitsQueries.getSetting("onboarding_completed").executeAsOneOrNull() == 1L
-        }
-    }
-
-    override suspend fun setOnboardingCompleted(completed: Boolean) {
-        mutex.withLock {
-            database.habitsQueries.setSetting("onboarding_completed", if (completed) 1L else 0L)
-        }
-    }
-
-    override suspend fun getThemeMode(): Int {
-        return mutex.withLock {
-            database.habitsQueries.getSetting("theme_mode").executeAsOneOrNull()?.toInt() ?: 0
-        }
-    }
-
-    override suspend fun setThemeMode(mode: Int) {
-        mutex.withLock {
-            database.habitsQueries.setSetting("theme_mode", mode.toLong())
-        }
-    }
-
-    override suspend fun getSheetUrl(): String = mutex.withLock {
-        database.habitsQueries.getTextSetting("sheet_url").executeAsOneOrNull().orEmpty()
-    }
-
-    override suspend fun setSheetUrl(url: String) {
-        mutex.withLock {
-            if (database.habitsQueries.getTextSetting("sheet_url").executeAsOneOrNull() != url) {
-                database.habitsQueries.setTextSetting("sheet_last_sync", "0")
-                database.habitsQueries.setTextSetting("sheet_synced_keys", "")
-                database.habitsQueries.setTextSetting("sheet_managed_habits", "")
-                // Pending checks belonged to the previous sheet; a newly linked sheet is authoritative.
-                database.habitsQueries.clearAllPendingUploads()
-            }
-            database.habitsQueries.setTextSetting("sheet_url", url)
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun getSheetLastSync(): Long = mutex.withLock {
-        database.habitsQueries.getTextSetting("sheet_last_sync").executeAsOneOrNull()?.toLongOrNull() ?: 0L
-    }
-
-    override suspend fun setSheetLastSync(epochMillis: Long) {
-        mutex.withLock { database.habitsQueries.setTextSetting("sheet_last_sync", epochMillis.toString()) }
-    }
-
-    override suspend fun getSheetSyncedKeys(): Set<String> = mutex.withLock {
-        database.habitsQueries.getTextSetting("sheet_synced_keys").executeAsOneOrNull()
-            ?.lineSequence()?.filter { it.isNotBlank() }?.toSet().orEmpty()
-    }
-
-    override suspend fun setSheetSyncedKeys(keys: Set<String>) {
-        mutex.withLock { database.habitsQueries.setTextSetting("sheet_synced_keys", keys.sorted().joinToString("\n")) }
-    }
-
-    override suspend fun setSheetManagedHabitIds(ids: Set<String>) {
-        mutex.withLock {
-            database.habitsQueries.setTextSetting("sheet_managed_habits", ids.sorted().joinToString("\n"))
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long) {
-        mutex.withLock {
-            // Any exception rolls the whole transaction back; the cached snapshot is only reloaded on success.
-            database.transaction {
-                changes.planIdsToDelete.forEach { database.habitsQueries.deleteDayPlanById(it) }
-                changes.habitsToSave.forEach { habit ->
-                    require(habit.monthlyGoal >= 0)
-                    writeDailyHabit(habit)
-                }
-                changes.plansToSave.forEach { plan ->
-                    require(plan.detail.isNotBlank())
-                    database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), nextDayPlanTime(plan.id, plan.updatedAtEpochMillis))
-                }
-                changes.completionsToSave.forEach { completion ->
-                    // The user toggled this check after the sync read its snapshot: their change wins and stays pending.
-                    val key = completion.date.toString()
-                    if (database.habitsQueries.isCompletionPending(completion.planId, key).executeAsOneOrNull() == 1L) return@forEach
-                    database.habitsQueries.upsertDailyCompletion(
-                        plan_id = completion.planId,
-                        habit_id = completion.habitId,
-                        date = key,
-                        completed = completion.completed.toDbLong(),
-                        updated_at = nextCompletionTime(completion.planId, key, completion.updatedAtEpochMillis),
-                        pending_upload = 0L,
-                    )
-                }
-                changes.completionsToAcknowledge.forEach { ack ->
-                    database.habitsQueries.acknowledgeCompletionUpload(ack.planId, ack.date.toString(), ack.updatedAtEpochMillis)
-                }
-                database.habitsQueries.setTextSetting("sheet_managed_habits", changes.managedHabitIds.sorted().joinToString("\n"))
-                database.habitsQueries.setTextSetting("sheet_synced_keys", newKeys.sorted().joinToString("\n"))
-                database.habitsQueries.setTextSetting("sheet_last_sync", lastSync.toString())
-            }
-            loadSnapshot()
-        }
-    }
-
-    private fun nextCompletionTime(planId: String, date: String, candidate: Long): Long = monotonicUpdatedAt(
-        candidate,
-        database.habitsQueries.selectDailyCompletionUpdatedAt(planId, date).executeAsOneOrNull(),
-        strict = true,
+            upsertWeeklyCompletion(
+                weekly_habit_id = stored.weeklyHabitId,
+                week_start_date = stored.weekStartDate.toString(),
+                completed = stored.completed.toDbLong(),
+                updated_at = stored.updatedAtEpochMillis,
+            )
+            stored
+        },
+        patch = { stored ->
+            copy(
+                weeklyCompletions = weeklyCompletions.replaceSorted(stored, WEEKLY_COMPLETION_ORDER) {
+                    it.weeklyHabitId == stored.weeklyHabitId && it.weekStartDate == stored.weekStartDate
+                },
+            )
+        },
     )
 
-    private fun nextDayPlanTime(id: String, candidate: Long): Long =
-        monotonicUpdatedAt(candidate, database.habitsQueries.selectDayPlanUpdatedAt(id).executeAsOneOrNull())
-
-    override suspend fun clearAllData() {
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.clearAllDailyCompletions()
-                database.habitsQueries.clearAllWeeklyCompletions()
-                database.habitsQueries.clearAllDayPlans()
-                database.habitsQueries.clearAllWeeklyPlans()
-                database.habitsQueries.clearAllData()
-                database.habitsQueries.clearAllWeeklyHabits()
-                database.habitsQueries.clearAllCategories()
-                database.habitsQueries.setSetting("onboarding_completed", 0L)
-                // The sheet link and everything learned from it belongs to the data that was just removed.
-                // (Pending-upload flags went with the completions.) The Google Sheet itself is never touched.
-                database.habitsQueries.setTextSetting("sheet_url", "")
-                database.habitsQueries.setTextSetting("sheet_managed_habits", "")
-                database.habitsQueries.setTextSetting("sheet_synced_keys", "")
-                database.habitsQueries.setTextSetting("sheet_last_sync", "0")
-            }
-            loadSnapshot()
-        }
-    }
-
-    override suspend fun restoreFromSnapshot(snapshot: HabitSnapshot, settings: BackupSettings?, restoreSheetLink: Boolean) {
-        // Validate before opening the replacement transaction so corrupt or inconsistent
-        // backups can never clear the user's current data.
-        BackupValidator.validate(snapshot)
-        settings?.let(BackupValidator::validate)
-        mutex.withLock {
-            database.transaction {
-                database.habitsQueries.clearAllDailyCompletions()
-                database.habitsQueries.clearAllWeeklyCompletions()
-                database.habitsQueries.clearAllDayPlans()
-                database.habitsQueries.clearAllWeeklyPlans()
-                database.habitsQueries.clearAllData()
-                database.habitsQueries.clearAllWeeklyHabits()
-                database.habitsQueries.clearAllCategories()
-                // The restored data no longer matches what the sheet last saw: forget all sync state.
-                database.habitsQueries.setTextSetting("sheet_managed_habits", "")
-                database.habitsQueries.setTextSetting("sheet_synced_keys", "")
-                database.habitsQueries.setTextSetting("sheet_last_sync", "0")
-                settings?.themeMode?.let { database.habitsQueries.setSetting("theme_mode", it.toLong()) }
-                settings?.onboardingCompleted?.let { database.habitsQueries.setSetting("onboarding_completed", if (it) 1L else 0L) }
-                if (restoreSheetLink && !settings?.sheetUrl.isNullOrBlank()) {
-                    database.habitsQueries.setTextSetting("sheet_url", settings!!.sheetUrl!!)
-                }
-
-                snapshot.categories.forEach { category ->
-                    database.habitsQueries.insertCategory(
-                        id = category.id,
-                        name = category.name,
-                        display_order = category.displayOrder.toLong(),
-                        active = category.active.toDbLong(),
-                        updated_at = category.updatedAtEpochMillis,
-                    )
-                }
-                
-                snapshot.dailyHabits.forEach { habit ->
-                    database.habitsQueries.insertDailyHabit(
-                        id = habit.id,
-                        name = habit.name,
-                        category_id = habit.categoryId,
-                        monthly_goal = habit.monthlyGoal.toLong(),
-                        display_order = habit.displayOrder.toLong(),
-                        active = habit.active.toDbLong(),
-                        created_on = habit.createdOn.toString(),
-                        archived_on = habit.archivedOn?.toString(),
-                        created_at = habit.createdAtEpochMillis,
-                        updated_at = habit.updatedAtEpochMillis,
-                        kind = habit.kind.name,
-                        dated_only = habit.datedOnly.toDbLong(),
-                    )
-                }
-                
-                snapshot.dailyCompletions.forEach { completion ->
-                    database.habitsQueries.upsertDailyCompletion(
-                        plan_id = completion.planId,
-                        habit_id = completion.habitId,
-                        date = completion.date.toString(),
-                        completed = completion.completed.toDbLong(),
-                        updated_at = completion.updatedAtEpochMillis,
-                        pending_upload = 0L,
-                    )
-                }
-                snapshot.weeklyPlans.forEach { plan ->
-                    database.habitsQueries.upsertWeeklyPlan(plan.habitId, plan.weekday.toLong(), plan.detail, plan.updatedAtEpochMillis)
-                }
-                snapshot.dayPlans.forEach { plan ->
-                    database.habitsQueries.upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), plan.updatedAtEpochMillis)
-                }
-                
-                snapshot.weeklyHabits.forEach { habit ->
-                    database.habitsQueries.insertWeeklyHabit(
-                        id = habit.id,
-                        name = habit.name,
-                        category_id = habit.categoryId,
-                        display_order = habit.displayOrder.toLong(),
-                        active = habit.active.toDbLong(),
-                        created_on = habit.createdOn.toString(),
-                        archived_on = habit.archivedOn?.toString(),
-                        created_at = habit.createdAtEpochMillis,
-                        updated_at = habit.updatedAtEpochMillis,
-                    )
-                }
-                
-                snapshot.weeklyCompletions.forEach { completion ->
-                    database.habitsQueries.upsertWeeklyCompletion(
-                        weekly_habit_id = completion.weeklyHabitId,
-                        week_start_date = completion.weekStartDate.toString(),
-                        completed = completion.completed.toDbLong(),
-                        updated_at = completion.updatedAtEpochMillis,
-                    )
-                }
-            }
-            loadSnapshot()
-        }
-    }
-
     fun close() {
-        driver.close()
-    }
-
-    private fun seedDefaultsIfEmpty() {
-        val defaultsAlreadySeeded = database.habitsQueries
-            .getSetting("defaults_seeded")
-            .executeAsOneOrNull() == 1L
-        if (defaultsAlreadySeeded) return
-        database.transaction {
-            if (database.habitsQueries.selectCategoryCount().executeAsOne() == 0L) {
-                val now = Clock.System.now().toEpochMilliseconds()
-                DefaultData.categories(now).forEach { category ->
-                    database.habitsQueries.insertCategory(
-                        id = category.id,
-                        name = category.name,
-                        display_order = category.displayOrder.toLong(),
-                        active = category.active.toDbLong(),
-                        updated_at = category.updatedAtEpochMillis,
-                    )
-                }
-            }
-            database.habitsQueries.setSetting("defaults_seeded", 1L)
-        }
-    }
-
-    private fun loadSnapshot() {
-        mutableSnapshot.value = HabitSnapshot(
-            categories = database.habitsQueries.selectAllCategories().executeAsList().map { row ->
-                Category(
-                    id = row.id,
-                    name = row.name,
-                    displayOrder = row.display_order.toInt(),
-                    active = row.active != 0L,
-                    updatedAtEpochMillis = row.updated_at,
-                )
-            },
-            dailyHabits = database.habitsQueries.selectAllDailyHabits().executeAsList().map { row ->
-                DailyHabit(
-                    id = row.id,
-                    name = row.name,
-                    categoryId = row.category_id,
-                    monthlyGoal = row.monthly_goal.toInt(),
-                    displayOrder = row.display_order.toInt(),
-                    active = row.active != 0L,
-                    createdOn = LocalDate.parse(row.created_on),
-                    archivedOn = row.archived_on?.let(LocalDate::parse),
-                    createdAtEpochMillis = row.created_at,
-                    updatedAtEpochMillis = row.updated_at,
-                    kind = HabitKind.entries.firstOrNull { it.name == row.kind } ?: HabitKind.ACTION,
-                    datedOnly = row.dated_only != 0L,
-                )
-            },
-            dailyCompletions = database.habitsQueries.selectAllDailyCompletions().executeAsList().map { row ->
-                DailyHabitCompletion(
-                    habitId = row.habit_id,
-                    date = LocalDate.parse(row.date),
-                    completed = row.completed != 0L,
-                    updatedAtEpochMillis = row.updated_at,
-                    planId = row.plan_id,
-                )
-            },
-            weeklyPlans = database.habitsQueries.selectAllWeeklyPlans().executeAsList().map { row ->
-                WeeklyPlan(row.habit_id, row.weekday.toInt(), row.detail, row.updated_at)
-            },
-            dayPlans = database.habitsQueries.selectAllDayPlans().executeAsList().map { row ->
-                DayPlan(row.habit_id, LocalDate.parse(row.date), row.detail, row.skipped != 0L, row.updated_at, row.id)
-            },
-            weeklyHabits = database.habitsQueries.selectAllWeeklyHabits().executeAsList().map { row ->
-                WeeklyHabit(
-                    id = row.id,
-                    name = row.name,
-                    categoryId = row.category_id,
-                    displayOrder = row.display_order.toInt(),
-                    active = row.active != 0L,
-                    createdOn = LocalDate.parse(row.created_on),
-                    archivedOn = row.archived_on?.let(LocalDate::parse),
-                    createdAtEpochMillis = row.created_at,
-                    updatedAtEpochMillis = row.updated_at,
-                )
-            },
-            weeklyCompletions = database.habitsQueries.selectAllWeeklyCompletions().executeAsList().map { row ->
-                WeeklyHabitCompletion(
-                    weeklyHabitId = row.weekly_habit_id,
-                    weekStartDate = LocalDate.parse(row.week_start_date),
-                    completed = row.completed != 0L,
-                    updatedAtEpochMillis = row.updated_at,
-                )
-            },
-            pendingCompletions = database.habitsQueries.selectAllDailyCompletions().executeAsList()
-                .filter { it.pending_upload != 0L }
-                .map { CompletionKey(it.plan_id, LocalDate.parse(it.date)) }.toSet(),
-            sheetManagedHabitIds = database.habitsQueries.getTextSetting("sheet_managed_habits")
-                .executeAsOneOrNull()?.lineSequence()?.filter { it.isNotBlank() }?.toSet().orEmpty(),
-        )
+        db.close()
     }
 }
-
-private fun Boolean.toDbLong(): Long = if (this) 1L else 0L

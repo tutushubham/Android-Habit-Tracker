@@ -1,5 +1,6 @@
 package com.habitsheet.domain.repository
 
+import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.model.SheetSyncChanges
 
 /** App settings (theme, first-run tutorial), the sheet link and everything sync remembers about the sheet. */
@@ -22,3 +23,10 @@ interface SettingsStore {
      */
     suspend fun applySheetSync(changes: SheetSyncChanges, newKeys: Set<String>, lastSync: Long)
 }
+
+/** The settings a backup carries (see [BackupStore.backupSettings]); the sheet link only when [includeSheetLink]. */
+suspend fun SettingsStore.readBackupSettings(includeSheetLink: Boolean): BackupSettings = BackupSettings(
+    themeMode = getThemeMode(),
+    onboardingCompleted = isOnboardingCompleted(),
+    sheetUrl = if (includeSheetLink) getSheetUrl().ifBlank { null } else null,
+)

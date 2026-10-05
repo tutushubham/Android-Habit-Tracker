@@ -14,6 +14,7 @@ import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.domain.repository.readBackupSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -253,6 +254,8 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         sheetSyncedKeys = newKeys
         sheetLastSync = lastSync
     }
+
+    override suspend fun backupSettings(includeSheetLink: Boolean): BackupSettings = readBackupSettings(includeSheetLink)
 
     override suspend fun clearAllData() {
         mutableSnapshot.value = HabitSnapshot()

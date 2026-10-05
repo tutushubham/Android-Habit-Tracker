@@ -42,3 +42,29 @@ Probe on the same data (not committed):
 
 Acceptance for whoever implements it: rerun `LoadSnapshotPerformanceTest` and record the new numbers here; target
 `loadSnapshot` median below 100 ms and a check-off below 50 ms on this data size.
+
+## Result after P1-2 step 5 (2026-10-05)
+
+Implemented points 1–3 plus one extra; point 4 (windowed loading / `asFlow()` per table) was **not needed**.
+
+- Completions are read **once**; `pendingCompletions` comes from the same rows.
+- The two completion queries have **no `ORDER BY`**; the repository sorts in memory with `DAILY_COMPLETION_ORDER`
+  (date, habit id, plan id) and `WEEKLY_COMPLETION_ORDER` (week start, habit id). The same comparators are used to
+  patch a single check-off into the snapshot, so a reload and a patch always agree (`SnapshotParityTest`).
+  The plan-id tie-breaker is new: two sessions of one habit on one day used to come back in insertion order.
+- `setDailyCompletion` / `setWeeklyCompletion` **patch the in-memory snapshot** instead of reloading every table.
+  Bulk writes (sync, restore, reset, deletes, edits) still reload.
+- Extra: one parsed `LocalDate` per distinct date during a reload (36,520 rows share about 1,800 dates).
+
+Same test, same data. **The numbers were taken on a different machine than the table above** (Apple silicon Mac,
+JDK 17), so the old code was re-measured there first:
+
+| Measure | Before (same Mac) | After | Change |
+|---|---|---|---|
+| `loadSnapshot()` median | 82 ms | **37 ms** | −55 % |
+| One check-off (write + snapshot update) median | 83 ms | **1 ms** (max 4) | −99 % |
+
+Scaling the reload by the same factor to the original Windows desktop gives about 95 ms (was 209), i.e. at the
+100 ms target; the check-off no longer depends on history size at all, which was the cost a person actually felt.
+Known consequence: a check-off made by another repository instance on the same file (the Android widget) is no
+longer picked up by the app's next check-off, only by the next reload (`refresh()` on resume, or any other write).

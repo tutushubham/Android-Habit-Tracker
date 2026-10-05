@@ -152,8 +152,10 @@ DELETE FROM dayPlanEntity WHERE habit_id = ?;
 deleteWeeklyPlansForHabit:
 DELETE FROM weeklyPlanEntity WHERE habit_id = ?;
 
+-- No ORDER BY on the two completion queries: they are the large tables, and the repository sorts in memory with
+-- the same comparator it uses to patch a single check-off into the snapshot (see RowMappers.kt).
 selectAllDailyCompletions:
-SELECT * FROM dailyCompletionEntity ORDER BY date, habit_id;
+SELECT * FROM dailyCompletionEntity;
 
 selectAllWeeklyPlans:
 SELECT * FROM weeklyPlanEntity ORDER BY weekday, habit_id;
@@ -237,7 +239,7 @@ deleteWeeklyCompletionsForHabit:
 DELETE FROM weeklyCompletionEntity WHERE weekly_habit_id = ?;
 
 selectAllWeeklyCompletions:
-SELECT * FROM weeklyCompletionEntity ORDER BY week_start_date, weekly_habit_id;
+SELECT * FROM weeklyCompletionEntity;
 
 upsertWeeklyCompletion:
 INSERT OR REPLACE INTO weeklyCompletionEntity(weekly_habit_id, week_start_date, completed, updated_at)
