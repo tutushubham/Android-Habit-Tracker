@@ -40,7 +40,7 @@ internal class BackupStoreImpl(
             settings?.themeMode?.let { setSetting(SettingKeys.THEME_MODE, it.toLong()) }
             settings?.onboardingCompleted?.let { setSetting(SettingKeys.ONBOARDING_COMPLETED, if (it) 1L else 0L) }
             if (restoreSheetLink && !settings?.sheetUrl.isNullOrBlank()) {
-                setTextSetting(SettingKeys.SHEET_URL, settings!!.sheetUrl!!)
+                setTextSetting(SettingKeys.SHEET_URL, settings.sheetUrl)
             }
 
             snapshot.categories.forEach { insert(it) }
