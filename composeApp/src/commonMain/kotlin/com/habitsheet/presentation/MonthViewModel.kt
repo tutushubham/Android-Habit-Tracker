@@ -20,7 +20,8 @@ import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.model.PlannedHabit
 import com.habitsheet.domain.model.plannedHabitsOn
-import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.domain.repository.HabitStore
+import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
@@ -71,7 +72,8 @@ data class MonthUiState(
 }
 
 class MonthViewModel(
-    private val repository: HabitRepository,
+    private val repository: HabitStore,
+    private val settings: SettingsStore,
     private val dateProvider: DateProvider = SystemDateProvider,
     scope: CoroutineScope? = null,
     private val onLocalChange: (() -> Unit)? = null,
@@ -115,7 +117,7 @@ class MonthViewModel(
         this.scope.launch {
             runCatchingCancellable {
                 // Existing installs that already have habits are not shown the first-run tutorial.
-                onboardingVisible.value = !repository.isOnboardingCompleted() &&
+                onboardingVisible.value = !settings.isOnboardingCompleted() &&
                     repository.snapshot.value.dailyHabits.isEmpty()
             }.onFailure {
                 logger.e(TAG, "loading onboarding state failed", it)
@@ -187,7 +189,7 @@ class MonthViewModel(
         onboardingVisible.value = false
         scope.launch {
             runCatchingCancellable {
-                repository.setOnboardingCompleted(true)
+                settings.setOnboardingCompleted(true)
             }.onFailure {
                 // Not critical: the tutorial may show once more.
                 logger.w(TAG, "completeOnboarding failed", it)

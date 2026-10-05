@@ -94,7 +94,7 @@ class LoadSnapshotPerformanceTest {
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
             val uiState = (1..5).map {
                 val t = System.nanoTime()
-                MonthViewModel(InMemoryHabitRepository(snapshot), dates, scope)
+                InMemoryHabitRepository(snapshot).let { MonthViewModel(it, it, dates, scope) }
                 val ms = (System.nanoTime() - t) / 1_000_000
                 ms
             }

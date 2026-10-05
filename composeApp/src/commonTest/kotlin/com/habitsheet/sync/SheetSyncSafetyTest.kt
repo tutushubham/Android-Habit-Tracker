@@ -32,7 +32,7 @@ class SheetSyncSafetyTest {
     )).also { it.setSheetUrl("https://docs.google.com/spreadsheets/d/test-sheet/edit") }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer) = SheetSync(
-        repo,
+        repo, repo,
         object : SheetTokenProvider {
             override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("t", null)
         },

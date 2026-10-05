@@ -57,7 +57,7 @@ class ViewModelLifecycleTest {
     }
     private var replaced = 0
     private val factory = viewModelFactory {
-        initializer { MonthViewModel(repository, dates) }
+        initializer { MonthViewModel(repository, repository, dates) }
         initializer { ManageHabitsViewModel(repository, DefaultIdGenerator(), dates) }
         initializer { SettingsViewModel(repository) }
         initializer {

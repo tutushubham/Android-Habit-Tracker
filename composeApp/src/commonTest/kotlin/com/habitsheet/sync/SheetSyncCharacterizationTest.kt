@@ -60,7 +60,7 @@ class SheetSyncCharacterizationTest {
     }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer, token: SheetTokenProvider = Token("t")) =
-        SheetSync(repo, token, server.client(), dates, RetryPolicy(sleep = { }))
+        SheetSync(repo, repo, token, server.client(), dates, RetryPolicy(sleep = { }))
 
     private val runSnapshot get() = HabitSnapshot(
         dailyHabits = listOf(habit("run", "Run")),
@@ -561,7 +561,7 @@ class SheetSyncCharacterizationTest {
         val server = FakeSheetsServer()
         val repo = InMemoryHabitRepository(runSnapshot)
         val token = Token("t")
-        val sync = SheetSync(repo, token, server.client(), dates)
+        val sync = SheetSync(repo, repo, token, server.client(), dates)
 
         sync.sync(interactive = false)
         assertEquals("Not synced yet", sync.state.value.message)

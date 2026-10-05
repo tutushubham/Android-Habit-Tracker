@@ -57,7 +57,7 @@ class SheetSyncTest {
                 else -> respond("""{"sheets":[{"properties":{"title":"Plan"}}]}""", headers = jsonHeaders)
             }
         })
-        SheetSync(repo, provider, client, dates).sync(interactive = true)
+        SheetSync(repo, repo, provider, client, dates).sync(interactive = true)
         assertEquals(1, writes)
         assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
         assertEquals(setOf("run"), repo.snapshot.value.sheetManagedHabitIds)
@@ -93,7 +93,7 @@ class SheetSyncTest {
                 else -> respond("""{"sheets":[]}""", headers = jsonHeaders)
             }
         })
-        val sync = SheetSync(repo, provider, client, dates)
+        val sync = SheetSync(repo, repo, provider, client, dates)
         sync.sync(interactive = true)
         assertTrue(created)
         assertTrue(formatted)

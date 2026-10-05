@@ -1,7 +1,8 @@
 package com.habitsheet.sync
 
 import com.habitsheet.data.DefaultIdGenerator
-import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.domain.repository.HabitStore
+import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.SystemDateProvider
 import com.habitsheet.domain.model.HabitSnapshot
@@ -50,7 +51,8 @@ data class SheetSyncState(
  * A deliberately small, single-table Sheets client. Food/Workout/Marathon Plan are untouched.
  */
 class SheetSync(
-    private val repository: HabitRepository,
+    private val repository: HabitStore,
+    private val settings: SettingsStore,
     private val tokenProvider: SheetTokenProvider,
     private val client: HttpClient = createSheetsHttpClient(),
     private val dateProvider: DateProvider = SystemDateProvider,
@@ -64,7 +66,7 @@ class SheetSync(
     suspend fun sync(interactive: Boolean = false) {
         mutex.lock()
         try {
-            val id = SheetLink.spreadsheetId(repository.getSheetUrl())
+            val id = SheetLink.spreadsheetId(settings.getSheetUrl())
             if (id == null) {
                 if (interactive) mutableState.value = SheetSyncState(message = "Add a spreadsheet link first.")
                 return
@@ -100,7 +102,7 @@ class SheetSync(
             val result = PlanReconciler.reconcile(
                 snapshot = snapshot,
                 remoteRows = rows,
-                oldKeys = repository.getSheetSyncedKeys(),
+                oldKeys = settings.getSheetSyncedKeys(),
                 nowMillis = Clock.System.now().toEpochMilliseconds(),
                 newId = { DefaultIdGenerator().newId() },
             )
@@ -108,7 +110,7 @@ class SheetSync(
             // the next sync is idempotent because the sheet already holds the checks.
             if (result.doneUploads.isNotEmpty()) api.writeDone(result.doneUploads)
             val now = Clock.System.now().toEpochMilliseconds()
-            repository.applySheetSync(result.changes, result.syncedKeys, now)
+            settings.applySheetSync(result.changes, result.syncedKeys, now)
             mutableState.value = SheetSyncState(message = summary(result), lastSync = now)
         } catch (e: CancellationException) {
             throw e
@@ -135,7 +137,7 @@ class SheetSync(
             }
         }
         val now = Clock.System.now().toEpochMilliseconds()
-        repository.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds, completionsToAcknowledge = upload.acknowledged), upload.syncedKeys, now)
+        settings.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds, completionsToAcknowledge = upload.acknowledged), upload.syncedKeys, now)
         mutableState.value = SheetSyncState(message = "Plan tab created · ${upload.rows.size} sessions uploaded", lastSync = now)
     }
 

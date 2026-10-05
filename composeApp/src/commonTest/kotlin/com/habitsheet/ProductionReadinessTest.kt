@@ -27,7 +27,7 @@ class ProductionReadinessTest {
     @Test
     fun fullAppLifecycleScenario() = runTest {
         // 1. Initialize ViewModels
-        val monthViewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val monthViewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         val manageViewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
         val backupViewModel = BackupViewModel(repository, object : com.habitsheet.ui.BackupService {
             override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}

@@ -33,7 +33,7 @@ class SheetSyncErrorsTest {
     )).also { it.setSheetUrl("https://docs.google.com/spreadsheets/d/test-sheet/edit"); it.setSheetLastSync(100) }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer, token: String? = "t") = SheetSync(
-        repo,
+        repo, repo,
         object : SheetTokenProvider {
             override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(token, null)
         },
@@ -165,8 +165,9 @@ class SheetSyncErrorsTest {
     @Test
     fun cancelledOrFailedSignInIsAuthExpiredWithDetail() = runTest {
         val server = FakeSheetsServer().withPlanRows(okRow)
+        val repository = repo()
         val sync = SheetSync(
-            repo(),
+            repository, repository,
             object : SheetTokenProvider {
                 override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(null, "Sign-in cancelled")
             },
@@ -182,8 +183,9 @@ class SheetSyncErrorsTest {
     fun platformNetworkErrorIsOfflineButOtherSignInErrorsAreAuthExpired() = runTest {
         for ((text, expectOffline) in listOf(SheetTokenProvider.NETWORK_ERROR to true, "Google access was revoked. Sign in again." to false)) {
             val server = FakeSheetsServer().withPlanRows(okRow)
+            val repository = repo()
             val sync = SheetSync(
-                repo(),
+                repository, repository,
                 object : SheetTokenProvider {
                     override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(null, text)
                 },

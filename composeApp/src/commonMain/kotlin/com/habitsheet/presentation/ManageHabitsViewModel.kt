@@ -6,7 +6,7 @@ import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.WeeklyHabit
-import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.domain.repository.HabitStore
 import com.habitsheet.domain.repository.IdGenerator
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ManageHabitsViewModel(
-    private val repository: HabitRepository,
+    private val repository: HabitStore,
     private val idGenerator: IdGenerator,
     private val dateProvider: DateProvider = SystemDateProvider,
     scope: CoroutineScope? = null,

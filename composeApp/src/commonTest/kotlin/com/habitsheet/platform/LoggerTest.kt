@@ -107,7 +107,7 @@ class LoggerTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Secret Habit", "Secret Session", false, false))
         server.fail(FaultAction.Status(500), times = 100)
         val sync = SheetSync(
-            repo,
+            repo, repo,
             object : SheetTokenProvider {
                 override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("tok-SECRET", null)
             },

@@ -38,7 +38,7 @@ class DisconnectTest {
         repository.setDailyCompletion(DailyHabitCompletion("run", day, true, 6, "run-1")) // pending
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy", true, false))
         val sync = SheetSync(
-            repository,
+            repository, repository,
             object : SheetTokenProvider {
                 override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("t", null)
             },
@@ -73,7 +73,7 @@ class DisconnectTest {
         val repository = InMemoryHabitRepository()
         val server = FakeSheetsServer()
         val sync = SheetSync(
-            repository,
+            repository, repository,
             object : SheetTokenProvider {
                 override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("t", null)
             },

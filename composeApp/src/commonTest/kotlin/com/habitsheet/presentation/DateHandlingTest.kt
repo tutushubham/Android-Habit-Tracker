@@ -103,7 +103,7 @@ class DateHandlingTest {
         provider: DateProvider,
         scope: kotlinx.coroutines.CoroutineScope,
         repository: InMemoryHabitRepository = InMemoryHabitRepository(HabitSnapshot(dailyHabits = listOf(everyDayHabit))),
-    ) = MonthViewModel(repository, provider, scope) to repository
+    ) = MonthViewModel(repository, repository, provider, scope) to repository
 
     @Test
     fun refreshTodayMovesTheSelectedDayAtMidnightWithoutWaitingForThePoll() = runTest {

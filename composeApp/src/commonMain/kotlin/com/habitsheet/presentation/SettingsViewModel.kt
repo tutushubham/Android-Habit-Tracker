@@ -2,7 +2,7 @@ package com.habitsheet.presentation
 
 import androidx.lifecycle.ViewModel
 
-import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
@@ -36,7 +36,7 @@ enum class ThemeMode {
 }
 
 class SettingsViewModel(
-    private val repository: HabitRepository,
+    private val repository: SettingsStore,
     scope: CoroutineScope? = null,
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
     private val sheetSync: SheetSync? = null,

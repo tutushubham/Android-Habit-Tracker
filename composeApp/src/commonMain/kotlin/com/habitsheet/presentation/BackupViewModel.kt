@@ -3,10 +3,9 @@ package com.habitsheet.presentation
 import androidx.lifecycle.ViewModel
 
 import com.habitsheet.domain.backup.BackupSerializer
-import com.habitsheet.domain.backup.BackupSettings
 import com.habitsheet.domain.backup.BackupValidationException
 import com.habitsheet.domain.backup.CsvGenerator
-import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.domain.repository.BackupStore
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
@@ -23,7 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 
 class BackupViewModel(
-    private val repository: HabitRepository,
+    private val repository: BackupStore,
     private val backupService: BackupService,
     private val dateProvider: DateProvider = SystemDateProvider,
     scope: CoroutineScope? = null,
@@ -47,13 +46,7 @@ class BackupViewModel(
     fun exportBackup(includeSheetLink: Boolean = false, onResult: (BackupResult) -> Unit = {}) {
         // UNDISPATCHED: starts on the caller's thread; the repository reads below do not normally suspend.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            val settings = runCatchingCancellable {
-                BackupSettings(
-                    themeMode = repository.getThemeMode(),
-                    onboardingCompleted = repository.isOnboardingCompleted(),
-                    sheetUrl = if (includeSheetLink) repository.getSheetUrl().ifBlank { null } else null,
-                )
-            }.onFailure { logger.w(TAG, "Reading settings for the backup failed; exporting data only", it) }.getOrNull()
+            val settings = runCatchingCancellable { repository.backupSettings(includeSheetLink) }.onFailure { logger.w(TAG, "Reading settings for the backup failed; exporting data only", it) }.getOrNull()
             val json = BackupSerializer.serialize(repository.snapshot.value, dateProvider.nowEpochMillis(), settings)
             withContext(callbackDispatcher) { backupService.exportBackup(json, onResult) }
         }

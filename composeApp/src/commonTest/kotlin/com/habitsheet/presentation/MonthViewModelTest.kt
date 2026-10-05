@@ -28,14 +28,14 @@ class MonthViewModelTest {
 
     @Test
     fun initialMonthIsCurrentMonth() = runTest {
-        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         val state = viewModel.state.first()
         assertEquals(MonthKey(2026, 8), state.selectedMonth)
     }
 
     @Test
     fun navigateToPreviousAndNextMonth() = runTest {
-        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         
         viewModel.previousMonth()
         val statePrev = viewModel.state.first { it.selectedMonth.month == 7 }
@@ -48,7 +48,7 @@ class MonthViewModelTest {
 
     @Test
     fun todayActionReturnsToCurrentMonth() = runTest {
-        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         
         viewModel.selectMonth(MonthKey(2025, 12))
         val stateHist = viewModel.state.first { it.selectedMonth.year == 2025 }
@@ -62,7 +62,7 @@ class MonthViewModelTest {
 
     @Test
     fun todayModeNavigatesDaysAcrossMonthBoundaries() = runTest {
-        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
 
         viewModel.setTodayMode(true)
         viewModel.previousDay()
@@ -84,7 +84,7 @@ class MonthViewModelTest {
 
     @Test
     fun scrollToTodayTriggerUpdatesEvenIfAlreadyInCurrentMonth() = runTest {
-        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         val initialTrigger = viewModel.state.first().scrollToTodayTrigger
         
         viewModel.currentMonth()
@@ -109,7 +109,7 @@ class MonthViewModelTest {
                 updatedAtEpochMillis = 0,
             ),
         )
-        val viewModel = MonthViewModel(repo, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repo, repo, dateProvider, backgroundScope)
 
         viewModel.toggleDaily("habit", fixedDate)
         viewModel.toggleDaily("habit", fixedDate)
@@ -129,7 +129,7 @@ class MonthViewModelTest {
                 DayPlan("run", fixedDate, "Mobility", false, 1, "run-b"),
             ),
         ))
-        val viewModel = MonthViewModel(repo, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repo, repo, dateProvider, backgroundScope)
         viewModel.togglePlanned("run-a", fixedDate)
         runCurrent()
         assertEquals(1, repo.snapshot.value.dailyCompletions.count { it.completed })
@@ -150,7 +150,7 @@ class MonthViewModelTest {
 
     @Test
     fun tutorialShowsOnFreshInstallAndStaysDismissedAfterCompletion() = runTest {
-        val viewModel = MonthViewModel(repository, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         runCurrent()
         assertTrue(viewModel.state.first { it.onboardingVisible }.onboardingVisible)
 
@@ -159,7 +159,7 @@ class MonthViewModelTest {
         assertFalse(viewModel.state.value.onboardingVisible)
         assertTrue(repository.isOnboardingCompleted())
 
-        val reopened = MonthViewModel(repository, dateProvider, backgroundScope)
+        val reopened = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         runCurrent()
         assertFalse(reopened.state.value.onboardingVisible)
     }
@@ -169,7 +169,7 @@ class MonthViewModelTest {
         val existing = InMemoryHabitRepository(HabitSnapshot(
             dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, fixedDate, null, 1, 1)),
         ))
-        val viewModel = MonthViewModel(existing, dateProvider, backgroundScope)
+        val viewModel = MonthViewModel(existing, existing, dateProvider, backgroundScope)
         runCurrent()
         assertFalse(viewModel.state.value.onboardingVisible)
     }
