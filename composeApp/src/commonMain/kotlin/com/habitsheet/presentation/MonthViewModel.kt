@@ -1,5 +1,6 @@
 package com.habitsheet.presentation
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 
 import com.habitsheet.domain.calculation.CategorySummary
@@ -40,6 +41,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
+/** Everything the month and day views show. Built fresh from immutable data on every change. */
+@Immutable
 data class MonthUiState(
     val selectedMonth: MonthKey,
     val today: LocalDate,
@@ -126,25 +129,26 @@ class MonthViewModel(
         }
     }
 
+    /** What the person is looking at. */
+    private data class Selection(val month: MonthKey, val today: LocalDate, val day: LocalDate, val todayMode: Boolean)
+
+    /** Screen chrome that does not depend on the data. */
+    private data class Chrome(val onboardingVisible: Boolean, val scrollToTodayTrigger: Long, val error: String?)
+
     val state: StateFlow<MonthUiState> = combine(
         repository.snapshot,
-        selectedMonth,
-        onboardingVisible,
-        scrollToTodayTrigger,
-        today,
-        todayMode,
-        selectedDay,
-        error
-    ) { args: Array<Any?> ->
-        val snapshot = args[0] as HabitSnapshot
-        val month = args[1] as MonthKey
-        val onboarding = args[2] as Boolean
-        val trigger = args[3] as Long
-        val currentToday = args[4] as LocalDate
-        val mode = args[5] as Boolean
-        val day = args[6] as LocalDate
-        val currentError = args[7] as String?
-        snapshot.toUiState(month, currentToday, day, onboarding, trigger, mode, currentError)
+        combine(selectedMonth, today, selectedDay, todayMode, ::Selection),
+        combine(onboardingVisible, scrollToTodayTrigger, error, ::Chrome),
+    ) { snapshot, selection, chrome ->
+        snapshot.toUiState(
+            month = selection.month,
+            today = selection.today,
+            selectedDay = selection.day,
+            onboardingVisible = chrome.onboardingVisible,
+            scrollToTodayTrigger = chrome.scrollToTodayTrigger,
+            todayMode = selection.todayMode,
+            error = chrome.error,
+        )
     }.stateIn(
         scope = this.scope,
         started = SharingStarted.Eagerly,
