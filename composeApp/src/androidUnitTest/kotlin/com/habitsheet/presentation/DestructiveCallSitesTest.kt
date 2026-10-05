@@ -9,6 +9,7 @@ import kotlin.test.assertTrue
  * Audit guard. Screens may call a destructive view-model function only inside the confirmed flows listed
  * here; every listed file must also show [com.habitsheet.ui.DestructiveConfirmDialog]. A new call site fails
  * this test until it is reviewed, given a [DestructiveAction] text and added below.
+ * Scans every Kotlin file under `ui/` (recursively); files are named by their path relative to `ui/`.
  */
 class DestructiveCallSitesTest {
     private val uiDir = listOf(
@@ -22,10 +23,14 @@ class DestructiveCallSitesTest {
     )
     private val bareReference = Regex("""::\s*(deleteDailyHabit|deleteWeeklyHabit|deleteCategory|deleteDayPlanById|deleteDayPlan|deleteWeeklyPlan|clearAllData|importBackup|disconnect)\b""")
 
+    private val uiFiles: List<File> = uiDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+
+    private fun File.key(): String = relativeTo(uiDir).invariantSeparatorsPath
+
     /** file -> calls, each reviewed: it sits inside the `onConfirm` of a DestructiveConfirmDialog. */
     private val confirmed = mapOf(
         "DataBackupScreen.kt" to listOf("clearAllData", "importBackup"),
-        "ManageHabitsScreen.kt" to listOf("deleteDailyHabit", "deleteWeeklyHabit", "deleteCategory"),
+        "manage/ManageHabitsScreen.kt" to listOf("deleteDailyHabit", "deleteWeeklyHabit", "deleteCategory"),
         "PlanScreen.kt" to listOf("deleteWeeklyPlan", "deleteDayPlanById"),
         // Not data loss: unlinks the sheet and clears sync state; habits, plans and check-offs stay (see audit table).
         "SettingsScreen.kt" to listOf("disconnect"),
@@ -34,10 +39,10 @@ class DestructiveCallSitesTest {
     @Test
     fun everyDestructiveCallInTheUiIsReviewedAndConfirmed() {
         val found = mutableMapOf<String, MutableList<String>>()
-        uiDir.listFiles { f -> f.extension == "kt" }!!.forEach { file ->
+        uiFiles.forEach { file ->
             val text = file.readText()
             val calls = destructive.findAll(text).map { it.groupValues[2] } + bareReference.findAll(text).map { it.groupValues[1] }
-            calls.forEach { found.getOrPut(file.name) { mutableListOf() }.add(it) }
+            calls.forEach { found.getOrPut(file.key()) { mutableListOf() }.add(it) }
         }
         val actual = found.mapValues { it.value.toSortedSet().toList() }
         assertEquals(confirmed.mapValues { it.value.sorted() }, actual.mapValues { it.value.sorted() })
@@ -54,11 +59,11 @@ class DestructiveCallSitesTest {
 
     @Test
     fun noScreenBypassesTheDialogByCallingTheRepositoryDirectly() {
-        uiDir.listFiles { f -> f.extension == "kt" }!!.forEach { file ->
+        uiFiles.forEach { file ->
             val text = file.readText()
             listOf("restoreFromSnapshot", "clearAllData()", "repository.delete").forEach { call ->
-                if (file.name != "DataBackupScreen.kt" || call != "clearAllData()") {
-                    assertTrue(call !in text || file.name == "DataBackupScreen.kt" && call == "clearAllData()", "${file.name} calls $call")
+                if (file.key() != "DataBackupScreen.kt" || call != "clearAllData()") {
+                    assertTrue(call !in text || file.key() == "DataBackupScreen.kt" && call == "clearAllData()", "${file.key()} calls $call")
                 }
             }
         }

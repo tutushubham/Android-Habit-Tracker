@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.ui.backhandler)
+            implementation(libs.compose.ui.tooling.preview)
             implementation(libs.compose.components.resources)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -80,6 +81,11 @@ val releaseSigning: Properties? = run {
     )
     env.forEach { (key, name) -> System.getenv(name)?.let { props.setProperty(key, it) } }
     if (env.keys.all { props.getProperty(it) != null }) props else null
+}
+
+// Renders the commonMain @Preview functions in Android Studio; debug builds only, never shipped.
+dependencies {
+    debugImplementation(libs.compose.ui.tooling)
 }
 
 android {

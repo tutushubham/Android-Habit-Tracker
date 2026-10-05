@@ -45,6 +45,8 @@ import com.habitsheet.presentation.ThemeMode
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.BackupViewModel
+import com.habitsheet.ui.manage.ManageHabitsScreen
+import com.habitsheet.ui.month.MonthScreen
 import com.habitsheet.ui.navigation.AppBackStack
 import com.habitsheet.ui.navigation.Destination
 
