@@ -99,7 +99,7 @@ class DateHandlingTest {
 
     // ---- the view model -----------------------------------------------------------------------------
 
-    private fun TestScopeViewModel(
+    private fun testScopeViewModel(
         provider: DateProvider,
         scope: kotlinx.coroutines.CoroutineScope,
         repository: InMemoryHabitRepository = InMemoryHabitRepository(HabitSnapshot(dailyHabits = listOf(everyDayHabit))),
@@ -108,7 +108,7 @@ class DateHandlingTest {
     @Test
     fun refreshTodayMovesTheSelectedDayAtMidnightWithoutWaitingForThePoll() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-05T23:59:30+05:30"))
-        val (viewModel, _) = TestScopeViewModel(ClockDateProvider(clock) { kolkata }, backgroundScope)
+        val (viewModel, _) = testScopeViewModel(ClockDateProvider(clock) { kolkata }, backgroundScope)
         runCurrent()
         assertEquals(LocalDate(2026, 8, 5), viewModel.state.value.selectedDay)
 
@@ -123,7 +123,7 @@ class DateHandlingTest {
     @Test
     fun thePollStillCatchesARolloverNobodyAnnounced() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-05T23:59:30+05:30"))
-        val (viewModel, _) = TestScopeViewModel(ClockDateProvider(clock) { kolkata }, backgroundScope)
+        val (viewModel, _) = testScopeViewModel(ClockDateProvider(clock) { kolkata }, backgroundScope)
         runCurrent()
 
         clock.instant += 1.minutes
@@ -137,8 +137,8 @@ class DateHandlingTest {
     fun monthFollowsTodayAcrossAMonthEndOnlyIfTheCurrentMonthWasShown() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-31T23:59:30+05:30"))
         val provider = ClockDateProvider(clock) { kolkata }
-        val (viewing, _) = TestScopeViewModel(provider, backgroundScope)
-        val (browsing, _) = TestScopeViewModel(provider, backgroundScope)
+        val (viewing, _) = testScopeViewModel(provider, backgroundScope)
+        val (browsing, _) = testScopeViewModel(provider, backgroundScope)
         browsing.previousMonth() // looking at July
         runCurrent()
 
@@ -155,7 +155,7 @@ class DateHandlingTest {
     @Test
     fun aDayThePersonOpenedYesterdayStaysSelectedAfterMidnight() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-05T23:59:30+05:30"))
-        val (viewModel, _) = TestScopeViewModel(ClockDateProvider(clock) { kolkata }, backgroundScope)
+        val (viewModel, _) = testScopeViewModel(ClockDateProvider(clock) { kolkata }, backgroundScope)
         viewModel.openDay(LocalDate(2026, 8, 1)) // not following today any more
         runCurrent()
 
@@ -171,7 +171,7 @@ class DateHandlingTest {
     fun aCheckOffMadeJustBeforeMidnightStaysOnTheDayItWasMadeFor() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-05T23:59:50+05:30"))
         val provider = ClockDateProvider(clock) { kolkata }
-        val (viewModel, repository) = TestScopeViewModel(provider, backgroundScope)
+        val (viewModel, repository) = testScopeViewModel(provider, backgroundScope)
         runCurrent()
 
         viewModel.toggleDaily("run", viewModel.state.value.selectedDay)
@@ -190,7 +190,7 @@ class DateHandlingTest {
     fun travellingAcrossTimeZonesNeverMovesOrLosesARecordedCheckOff() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-05T23:30:00-04:00"))
         var zone = newYork
-        val (viewModel, repository) = TestScopeViewModel(ClockDateProvider(clock) { zone }, backgroundScope)
+        val (viewModel, repository) = testScopeViewModel(ClockDateProvider(clock) { zone }, backgroundScope)
         runCurrent()
 
         // Evening in New York: check off Aug 5.
@@ -222,7 +222,7 @@ class DateHandlingTest {
     fun aTimeZoneChangeThatKeepsTheDateChangesNothing() = runTest {
         val clock = FakeClock(Instant.parse("2026-08-05T12:00:00Z"))
         var zone: TimeZone = TimeZone.UTC
-        val (viewModel, _) = TestScopeViewModel(ClockDateProvider(clock) { zone }, backgroundScope)
+        val (viewModel, _) = testScopeViewModel(ClockDateProvider(clock) { zone }, backgroundScope)
         runCurrent()
         val before = viewModel.state.value
 

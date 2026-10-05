@@ -41,6 +41,7 @@ class AppGraph(
     val repository = LocalHabitRepository(driverFactory)
     val sheetSync = SheetSync(repository, repository, serializedTokens, logger = logger)
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     // "Will sync when online": while offline with check-offs still waiting, retry on its own (30 s, doubling to 5 min).
     private val syncScheduler = SyncScheduler(
         syncScope,

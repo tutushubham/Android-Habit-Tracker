@@ -1,0 +1,8 @@
+# Normalise line endings in the repository; Windows checkouts get LF too (Kotlin/Gradle do not care).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.db binary
+*.jar binary
+*.zip binary

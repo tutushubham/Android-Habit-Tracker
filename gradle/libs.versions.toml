@@ -14,6 +14,11 @@ serialization = "1.8.0"
 sqldelight = "2.3.2"
 ktor = "3.3.3"
 google-auth = "21.5.1"
+spotless = "8.10.3"
+ktlint = "1.8.0"
+detekt = "1.23.8"
+# detekt 1.23.x is built with Kotlin 2.0.21 and must run with that compiler (see composeApp/build.gradle.kts).
+detekt-kotlin = "2.0.21"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
@@ -49,3 +54,5 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

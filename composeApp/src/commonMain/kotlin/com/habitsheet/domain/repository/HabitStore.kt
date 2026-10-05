@@ -29,6 +29,7 @@ interface HabitStore {
     suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long)
     suspend fun deleteWeeklyHabit(id: String)
     suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long)
+
     /** A check-off by the person (app or widget): stored with the pending-upload flag set. */
     suspend fun setDailyCompletion(completion: DailyHabitCompletion)
     suspend fun saveWeeklyPlan(plan: WeeklyPlan)

@@ -47,7 +47,9 @@ class SchemaMigrationTest {
 
     /** Rows as the app of [version] wrote them. The same habits, check-offs and settings in every version. */
     private fun fill(driver: JdbcSqliteDriver, version: Int) {
-        fun sql(statement: String) { driver.execute(null, statement, 0) }
+        fun sql(statement: String) {
+            driver.execute(null, statement, 0)
+        }
         sql("INSERT INTO categoryEntity VALUES ('c1', 'Fitness', 0, 1, 100)")
         val habitColumns = if (version >= 4) "(id, name, category_id, monthly_goal, display_order, active, created_on, archived_on, created_at, updated_at, kind, dated_only)" else "(id, name, category_id, monthly_goal, display_order, active, created_on, archived_on, created_at, updated_at)"
         val habitValues = if (version >= 4) "('run', 'Run', 'c1', 12, 0, 1, '2026-08-01', NULL, 100, 200, 'ACTION', 0)" else "('run', 'Run', 'c1', 12, 0, 1, '2026-08-01', NULL, 100, 200)"
@@ -66,8 +68,11 @@ class SchemaMigrationTest {
         sql("INSERT INTO settingsEntity VALUES ('defaults_seeded', 1)")
         if (version >= 2) {
             sql("INSERT INTO weeklyPlanEntity VALUES ('run', 2, 'Intervals', 250)")
-            if (version >= 4) sql("INSERT INTO dayPlanEntity (id, habit_id, date, detail, skipped, updated_at) VALUES ('run|2026-08-06', 'run', '2026-08-06', 'Easy 6 km', 0, 260)")
-            else sql("INSERT INTO dayPlanEntity (habit_id, date, detail, skipped, updated_at) VALUES ('run', '2026-08-06', 'Easy 6 km', 0, 260)")
+            if (version >= 4) {
+                sql("INSERT INTO dayPlanEntity (id, habit_id, date, detail, skipped, updated_at) VALUES ('run|2026-08-06', 'run', '2026-08-06', 'Easy 6 km', 0, 260)")
+            } else {
+                sql("INSERT INTO dayPlanEntity (habit_id, date, detail, skipped, updated_at) VALUES ('run', '2026-08-06', 'Easy 6 km', 0, 260)")
+            }
         }
         if (version >= 3) {
             sql("INSERT INTO textSettingsEntity VALUES ('sheet_url', 'https://docs.google.com/spreadsheets/d/abc123/edit')")
@@ -107,14 +112,16 @@ class SchemaMigrationTest {
                 assertEquals(listOf(Category("c1", "Fitness", 0, true, 100)), snapshot.categories, label)
                 assertEquals(
                     listOf(DailyHabit("run", "Run", "c1", 12, 0, true, LocalDate(2026, 8, 1), null, 100, 200, HabitKind.ACTION, datedOnly = false)),
-                    snapshot.dailyHabits, label,
+                    snapshot.dailyHabits,
+                    label,
                 )
                 assertEquals(
                     listOf(
                         DailyHabitCompletion("run", aug5, true, 300, "run|2026-08-05"),
                         DailyHabitCompletion("run", aug6, false, 310, "run|2026-08-06"),
                     ),
-                    snapshot.dailyCompletions, label,
+                    snapshot.dailyCompletions,
+                    label,
                 )
                 assertEquals(listOf(WeeklyHabit("gym", "Gym", null, 0, true, LocalDate(2026, 8, 1), null, 100, 200)), snapshot.weeklyHabits, label)
                 assertEquals(listOf(WeeklyHabitCompletion("gym", LocalDate(2026, 8, 3), true, 300)), snapshot.weeklyCompletions, label)

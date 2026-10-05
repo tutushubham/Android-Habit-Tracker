@@ -50,11 +50,11 @@ internal fun CategoryEditorDialog(
                 Modifier
                     .heightIn(max = 480.dp)
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OutlinedTextField(
                         value = newCategoryName,
@@ -71,7 +71,7 @@ internal fun CategoryEditorDialog(
                             }
                         },
                         enabled = newCategoryName.isNotBlank(),
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier.padding(start = 8.dp),
                     ) {
                         Text("Add")
                     }
@@ -80,7 +80,7 @@ internal fun CategoryEditorDialog(
                     val currentName = modifiedNames[category.id] ?: category.name
                     Row(
                         Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         OutlinedTextField(
                             value = currentName,
@@ -91,18 +91,17 @@ internal fun CategoryEditorDialog(
                         )
                         IconButton(
                             onClick = { onDelete(category) },
-                            modifier = Modifier.padding(start = 8.dp)
+                            modifier = Modifier.padding(start = 8.dp),
                         ) {
                             Text(
                                 "✕",
                                 color = MaterialTheme.colorScheme.error,
                                 fontSize = 20.sp,
-                                modifier = Modifier.semantics { contentDescription = "Delete ${category.name}" }
+                                modifier = Modifier.semantics { contentDescription = "Delete ${category.name}" },
                             )
                         }
                     }
                 }
-
             }
         },
         confirmButton = {
@@ -128,7 +127,10 @@ private fun CategoryEditorDialogPreview() {
     HabitSheetTheme(darkTheme = false) {
         CategoryEditorDialog(
             categories = listOf(Category("study", "Study 📚", 0, true, 1), Category("health", "Health ❤️", 1, true, 1)),
-            onDismiss = {}, onSave = { _, _ -> }, onDelete = {}, onAdd = {},
+            onDismiss = {},
+            onSave = { _, _ -> },
+            onDelete = {},
+            onAdd = {},
         )
     }
 }

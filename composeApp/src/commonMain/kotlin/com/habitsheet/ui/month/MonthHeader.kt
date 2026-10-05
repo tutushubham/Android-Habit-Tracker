@@ -89,13 +89,16 @@ internal fun MonthTopBar(
                 Modifier
                     .weight(1f)
                     .then(
-                        if (state.todayMode) Modifier
-                        else Modifier
-                            .clickable(onClick = onShowPicker)
-                            .semantics(mergeDescendants = true) {
-                                role = Role.Button
-                                contentDescription = "Select month and year. Currently ${state.selectedMonth.monthName()} ${state.selectedMonth.year}"
-                            }
+                        if (state.todayMode) {
+                            Modifier
+                        } else {
+                            Modifier
+                                .clickable(onClick = onShowPicker)
+                                .semantics(mergeDescendants = true) {
+                                    role = Role.Button
+                                    contentDescription = "Select month and year. Currently ${state.selectedMonth.monthName()} ${state.selectedMonth.year}"
+                                }
+                        },
                     ),
                 horizontalAlignment = Alignment.Start,
             ) {
@@ -150,11 +153,14 @@ private fun DateNavigationButton(previous: Boolean, dayMode: Boolean, compact: B
             .sizeIn(minHeight = 48.dp)
             .semantics { contentDescription = "$direction $unit" },
     ) {
-        Text(if (compact) {
-            if (previous) "‹ $unit" else "$unit ›"
-        } else {
-            if (previous) "‹ $direction $unit" else "$direction $unit ›"
-        }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            if (compact) {
+                if (previous) "‹ $unit" else "$unit ›"
+            } else {
+                if (previous) "‹ $direction $unit" else "$direction $unit ›"
+            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

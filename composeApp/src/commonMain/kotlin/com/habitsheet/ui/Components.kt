@@ -46,7 +46,7 @@ internal fun SubtleProgress(progress: Double, modifier: Modifier = Modifier) {
             .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(1.dp))
             .semantics {
                 progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(progressValue, 0f..1f)
-            }
+            },
     ) {
         Box(
             Modifier
@@ -81,7 +81,7 @@ internal fun BottomNavigation(
             "Habits",
             !selectedTracker,
             Modifier.weight(1f).tutorialTarget("manage", onPosition),
-            onManage
+            onManage,
         )
     }
 }

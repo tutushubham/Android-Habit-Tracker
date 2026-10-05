@@ -2,7 +2,6 @@ package com.habitsheet.presentation
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
-
 import com.habitsheet.domain.calculation.CategorySummary
 import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.domain.calculation.DailySummary
@@ -16,10 +15,10 @@ import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
+import com.habitsheet.domain.model.PlannedHabit
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
-import com.habitsheet.domain.model.PlannedHabit
 import com.habitsheet.domain.model.plannedHabitsOn
 import com.habitsheet.domain.repository.HabitStore
 import com.habitsheet.domain.repository.SettingsStore
@@ -29,17 +28,17 @@ import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.platform.w
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Duration.Companion.minutes
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlin.time.Duration.Companion.minutes
 
 /** Everything the month and day views show. Built fresh from immutable data on every change. */
 @Immutable
@@ -324,13 +323,13 @@ class MonthViewModel(
 }
 
 internal fun HabitSnapshot.toUiState(
-    month: MonthKey, 
-    today: LocalDate, 
+    month: MonthKey,
+    today: LocalDate,
     selectedDay: LocalDate,
     onboardingVisible: Boolean,
     scrollToTodayTrigger: Long,
     todayMode: Boolean,
-    error: String?
+    error: String?,
 ): MonthUiState {
     val monthPlan = month.dates().associateWith(::plannedHabitsOn)
     val dueKeys = monthPlan.flatMap { (date, planned) -> planned.filterNot { it.skipped }.map { it.id to date } }.toSet()

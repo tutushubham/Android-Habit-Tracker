@@ -47,8 +47,16 @@ fun StartupFailureScreen(cause: Throwable, recovery: StartupRecovery, onRetry: (
 
     fun show(result: BackupResult) {
         when (result) {
-            is BackupResult.Success -> { message = result.message; messageIsError = false }
-            is BackupResult.Failure -> { message = result.message; messageIsError = true }
+            is BackupResult.Success -> {
+                message = result.message
+                messageIsError = false
+            }
+
+            is BackupResult.Failure -> {
+                message = result.message
+                messageIsError = true
+            }
+
             BackupResult.Cancelled -> Unit
         }
     }

@@ -109,11 +109,16 @@ internal class SheetsApi(
 
     private fun mapStatus(status: Int, body: String, retryAfterMillis: Long?): SyncError = when {
         status == 401 -> SyncError.AuthExpired()
+
         status == 403 && ("rateLimitExceeded" in body || "RATE_LIMIT_EXCEEDED" in body) ->
             SyncError.RateLimited(retryAfterMillis?.div(1000))
+
         status == 403 -> SyncError.AccessDenied()
+
         status == 404 -> SyncError.NotFound()
+
         status == 429 -> SyncError.RateLimited(retryAfterMillis?.div(1000))
+
         else -> SyncError.Unknown(status = status)
     }
 
@@ -131,7 +136,8 @@ internal class SheetsApi(
     suspend fun createPlanTab(): Int? {
         val body = call(idempotent = false) {
             client.post("$base:batchUpdate") {
-                auth(); contentType(ContentType.Application.Json)
+                auth()
+                contentType(ContentType.Application.Json)
                 setBody("""{"requests":[{"addSheet":{"properties":{"title":"Plan","gridProperties":{"frozenRowCount":1}}}}]}""")
             }
         }
@@ -148,7 +154,9 @@ internal class SheetsApi(
         ]}"""
         call(idempotent = true) {
             client.post("$base:batchUpdate") {
-                auth(); contentType(ContentType.Application.Json); setBody(body)
+                auth()
+                contentType(ContentType.Application.Json)
+                setBody(body)
             }
         }
     }
@@ -172,7 +180,8 @@ internal class SheetsApi(
         val payload = buildJsonObject { put("values", values) }.toString()
         call(idempotent = true) {
             client.put("$base/values/Plan!A1:F${rows.size + 1}") {
-                auth(); contentType(ContentType.Application.Json)
+                auth()
+                contentType(ContentType.Application.Json)
                 url { parameters.append("valueInputOption", "RAW") }
                 setBody(payload)
             }
@@ -185,7 +194,8 @@ internal class SheetsApi(
         }.toString()
         call(idempotent = false) {
             client.post("$base/values/Plan!A:F:append") {
-                auth(); contentType(ContentType.Application.Json)
+                auth()
+                contentType(ContentType.Application.Json)
                 url {
                     parameters.append("valueInputOption", "RAW")
                     parameters.append("insertDataOption", "INSERT_ROWS")
@@ -198,18 +208,25 @@ internal class SheetsApi(
     suspend fun writeDone(updates: List<DoneUpload>) {
         val payload = buildJsonObject {
             put("valueInputOption", "RAW")
-            put("data", buildJsonArray {
-                updates.forEach { update ->
-                    add(buildJsonObject {
-                        put("range", "Plan!${update.column}${update.sheetRow}")
-                        put("values", buildJsonArray { add(buildJsonArray { add(update.done) }) })
-                    })
-                }
-            })
+            put(
+                "data",
+                buildJsonArray {
+                    updates.forEach { update ->
+                        add(
+                            buildJsonObject {
+                                put("range", "Plan!${update.column}${update.sheetRow}")
+                                put("values", buildJsonArray { add(buildJsonArray { add(update.done) }) })
+                            },
+                        )
+                    }
+                },
+            )
         }.toString()
         call(idempotent = true) {
             client.post("$base/values:batchUpdate") {
-                auth(); contentType(ContentType.Application.Json); setBody(payload)
+                auth()
+                contentType(ContentType.Application.Json)
+                setBody(payload)
             }
         }
     }

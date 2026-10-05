@@ -43,7 +43,6 @@ internal fun planRowsFor(snapshot: HabitSnapshot, window: SheetSyncWindow): List
 
 data class SheetPlanRow(val id: String, val date: LocalDate, val habit: String, val session: String, val done: Boolean, val skip: Boolean, val sheetRow: Int, val area: String? = null, val doneColumn: String = "E")
 
-
 internal fun rowKey(row: SheetPlanRow) = row.id
 internal fun rowKey(habit: String, date: LocalDate) = "${habit.trim().lowercase()}|$date"
 
@@ -63,7 +62,9 @@ internal fun parsePlanTable(values: JsonArray): List<SheetPlanRow> {
             dateCell.toDoubleOrNull()?.let { serial ->
                 LocalDate.fromEpochDays(LocalDate(1899, 12, 30).toEpochDays() + serial.toInt())
             } ?: LocalDate.parse(dateCell)
-        } catch (_: Exception) { throw SyncError.MalformedPlanTab(index + 2, "use YYYY-MM-DD in Date") }
+        } catch (_: Exception) {
+            throw SyncError.MalformedPlanTab(index + 2, "use YYYY-MM-DD in Date")
+        }
         val offset = if (eightColumns) 1 else 0
         val habit = cells.getOrElse(2 + offset) { "" }
         val session = cells.getOrElse(3 + offset) { "" }
@@ -88,5 +89,10 @@ private fun parseFlag(value: String, row: Int, column: String): Boolean = when (
 }
 
 internal fun SheetPlanRow.asValues(): JsonArray = buildJsonArray {
-    add(id); add(date.toString()); add(habit); add(session); add(done); add(skip)
+    add(id)
+    add(date.toString())
+    add(habit)
+    add(session)
+    add(done)
+    add(skip)
 }

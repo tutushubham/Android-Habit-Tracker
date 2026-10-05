@@ -161,12 +161,12 @@ class HabitCalculationsTest {
         val habits = listOf(
             daily("h1", 10, cat.id),
             daily("h2", 10, cat.id),
-            daily("h3", 10, null)
+            daily("h3", 10, null),
         )
         val date = LocalDate(2026, 8, 26)
         val completions = listOf(
             completion("h1", date),
-            completion("h3", date)
+            completion("h3", date),
         )
 
         val result = HabitCalculations.dailyShareSummary(date, habits, listOf(cat), completions)
@@ -174,11 +174,11 @@ class HabitCalculationsTest {
         assertEquals(2, result.completedCount)
         assertEquals(3, result.totalCount)
         assertEquals(2.0 / 3.0, result.percentage, 0.0001)
-        
+
         assertEquals(2, result.doneHabits.size)
         assertTrue(result.doneHabits.any { it.name == "h1" && it.categoryName == "Category" })
         assertTrue(result.doneHabits.any { it.name == "h3" && it.categoryName == null })
-        
+
         assertEquals(1, result.leftHabits.size)
         assertEquals("h2", result.leftHabits[0].name)
     }

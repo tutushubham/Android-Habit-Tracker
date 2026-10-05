@@ -76,7 +76,8 @@ class BackupViewModelTest {
     @Test
     fun importOfV4BackupResetsSyncStateAndAppliesTheLinkOnlyWhenTheCallerSaysSo() = runTest {
         val payload = BackupSerializer.serialize(
-            validSnapshot(), 4321,
+            validSnapshot(),
+            4321,
             com.habitsheet.domain.backup.BackupSettings(themeMode = 1, sheetUrl = "https://docs.google.com/spreadsheets/d/backup/edit"),
         )
         for (apply in listOf(false, true)) {

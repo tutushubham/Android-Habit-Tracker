@@ -182,9 +182,11 @@ internal fun daySection(habit: com.habitsheet.domain.calculation.DailyShareHabit
         category.contains("fitness") || category.contains("physical") ||
             habit.name.equals("Run", true) || habit.name.equals("Workout", true) ||
             habit.name.equals("Mobility", true) -> DaySection.Workout
+
         category.contains("study") || category.contains("mental") ||
             habit.name.equals("Study", true) || habit.name.equals("DSA", true) ||
             habit.name.equals("Android", true) || habit.name.equals("SDE", true) -> DaySection.Study
+
         else -> DaySection.Habit
     }
 }
@@ -231,7 +233,7 @@ private fun TodayHabitRow(name: String, completed: Boolean, onClick: () -> Unit,
                 onClick()
             }
             .padding(horizontal = 12.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
@@ -239,7 +241,7 @@ private fun TodayHabitRow(name: String, completed: Boolean, onClick: () -> Unit,
                 .clip(CircleShape)
                 .background(if (completed) MaterialTheme.colorScheme.primary else Color.Transparent)
                 .border(1.dp, if (completed) Color.Transparent else MaterialTheme.colorScheme.outline, CircleShape),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             if (completed) Text("✓", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }

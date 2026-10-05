@@ -65,7 +65,10 @@ fun MonthScreen(
             }
 
             if (showSharePreview && shareService != null) {
-                SharePreviewScreen(state.todaySummary, onShare = { shareService.shareDailySummary(state.todaySummary); showSharePreview = false }, onClose = { showSharePreview = false })
+                SharePreviewScreen(state.todaySummary, onShare = {
+                    shareService.shareDailySummary(state.todaySummary)
+                    showSharePreview = false
+                }, onClose = { showSharePreview = false })
             }
 
             if (state.onboardingVisible) {
@@ -88,7 +91,7 @@ fun MonthScreen(
                     onSelect = {
                         viewModel.selectMonth(it)
                         showMonthPicker = false
-                    }
+                    },
                 )
             }
 
@@ -99,7 +102,7 @@ fun MonthScreen(
                         TextButton(onClick = viewModel::clearError) {
                             Text("OK", color = MaterialTheme.colorScheme.primary)
                         }
-                    }
+                    },
                 ) {
                     Text(msg)
                 }
@@ -165,11 +168,11 @@ private fun PhoneMonthScreen(
                 }
                 DailyWeeksSection(state.dailyWeeks)
                 WeeklySection(
-                state = state,
-                onToggleWeekly = actions.toggleWeekly,
-                modifier = Modifier
-                    .padding(top = 24.dp)
-                    .tutorialTarget("weekly", onPosition)
+                    state = state,
+                    onToggleWeekly = actions.toggleWeekly,
+                    modifier = Modifier
+                        .padding(top = 24.dp)
+                        .tutorialTarget("weekly", onPosition),
                 )
                 OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
                 CategorySection(state.categorySummaries)
@@ -191,30 +194,30 @@ private fun TabletMonthScreen(
     onShowPicker: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-            MonthTopBar(state, actions, compact = false, onShare = onShare, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker)
-            Column(
-                Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 32.dp),
-            ) {
-                if (state.todayMode) {
-                    TodayModeContent(
-                        state = state,
-                        onPlan = onPlan,
-                        onBackToToday = actions.currentDay,
-                        onTogglePlanned = actions.togglePlanned,
-                        onToggleWeekly = actions.toggleWeekly,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                    )
-                } else {
-                    MonthSummaryStrip(state, Modifier.padding(horizontal = 24.dp, vertical = 16.dp), actions.currentMonth)
-                    MonthGridLegend(Modifier.padding(horizontal = 24.dp))
-                    if (state.habits.isEmpty()) {
+        MonthTopBar(state, actions, compact = false, onShare = onShare, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker)
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 32.dp),
+        ) {
+            if (state.todayMode) {
+                TodayModeContent(
+                    state = state,
+                    onPlan = onPlan,
+                    onBackToToday = actions.currentDay,
+                    onTogglePlanned = actions.togglePlanned,
+                    onToggleWeekly = actions.toggleWeekly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                )
+            } else {
+                MonthSummaryStrip(state, Modifier.padding(horizontal = 24.dp, vertical = 16.dp), actions.currentMonth)
+                MonthGridLegend(Modifier.padding(horizontal = 24.dp))
+                if (state.habits.isEmpty()) {
                     EmptyHabits(onManage)
-                    } else {
+                } else {
                     BoxWithConstraints(
                         Modifier
                             .fillMaxWidth()
@@ -230,18 +233,18 @@ private fun TabletMonthScreen(
                             cellWidth = layout.cellWidth(state.selectedMonth.dates().size),
                         )
                     }
-                    }
-                    DailyWeeksSection(state.dailyWeeks, Modifier.padding(horizontal = 24.dp))
-                    WeeklySection(
+                }
+                DailyWeeksSection(state.dailyWeeks, Modifier.padding(horizontal = 24.dp))
+                WeeklySection(
                     state = state,
                     onToggleWeekly = actions.toggleWeekly,
                     modifier = Modifier
                         .padding(horizontal = 24.dp)
-                        .tutorialTarget("weekly", onPosition)
-                    )
-                    OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
-                }
+                        .tutorialTarget("weekly", onPosition),
+                )
+                OverviewStrip(state, Modifier.tutorialTarget("summary", onPosition))
             }
+        }
     }
 }
 

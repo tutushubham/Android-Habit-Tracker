@@ -27,24 +27,31 @@ sealed class SyncError(message: String, cause: Throwable? = null) : Exception(me
     class RateLimited(val retryAfterSeconds: Long? = null) : SyncError("Rate limited")
 
     /** The `Plan` tab exists but is not a valid table. [row] is the 1-based sheet row, or null for the header. */
-    class MalformedPlanTab(val row: Int?, val reason: String) :
-        SyncError(if (row != null) "Plan row $row: $reason" else "Plan tab $reason")
+    class MalformedPlanTab(val row: Int?, val reason: String) : SyncError(if (row != null) "Plan row $row: $reason" else "Plan tab $reason")
 
     /** Anything else (HTTP [status] after retries, unexpected failures). */
-    class Unknown(val status: Int? = null, cause: Throwable? = null) :
-        SyncError(if (status != null) "Google Sheets error $status" else "Sync failed: ${cause?.message}", cause)
+    class Unknown(val status: Int? = null, cause: Throwable? = null) : SyncError(if (status != null) "Google Sheets error $status" else "Sync failed: ${cause?.message}", cause)
 }
 
 /** Short, actionable text for the person using the app. */
 fun SyncError.userMessage(): String = when (this) {
     is SyncError.Offline -> "Will sync when online."
+
     is SyncError.AuthExpired -> "Google sign-in needed. Tap Connect & sync to sign in again."
+
     is SyncError.AccessDenied -> "No access to this sheet. Use a Google account that can edit it."
+
     is SyncError.NotFound -> "Spreadsheet not found. Check the link and the Google account."
+
     is SyncError.RateLimited -> "Google is limiting requests. Sync will retry shortly."
+
     is SyncError.MalformedPlanTab ->
-        if (row != null) "Plan tab, row $row: $reason. Fix the sheet, then sync again."
-        else "Plan tab $reason. Fix the header row, then sync again."
+        if (row != null) {
+            "Plan tab, row $row: $reason. Fix the sheet, then sync again."
+        } else {
+            "Plan tab $reason. Fix the header row, then sync again."
+        }
+
     is SyncError.Unknown -> "Sync failed. Try again in a moment."
 }
 
@@ -63,12 +70,16 @@ private fun Throwable.isConnectivityFailure(): Boolean {
             current is HttpRequestTimeoutException ||
             current is ConnectTimeoutException ||
             current is SocketTimeoutException
-        ) return true
+        ) {
+            return true
+        }
         // Platform engines that do not surface IOException (Darwin) or wrap it by name.
         val name = current::class.simpleName.orEmpty()
         if (name.contains("UnknownHost") || name.contains("UnresolvedAddress") ||
             name.contains("ConnectException") || name.contains("DarwinHttpRequestException")
-        ) return true
+        ) {
+            return true
+        }
         current = current.cause
     }
     return false

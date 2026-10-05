@@ -27,8 +27,16 @@ fun DataBackupScreen(
     var successMessage by remember { mutableStateOf<String?>(null) }
     fun showResult(result: BackupResult) {
         when (result) {
-            is BackupResult.Success -> { successMessage = result.message; errorMessage = null }
-            is BackupResult.Failure -> { errorMessage = result.message; successMessage = null }
+            is BackupResult.Success -> {
+                successMessage = result.message
+                errorMessage = null
+            }
+
+            is BackupResult.Failure -> {
+                errorMessage = result.message
+                successMessage = null
+            }
+
             BackupResult.Cancelled -> Unit
         }
     }
@@ -37,7 +45,7 @@ fun DataBackupScreen(
         topBar = {
             SettingsTopBar(onBack, "Data & Backup", showBack = true, insetTop = showBack)
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -45,22 +53,22 @@ fun DataBackupScreen(
                 .padding(innerPadding)
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             SectionLabel("Data & Backup", Modifier.align(Alignment.Start).padding(bottom = 16.dp))
-            
+
             Text(
                 if (viewModel.usesClipboard) "Copy a JSON backup and save it in Files, Notes, or another safe place. Copy it again before importing." else "Keep your habit tracking data safe. You can export all your history to a JSON file and restore it later or on another device.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 32.dp)
+                modifier = Modifier.padding(bottom = 32.dp),
             )
 
             BackupActionCard(
                 title = "Export Backup",
                 description = if (viewModel.usesClipboard) "Copy all habits, plans, and history as JSON." else "Save your categories, habits, plans, and entire completion history to a local file.",
                 buttonText = if (viewModel.usesClipboard) "Copy JSON backup" else "Export JSON",
-                onClick = { viewModel.exportBackup(onResult = ::showResult) }
+                onClick = { viewModel.exportBackup(onResult = ::showResult) },
             )
 
             Spacer(Modifier.height(24.dp))
@@ -69,7 +77,7 @@ fun DataBackupScreen(
                 title = "Export CSV",
                 description = if (viewModel.usesClipboard) "Copy your habit history as CSV." else "Export your daily and weekly habit history for use in Excel or Google Sheets.",
                 buttonText = if (viewModel.usesClipboard) "Copy CSV" else "Export CSV",
-                onClick = { viewModel.exportCsv(::showResult) }
+                onClick = { viewModel.exportCsv(::showResult) },
             )
 
             Spacer(Modifier.height(24.dp))
@@ -79,7 +87,7 @@ fun DataBackupScreen(
                 description = if (viewModel.usesClipboard) "Restore JSON currently copied to the clipboard." else "Restore your data from a previously exported JSON backup file.",
                 buttonText = if (viewModel.usesClipboard) "Import copied JSON" else "Import JSON",
                 onClick = { showImportConfirmation = true },
-                isDestructive = true
+                isDestructive = true,
             )
 
             Spacer(Modifier.height(48.dp))
@@ -91,7 +99,7 @@ fun DataBackupScreen(
                 description = "Permanently remove all habits, history, and categories from this device and disconnect the sheet link. Your Google Sheet is untouched. This cannot be undone.",
                 buttonText = "Reset everything",
                 onClick = { showResetConfirmation = true },
-                isDestructive = true
+                isDestructive = true,
             )
 
             if (showResetConfirmation) {
@@ -112,7 +120,7 @@ fun DataBackupScreen(
                     msg,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 24.dp)
+                    modifier = Modifier.padding(top = 24.dp),
                 )
             }
 
@@ -121,7 +129,7 @@ fun DataBackupScreen(
                     msg,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 24.dp)
+                    modifier = Modifier.padding(top = 24.dp),
                 )
             }
         }
@@ -154,27 +162,30 @@ private fun BackupActionCard(
     description: String,
     buttonText: String,
     onClick: () -> Unit,
-    isDestructive: Boolean = false
+    isDestructive: Boolean = false,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-            .padding(20.dp)
+            .padding(20.dp),
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
             description,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         )
         Button(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
-            colors = if (isDestructive) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.error)
-                      else ButtonDefaults.buttonColors(),
-            shape = RoundedCornerShape(12.dp)
+            colors = if (isDestructive) {
+                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.error)
+            } else {
+                ButtonDefaults.buttonColors()
+            },
+            shape = RoundedCornerShape(12.dp),
         ) {
             Text(buttonText)
         }

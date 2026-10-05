@@ -62,8 +62,9 @@ class DestructiveCallSitesTest {
         uiFiles.forEach { file ->
             val text = file.readText()
             listOf("restoreFromSnapshot", "clearAllData()", "repository.delete").forEach { call ->
+                // Data & Backup is the one screen allowed to call clearAllData(), inside its confirmation dialog.
                 if (file.key() != "DataBackupScreen.kt" || call != "clearAllData()") {
-                    assertTrue(call !in text || file.key() == "DataBackupScreen.kt" && call == "clearAllData()", "${file.key()} calls $call")
+                    assertTrue(call !in text, "${file.key()} calls $call")
                 }
             }
         }

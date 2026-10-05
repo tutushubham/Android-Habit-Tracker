@@ -28,7 +28,8 @@ class SerializingTokenProvider(
     private val backgroundTimeoutMillis: Long = 30_000L,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val logger: Logger = NoOpLogger,
-) : SheetTokenProvider, AutoCloseable {
+) : SheetTokenProvider,
+    AutoCloseable {
     private class Request(val interactive: Boolean, val completion: (String?, String?) -> Unit)
 
     private companion object {

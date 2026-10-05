@@ -1,18 +1,18 @@
 package com.habitsheet.sync
 
 import com.habitsheet.data.DefaultIdGenerator
-import com.habitsheet.domain.repository.HabitStore
-import com.habitsheet.domain.repository.SettingsStore
-import com.habitsheet.presentation.DateProvider
-import com.habitsheet.presentation.SystemDateProvider
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.domain.model.SheetSyncChanges
+import com.habitsheet.domain.repository.HabitStore
+import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.i
 import com.habitsheet.platform.w
+import com.habitsheet.presentation.DateProvider
+import com.habitsheet.presentation.SystemDateProvider
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -129,9 +129,11 @@ class SheetSync(
         val upload = PlanReconciler.initialUpload(snapshot, window)
         api.putTable(upload.rows)
         if (createdTabId != null) {
-            try { api.formatPlanTab(createdTabId) }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) {
+            try {
+                api.formatPlanTab(createdTabId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 // Formatting is optional; the data is already safe.
                 logger.w(TAG, "Formatting the new Plan tab failed", e)
             }
@@ -155,7 +157,9 @@ class SheetSync(
                     continuation.resumeWithException(
                         if (error == SheetTokenProvider.NETWORK_ERROR) SyncError.Offline() else SyncError.AuthExpired(error),
                     )
-                } else continuation.resume(value)
+                } else {
+                    continuation.resume(value)
+                }
             }
         }
     }

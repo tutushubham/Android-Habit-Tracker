@@ -100,7 +100,8 @@ class MonotonicUpdatedAtTest {
             // The sync that uploaded the old value finishes now: it must NOT clear the newer pending toggle.
             repo.applySheetSync(
                 SheetSyncChanges(completionsToAcknowledge = listOf(CompletionAck(later.planId, day, uploaded)), managedHabitIds = setOf("run")),
-                emptySet(), 1,
+                emptySet(),
+                1,
             )
             assertEquals(1, repo.snapshot.value.pendingCompletions.size)
         }
@@ -129,7 +130,8 @@ class MonotonicUpdatedAtTest {
                     completionsToSave = listOf(DailyHabitCompletion("run", day, true, 10, "p1")),
                     managedHabitIds = setOf("run"),
                 ),
-                emptySet(), 1,
+                emptySet(),
+                1,
             )
             assertEquals("From sheet", repo.snapshot.value.dayPlans.single().detail)
             assertEquals(9_000, repo.snapshot.value.dayPlans.single().updatedAtEpochMillis)

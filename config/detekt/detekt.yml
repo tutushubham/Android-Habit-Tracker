@@ -1,0 +1,34 @@
+# detekt: the default rule set (buildUponDefaultConfig = true) plus these overrides for Compose code.
+# Findings that predate detekt are in composeApp/detekt-baseline.xml; anything new must pass.
+
+complexity:
+  LongParameterList:
+    # Composables take their state and callbacks as parameters by design.
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  CyclomaticComplexMethod:
+    ignoreAnnotated: ['Composable']
+
+naming:
+  FunctionNaming:
+    # Composables are PascalCase.
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    active: false
+
+style:
+  MagicNumber:
+    # Layout sizes and colours are literal in Compose; tests use literal fixtures.
+    ignoreAnnotated: ['Composable', 'Preview']
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    excludes: ['**/commonTest/**', '**/androidUnitTest/**']
+  UnusedPrivateMember:
+    # @Preview functions are used by the IDE only.
+    ignoreAnnotated: ['Preview']
+  MaxLineLength:
+    maxLineLength: 160
+    excludes: ['**/commonTest/**', '**/androidUnitTest/**']
+  ReturnCount:
+    max: 4

@@ -11,29 +11,29 @@ class BackupRestoreTest {
     @Test
     fun completeRoundTripPreservesAllData() = runTest {
         val repository = InMemoryHabitRepository()
-        
+
         // 1. Setup initial data
         val category = Category("cat1", "Fitness", 0, true, 1000)
         repository.saveCategory(category)
-        
+
         val dailyHabit = DailyHabit(
-            "d1", "Run", category.id, 10, 0, true, 
-            LocalDate(2026, 8, 1), null, 1000, 1000
+            "d1", "Run", category.id, 10, 0, true,
+            LocalDate(2026, 8, 1), null, 1000, 1000,
         )
         repository.saveDailyHabit(dailyHabit)
         repository.saveWeeklyPlan(WeeklyPlan(dailyHabit.id, 2, "Intervals · 5 km", 1000))
         repository.saveDayPlan(DayPlan(dailyHabit.id, LocalDate(2026, 8, 5), "Easy run · 6 km", false, 1000))
         repository.setDailyCompletion(DailyHabitCompletion(dailyHabit.id, LocalDate(2026, 8, 5), true, 1000))
-        
+
         val archivedHabit = DailyHabit(
             "d2", "Old", null, 5, 1, false,
-            LocalDate(2026, 7, 1), LocalDate(2026, 8, 1), 500, 1200
+            LocalDate(2026, 7, 1), LocalDate(2026, 8, 1), 500, 1200,
         )
         repository.saveDailyHabit(archivedHabit)
 
         val weeklyHabit = WeeklyHabit(
             "w1", "Gym", null, 0, true,
-            LocalDate(2026, 8, 1), null, 1000, 1000
+            LocalDate(2026, 8, 1), null, 1000, 1000,
         )
         repository.saveWeeklyHabit(weeklyHabit)
         repository.setWeeklyCompletion(WeeklyHabitCompletion(weeklyHabit.id, LocalDate(2026, 8, 3), true, 1000))
@@ -42,14 +42,14 @@ class BackupRestoreTest {
 
         // 2. Export
         val json = BackupSerializer.serialize(originalSnapshot, 2000)
-        
+
         // 3. Clear repository
         val emptyRepo = InMemoryHabitRepository()
-        
+
         // 4. Import
         val restoredSnapshot = BackupSerializer.deserialize(json)
         emptyRepo.restoreFromSnapshot(restoredSnapshot)
-        
+
         val finalSnapshot = emptyRepo.snapshot.value
 
         // 5. Compare
@@ -60,7 +60,7 @@ class BackupRestoreTest {
         assertEquals(originalSnapshot.weeklyCompletions, finalSnapshot.weeklyCompletions)
         assertEquals(originalSnapshot.weeklyPlans, finalSnapshot.weeklyPlans)
         assertEquals(originalSnapshot.dayPlans, finalSnapshot.dayPlans)
-        
+
         // Verify archived habit preserved
         val restoredArchived = finalSnapshot.dailyHabits.find { it.id == "d2" }
         assertNotNull(restoredArchived)

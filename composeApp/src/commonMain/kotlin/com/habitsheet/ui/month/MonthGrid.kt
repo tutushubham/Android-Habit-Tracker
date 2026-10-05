@@ -76,7 +76,7 @@ internal fun EmptyHabits(onManage: () -> Unit) {
             onClick = onManage,
             modifier = Modifier.padding(top = 24.dp),
             shape = RoundedCornerShape(12.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         ) {
             Text("Manage Habits")
         }
@@ -108,7 +108,7 @@ internal fun DailyHabitGrid(
             val currentScroll = scrollState.value
             val isVisible = currentScroll <= target && currentScroll >= target - (cellWidthPx * 3)
             if (state.scrollToTodayTrigger > 0 || (scrollState.value == 0 && !isVisible)) {
-                 scrollState.animateScrollTo(target.coerceAtMost(scrollState.maxValue))
+                scrollState.animateScrollTo(target.coerceAtMost(scrollState.maxValue))
             }
         }
     }
@@ -139,7 +139,7 @@ internal fun DailyHabitGrid(
                             drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
                         }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         summary.habit.name,
@@ -180,7 +180,7 @@ internal fun DailyHabitGrid(
                         .height(rowHeight)
                         .drawBehind {
                             drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
-                        }
+                        },
                 ) {
                     dates.forEach { date ->
                         val planned = state.monthPlan[date].orEmpty().filter { it.habit.id == summary.habit.id && !it.skipped }
@@ -192,6 +192,7 @@ internal fun DailyHabitGrid(
                                 width = cellWidth,
                                 height = rowHeight,
                             )
+
                             1 -> CompletionCell(
                                 completed = completedCount == 1,
                                 currentDay = date == state.today,
@@ -200,6 +201,7 @@ internal fun DailyHabitGrid(
                                 height = rowHeight,
                                 onClick = { onTogglePlanned(planned.single().id, date) },
                             )
+
                             else -> Box(
                                 Modifier.width(cellWidth).height(rowHeight)
                                     .clickable(onClickLabel = "Open ${planned.size} planned sessions") { onOpenDay(date) }
@@ -282,18 +284,21 @@ private fun DateHeader(date: LocalDate, current: Boolean, width: Dp, onClick: ()
             color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Box(
-            modifier = if (current) Modifier
-                .padding(top = 2.dp)
-                .size(24.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
-            else Modifier.padding(top = 2.dp),
-            contentAlignment = Alignment.Center
+            modifier = if (current) {
+                Modifier
+                    .padding(top = 2.dp)
+                    .size(24.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+            } else {
+                Modifier.padding(top = 2.dp)
+            },
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 date.day.toString(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
-                color = if (current) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (current) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -344,7 +349,7 @@ internal fun CompletionCell(
             }
             .clickable(
                 enabled = enabled,
-                onClickLabel = if (completed) "Mark incomplete" else "Mark complete"
+                onClickLabel = if (completed) "Mark incomplete" else "Mark complete",
             ) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
@@ -359,7 +364,7 @@ internal fun CompletionCell(
                 .border(
                     BorderStroke(
                         if (completed && enabled) 0.dp else 1.dp,
-                        if (completed && enabled) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
+                        if (completed && enabled) Color.Transparent else MaterialTheme.colorScheme.outlineVariant,
                     ),
                     RoundedCornerShape(6.dp),
                 ),

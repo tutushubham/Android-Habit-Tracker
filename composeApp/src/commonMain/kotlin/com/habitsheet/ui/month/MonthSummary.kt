@@ -43,7 +43,7 @@ internal fun MonthSummaryStrip(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp)
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         SummaryItem("Daily", state.monthlyProgress.percentage.percentLabel())
         SummaryItem("Weekly", state.weeklyProgress.percentage.percentLabel())
@@ -90,14 +90,14 @@ private fun MetricPanel(label: String, progress: ProgressSummary, modifier: Modi
             Text(
                 if (progress.hasGoal) progress.percentage.percentLabel() else "—",
                 style = MaterialTheme.typography.headlineMedium,
-                color = if (progress.hasGoal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (progress.hasGoal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 "${progress.completed}/${progress.goal}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp)
+                modifier = Modifier.padding(bottom = 4.dp),
             )
         }
         SubtleProgress(progress.percentage, Modifier.fillMaxWidth().padding(top = 12.dp))

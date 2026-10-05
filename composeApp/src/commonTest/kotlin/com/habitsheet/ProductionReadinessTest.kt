@@ -29,19 +29,24 @@ class ProductionReadinessTest {
         // 1. Initialize ViewModels
         val monthViewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         val manageViewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
-        val backupViewModel = BackupViewModel(repository, object : com.habitsheet.ui.BackupService {
-            override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
-            override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
-            override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {}
-        }, dateProvider, backgroundScope)
+        val backupViewModel = BackupViewModel(
+            repository,
+            object : com.habitsheet.ui.BackupService {
+                override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
+                override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
+                override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {}
+            },
+            dateProvider,
+            backgroundScope,
+        )
 
         // 2. Create categories and habits
         manageViewModel.addCategory("Fitness")
         val categoryId = repository.snapshot.first { it.categories.isNotEmpty() }.categories.first().id
-        
+
         manageViewModel.addDailyHabit("Run", categoryId, 15)
         manageViewModel.addWeeklyHabit("Gym", categoryId)
-        
+
         val snapshot = repository.snapshot.first { it.dailyHabits.isNotEmpty() && it.weeklyHabits.isNotEmpty() }
         val dailyHabitId = snapshot.dailyHabits.first().id
         val weeklyHabitId = snapshot.weeklyHabits.first().id
@@ -55,16 +60,16 @@ class ProductionReadinessTest {
         assertEquals(1, state.todaySummary.completedCount)
         assertEquals(1, state.todaySummary.totalCount)
         assertEquals(1.0, state.todaySummary.percentage)
-        
+
         // 5. Navigate months
         monthViewModel.previousMonth()
         val statePrev = monthViewModel.state.first { it.selectedMonth.month == 7 }
         assertEquals(MonthKey(2026, 7), statePrev.selectedMonth)
-        
+
         // 6. Archive and Restore
         manageViewModel.archiveDailyHabit(dailyHabitId)
         repository.snapshot.first { !it.dailyHabits.first().active }
-        
+
         manageViewModel.restoreDailyHabit(dailyHabitId)
         repository.snapshot.first { it.dailyHabits.first().active }
 
@@ -72,7 +77,7 @@ class ProductionReadinessTest {
         val finalSnapshot = repository.snapshot.value
         val json = BackupSerializer.serialize(finalSnapshot, 2000)
         val csv = CsvGenerator.generate(finalSnapshot)
-        
+
         assertTrue(json.contains("Run"))
         assertTrue(csv.contains("Run"))
         assertTrue(csv.contains("Fitness"))

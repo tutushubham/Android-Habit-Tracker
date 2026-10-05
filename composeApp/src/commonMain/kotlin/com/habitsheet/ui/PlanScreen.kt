@@ -1,7 +1,7 @@
 package com.habitsheet.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +21,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,9 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.MonthKey
-import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.presentation.DestructiveAction
 import com.habitsheet.presentation.MonthViewModel
 
@@ -58,15 +58,20 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
             Column(Modifier.fillMaxWidth()) {
                 Text(if (sheetUrl.isBlank()) "Set your sessions" else "Your sessions", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    if (sheetUrl.isBlank()) "Edit one day or set a weekly repeat. Skipped sessions do not count as due."
-                    else "Your Google Sheet controls this plan. Edit Session, Date or Skip there; sync when you return.",
+                    if (sheetUrl.isBlank()) {
+                        "Edit one day or set a weekly repeat. Skipped sessions do not count as due."
+                    } else {
+                        "Your Google Sheet controls this plan. Edit Session, Date or Skip there; sync when you return."
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                 )
                 if (sheetUrl.isNotBlank()) Button(onClick = { uriHandler.openUri(sheetUrl) }) { Text("Open Google Sheet") }
-                if (sheetUrl.isBlank()) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = !weeklyMode, onClick = { weeklyMode = false }, label = { Text("Day") })
-                    FilterChip(selected = weeklyMode, onClick = { weeklyMode = true }, label = { Text("Repeat weekly") })
+                if (sheetUrl.isBlank()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = !weeklyMode, onClick = { weeklyMode = false }, label = { Text("Day") })
+                        FilterChip(selected = weeklyMode, onClick = { weeklyMode = true }, label = { Text("Repeat weekly") })
+                    }
                 }
                 if (!weeklyMode || sheetUrl.isNotBlank()) {
                     Text(
@@ -78,8 +83,12 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
                         TextButton(onClick = viewModel::previousDay) { Text("‹ Previous day") }
                         TextButton(onClick = viewModel::nextDay) { Text("Next day ›") }
                     }
-                    val shownHabits = if (sheetUrl.isBlank()) activeHabits else activeHabits.filter { habit ->
-                        state.dayPlans.any { it.habitId == habit.id && it.date == selectedDate }
+                    val shownHabits = if (sheetUrl.isBlank()) {
+                        activeHabits
+                    } else {
+                        activeHabits.filter { habit ->
+                            state.dayPlans.any { it.habitId == habit.id && it.date == selectedDate }
+                        }
                     }
                     if (shownHabits.isEmpty()) Text(if (sheetUrl.isBlank()) "Create a daily habit first." else "No sessions planned for this day.")
                     shownHabits.forEach { habit ->
@@ -88,8 +97,11 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
                         val scheduledElsewhere = habit.datedOnly || state.weeklyPlans.any { it.habitId == habit.id }
                         if (entries.isNotEmpty()) {
                             entries.forEach { entry ->
-                                PlanRow(habit.name, entry.detail + if (entry.skipped) " · rest / skipped" else "",
-                                    if (sheetUrl.isBlank()) ({ editor = PlanEditor(habit, planId = entry.id) }) else null)
+                                PlanRow(
+                                    habit.name,
+                                    entry.detail + if (entry.skipped) " · rest / skipped" else "",
+                                    if (sheetUrl.isBlank()) ({ editor = PlanEditor(habit, planId = entry.id) }) else null,
+                                )
                             }
                         } else {
                             val label = when {
@@ -119,53 +131,72 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
         }
     }
 
-    if (sheetUrl.isBlank()) editor?.let { selected ->
-        val dayPlan = state.dayPlans.firstOrNull { it.id == selected.planId && it.date == selectedDate }
-        val recurring = state.weeklyPlans.firstOrNull { it.habitId == selected.habit.id && it.weekday == (selected.weekday ?: selectedDate.dayOfWeek.ordinal + 1) }
-        var detail by remember(selected, selectedDate) { mutableStateOf(if (selected.weekday == null) dayPlan?.detail ?: recurring?.detail.orEmpty() else recurring?.detail.orEmpty()) }
-        val isWeekly = selected.weekday != null
-        AlertDialog(
-            onDismissRequest = { editor = null },
-            title = { Text("${selected.habit.name} · ${if (isWeekly) weekdays[selected.weekday - 1] else selectedDate}") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = detail,
-                        onValueChange = { detail = it },
-                        label = { Text("Session or focus") },
-                        placeholder = { Text("Easy run · 5 km / Upper · 45 min / DSA graphs") },
-                        singleLine = false,
-                        minLines = 2,
-                    )
-                    if (!isWeekly && detail.isNotBlank()) {
-                        TextButton(onClick = {
-                            viewModel.saveDayPlan(selected.habit.id, selectedDate, detail, skipped = true,
-                                id = dayPlan?.id ?: selected.planId ?: DefaultIdGenerator().newId())
-                            editor = null
-                        }) { Text("Skip this session") }
-                    }
-                    val canRemove = if (isWeekly) recurring != null else dayPlan != null
-                    if (canRemove) TextButton(onClick = {
-                        pendingRemoval = if (isWeekly) {
-                            DestructiveAction.RemoveWeeklySession(selected.habit.name, weekdays[selected.weekday - 1], recurring?.detail.orEmpty()) to
-                                { viewModel.deleteWeeklyPlan(selected.habit.id, selected.weekday) }
-                        } else {
-                            DestructiveAction.RemoveDaySession(selected.habit.name, selectedDate, dayPlan?.detail.orEmpty()) to
-                                { dayPlan?.let { viewModel.deleteDayPlanById(it.id) }; Unit }
+    if (sheetUrl.isBlank()) {
+        editor?.let { selected ->
+            val dayPlan = state.dayPlans.firstOrNull { it.id == selected.planId && it.date == selectedDate }
+            val recurring = state.weeklyPlans.firstOrNull { it.habitId == selected.habit.id && it.weekday == (selected.weekday ?: selectedDate.dayOfWeek.ordinal + 1) }
+            var detail by remember(selected, selectedDate) { mutableStateOf(if (selected.weekday == null) dayPlan?.detail ?: recurring?.detail.orEmpty() else recurring?.detail.orEmpty()) }
+            val isWeekly = selected.weekday != null
+            AlertDialog(
+                onDismissRequest = { editor = null },
+                title = { Text("${selected.habit.name} · ${if (isWeekly) weekdays[selected.weekday - 1] else selectedDate}") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = detail,
+                            onValueChange = { detail = it },
+                            label = { Text("Session or focus") },
+                            placeholder = { Text("Easy run · 5 km / Upper · 45 min / DSA graphs") },
+                            singleLine = false,
+                            minLines = 2,
+                        )
+                        if (!isWeekly && detail.isNotBlank()) {
+                            TextButton(onClick = {
+                                viewModel.saveDayPlan(
+                                    selected.habit.id,
+                                    selectedDate,
+                                    detail,
+                                    skipped = true,
+                                    id = dayPlan?.id ?: selected.planId ?: DefaultIdGenerator().newId(),
+                                )
+                                editor = null
+                            }) { Text("Skip this session") }
                         }
-                    }) { Text(if (isWeekly) "Remove weekly session" else "Remove plan for this day") }
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (isWeekly) viewModel.saveWeeklyPlan(selected.habit.id, selected.weekday, detail)
-                    else viewModel.saveDayPlan(selected.habit.id, selectedDate, detail,
-                        id = dayPlan?.id ?: selected.planId ?: DefaultIdGenerator().newId())
-                    editor = null
-                }, enabled = detail.isNotBlank()) { Text("Save session") }
-            },
-            dismissButton = { TextButton(onClick = { editor = null }) { Text("Cancel") } },
-        )
+                        val canRemove = if (isWeekly) recurring != null else dayPlan != null
+                        if (canRemove) {
+                            TextButton(onClick = {
+                                pendingRemoval = if (isWeekly) {
+                                    DestructiveAction.RemoveWeeklySession(selected.habit.name, weekdays[selected.weekday - 1], recurring?.detail.orEmpty()) to
+                                        { viewModel.deleteWeeklyPlan(selected.habit.id, selected.weekday) }
+                                } else {
+                                    DestructiveAction.RemoveDaySession(selected.habit.name, selectedDate, dayPlan?.detail.orEmpty()) to
+                                        {
+                                            dayPlan?.let { viewModel.deleteDayPlanById(it.id) }
+                                            Unit
+                                        }
+                                }
+                            }) { Text(if (isWeekly) "Remove weekly session" else "Remove plan for this day") }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        if (isWeekly) {
+                            viewModel.saveWeeklyPlan(selected.habit.id, selected.weekday, detail)
+                        } else {
+                            viewModel.saveDayPlan(
+                                selected.habit.id,
+                                selectedDate,
+                                detail,
+                                id = dayPlan?.id ?: selected.planId ?: DefaultIdGenerator().newId(),
+                            )
+                        }
+                        editor = null
+                    }, enabled = detail.isNotBlank()) { Text("Save session") }
+                },
+                dismissButton = { TextButton(onClick = { editor = null }) { Text("Cancel") } },
+            )
+        }
     }
 
     pendingRemoval?.let { (action, perform) ->

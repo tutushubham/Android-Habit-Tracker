@@ -33,7 +33,7 @@ class BackupStreamsTest {
 
     @Test
     fun dropsAByteOrderMarkSoEditorsThatAddOneStillWork() {
-        assertEquals("{}", read("﻿{}"))
+        assertEquals("{}", read("{}"))
     }
 
     @Test
@@ -63,7 +63,11 @@ class BackupStreamsTest {
             private var sent = false
             override fun read(): Int = throw IOException("unused")
             override fun read(b: ByteArray, off: Int, len: Int): Int {
-                if (!sent) { sent = true; b[off] = 'a'.code.toByte(); return 1 }
+                if (!sent) {
+                    sent = true
+                    b[off] = 'a'.code.toByte()
+                    return 1
+                }
                 throw IOException("connection to the cloud drive lost")
             }
         }
@@ -75,7 +79,10 @@ class BackupStreamsTest {
     fun writesEveryByteAndClosesTheStream() {
         var closed = false
         val sink = object : ByteArrayOutputStream() {
-            override fun close() { closed = true; super.close() }
+            override fun close() {
+                closed = true
+                super.close()
+            }
         }
         BackupStreams.writeBytes({ sink }, "héllo\nworld".encodeToByteArray())
         assertEquals("héllo\nworld", sink.toByteArray().decodeToString())

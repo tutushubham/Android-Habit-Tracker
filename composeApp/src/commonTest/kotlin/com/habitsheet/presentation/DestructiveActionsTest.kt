@@ -1,7 +1,7 @@
 package com.habitsheet.presentation
 
-import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.data.DefaultIdGenerator
+import com.habitsheet.data.InMemoryHabitRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -23,9 +23,9 @@ class DestructiveActionsTest {
         val viewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
         viewModel.addCategory("Temporary")
         val category = repository.snapshot.first { it.categories.isNotEmpty() }.categories.single()
-        
+
         viewModel.deleteCategory(category.id)
-        
+
         val snapshot = repository.snapshot.first { it.categories.isEmpty() }
         assertTrue(snapshot.categories.isEmpty())
     }
@@ -35,9 +35,9 @@ class DestructiveActionsTest {
         val viewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
         viewModel.addDailyHabit("One-time habit", null, 1)
         val habit = repository.snapshot.first { it.dailyHabits.isNotEmpty() }.dailyHabits.single()
-        
+
         viewModel.deleteDailyHabit(habit.id)
-        
+
         val snapshot = repository.snapshot.first { it.dailyHabits.isEmpty() }
         assertTrue(snapshot.dailyHabits.isEmpty())
     }
@@ -47,12 +47,12 @@ class DestructiveActionsTest {
         val viewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
         viewModel.addDailyHabit("Habit with history", null, 10)
         val habit = repository.snapshot.first { it.dailyHabits.isNotEmpty() }.dailyHabits.single()
-        
+
         repository.setDailyCompletion(com.habitsheet.domain.model.DailyHabitCompletion(habit.id, LocalDate(2026, 8, 1), true, 0))
         assertTrue(repository.snapshot.value.dailyCompletions.isNotEmpty())
-        
+
         viewModel.deleteDailyHabit(habit.id)
-        
+
         val snapshot = repository.snapshot.first { it.dailyHabits.isEmpty() }
         assertTrue(snapshot.dailyCompletions.isEmpty())
     }

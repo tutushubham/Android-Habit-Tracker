@@ -59,8 +59,10 @@ class PlanResolverTest {
     fun datedOnlyHabitIsNotDueBeforeItsFirstSession() {
         val mobility = run.copy(id = "mobility", name = "Mobility", datedOnly = true)
         val november = LocalDate(2026, 11, 3)
-        val snapshot = HabitSnapshot(dailyHabits = listOf(mobility),
-            dayPlans = listOf(DayPlan("mobility", november, "Ankle mobility", false, 1)))
+        val snapshot = HabitSnapshot(
+            dailyHabits = listOf(mobility),
+            dayPlans = listOf(DayPlan("mobility", november, "Ankle mobility", false, 1)),
+        )
         assertTrue(snapshot.plannedHabitsOn(LocalDate(2026, 10, 1)).isEmpty())
         assertEquals(1, snapshot.plannedHabitsOn(november).size)
     }

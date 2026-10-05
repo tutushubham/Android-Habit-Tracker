@@ -55,32 +55,53 @@ class SnapshotParityTest {
     @Test
     fun everyWriteLeavesTheSnapshotEqualToAFreshRead() = runTest {
         withRepository { repo, parity ->
-            repo.saveCategory(Category("c1", "Health", 0, true, 1)); parity("saveCategory")
-            repo.saveDailyHabit(habit("b", 1)); parity("saveDailyHabit b")
-            repo.saveDailyHabit(habit("a", 0)); parity("saveDailyHabit a")
-            repo.saveWeeklyHabit(WeeklyHabit("w", "Weekly", "c1", 0, true, day.minusDays(30), null, 1, 1)); parity("saveWeeklyHabit")
+            repo.saveCategory(Category("c1", "Health", 0, true, 1))
+            parity("saveCategory")
+            repo.saveDailyHabit(habit("b", 1))
+            parity("saveDailyHabit b")
+            repo.saveDailyHabit(habit("a", 0))
+            parity("saveDailyHabit a")
+            repo.saveWeeklyHabit(WeeklyHabit("w", "Weekly", "c1", 0, true, day.minusDays(30), null, 1, 1))
+            parity("saveWeeklyHabit")
 
             // Check-offs out of date order, two sessions of one habit on one day, and toggling an existing one.
-            repo.setDailyCompletion(DailyHabitCompletion("b", day, true, 10)); parity("check b today")
-            repo.setDailyCompletion(DailyHabitCompletion("a", day.minusDays(3), true, 11)); parity("check a earlier")
-            repo.setDailyCompletion(DailyHabitCompletion("a", day, true, 12, planId = "a-pm")); parity("check a second session")
-            repo.setDailyCompletion(DailyHabitCompletion("a", day, true, 13, planId = "a-am")); parity("check a first session")
-            repo.setDailyCompletion(DailyHabitCompletion("b", day, false, 14)); parity("uncheck b today")
-            repo.setDailyCompletion(DailyHabitCompletion("b", day, true, 5)); parity("check b with an older clock")
-            repo.setDailyCompletion(DailyHabitCompletion("a", day.plusDays(2), false, 15)); parity("uncheck a later")
+            repo.setDailyCompletion(DailyHabitCompletion("b", day, true, 10))
+            parity("check b today")
+            repo.setDailyCompletion(DailyHabitCompletion("a", day.minusDays(3), true, 11))
+            parity("check a earlier")
+            repo.setDailyCompletion(DailyHabitCompletion("a", day, true, 12, planId = "a-pm"))
+            parity("check a second session")
+            repo.setDailyCompletion(DailyHabitCompletion("a", day, true, 13, planId = "a-am"))
+            parity("check a first session")
+            repo.setDailyCompletion(DailyHabitCompletion("b", day, false, 14))
+            parity("uncheck b today")
+            repo.setDailyCompletion(DailyHabitCompletion("b", day, true, 5))
+            parity("check b with an older clock")
+            repo.setDailyCompletion(DailyHabitCompletion("a", day.plusDays(2), false, 15))
+            parity("uncheck a later")
 
-            repo.setWeeklyCompletion(WeeklyHabitCompletion("w", day, true, 20)); parity("weekly check")
-            repo.setWeeklyCompletion(WeeklyHabitCompletion("w", day.minusDays(7), true, 21)); parity("weekly check earlier week")
-            repo.setWeeklyCompletion(WeeklyHabitCompletion("w", day, false, 19)); parity("weekly uncheck with an older clock")
+            repo.setWeeklyCompletion(WeeklyHabitCompletion("w", day, true, 20))
+            parity("weekly check")
+            repo.setWeeklyCompletion(WeeklyHabitCompletion("w", day.minusDays(7), true, 21))
+            parity("weekly check earlier week")
+            repo.setWeeklyCompletion(WeeklyHabitCompletion("w", day, false, 19))
+            parity("weekly uncheck with an older clock")
 
-            repo.saveDayPlan(DayPlan("a", day, "Easy", false, 30, "a-am")); parity("saveDayPlan")
-            repo.saveWeeklyPlan(WeeklyPlan("b", 2, "Tempo", 31)); parity("saveWeeklyPlan")
-            repo.archiveDailyHabit("b", day, 32); parity("archive")
-            repo.restoreDailyHabit("b", 33); parity("restore")
-            repo.updateDailyHabitOrders(mapOf("a" to 5, "b" to 4), 34); parity("reorder")
+            repo.saveDayPlan(DayPlan("a", day, "Easy", false, 30, "a-am"))
+            parity("saveDayPlan")
+            repo.saveWeeklyPlan(WeeklyPlan("b", 2, "Tempo", 31))
+            parity("saveWeeklyPlan")
+            repo.archiveDailyHabit("b", day, 32)
+            parity("archive")
+            repo.restoreDailyHabit("b", 33)
+            parity("restore")
+            repo.updateDailyHabitOrders(mapOf("a" to 5, "b" to 4), 34)
+            parity("reorder")
 
-            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/one/edit"); parity("link sheet")
-            repo.setDailyCompletion(DailyHabitCompletion("a", day.minusDays(1), true, 40)); parity("pending check")
+            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/one/edit")
+            parity("link sheet")
+            repo.setDailyCompletion(DailyHabitCompletion("a", day.minusDays(1), true, 40))
+            parity("pending check")
             val pending = repo.snapshot.value.dailyCompletions.first { it.date == day.minusDays(1) }
             repo.applySheetSync(
                 SheetSyncChanges(
@@ -88,16 +109,23 @@ class SnapshotParityTest {
                     completionsToAcknowledge = listOf(CompletionAck(pending.planId, pending.date, pending.updatedAtEpochMillis)),
                     managedHabitIds = setOf("a"),
                 ),
-                setOf("a-am"), 42,
+                setOf("a-am"),
+                42,
             )
             parity("applySheetSync")
-            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/two/edit"); parity("link another sheet")
+            repo.setSheetUrl("https://docs.google.com/spreadsheets/d/two/edit")
+            parity("link another sheet")
 
-            repo.deleteDayPlanById("a-am"); parity("deleteDayPlanById")
-            repo.deleteWeeklyPlan("b", 2); parity("deleteWeeklyPlan")
-            repo.deleteDailyHabit("b"); parity("deleteDailyHabit")
-            repo.deleteWeeklyHabit("w"); parity("deleteWeeklyHabit")
-            repo.deleteCategory("c1"); parity("deleteCategory")
+            repo.deleteDayPlanById("a-am")
+            parity("deleteDayPlanById")
+            repo.deleteWeeklyPlan("b", 2)
+            parity("deleteWeeklyPlan")
+            repo.deleteDailyHabit("b")
+            parity("deleteDailyHabit")
+            repo.deleteWeeklyHabit("w")
+            parity("deleteWeeklyHabit")
+            repo.deleteCategory("c1")
+            parity("deleteCategory")
 
             repo.restoreFromSnapshot(
                 HabitSnapshot(
@@ -107,8 +135,10 @@ class SnapshotParityTest {
                 BackupSettings(themeMode = 1),
             )
             parity("restoreFromSnapshot")
-            repo.setDailyCompletion(DailyHabitCompletion("r", day.minusDays(1), true, 51)); parity("check after restore")
-            repo.clearAllData(); parity("clearAllData")
+            repo.setDailyCompletion(DailyHabitCompletion("r", day.minusDays(1), true, 51))
+            parity("check after restore")
+            repo.clearAllData()
+            parity("clearAllData")
         }
     }
 
@@ -152,7 +182,9 @@ class SnapshotParityTest {
             assertEquals(
                 listOf(
                     "b|${day.minusDays(1)}",
-                    "a-0", "a-2", "a|$day", // same date and habit: by plan id
+                    "a-0",
+                    "a-2",
+                    "a|$day", // same date and habit: by plan id
                     "c|$day",
                     "b|${day.plusDays(1)}",
                 ),

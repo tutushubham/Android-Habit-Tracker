@@ -1,7 +1,6 @@
 package com.habitsheet.data
 
 import com.habitsheet.domain.backup.BackupSettings
-import com.habitsheet.domain.model.monotonicUpdatedAt
 import com.habitsheet.domain.backup.BackupValidator
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionKey
@@ -13,6 +12,7 @@ import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.domain.model.monotonicUpdatedAt
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.repository.readBackupSettings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,11 +55,15 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun archiveDailyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
-                if (habit.id == id) habit.copy(
-                    active = false,
-                    archivedOn = archivedOn,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                ) else habit
+                if (habit.id == id) {
+                    habit.copy(
+                        active = false,
+                        archivedOn = archivedOn,
+                        updatedAtEpochMillis = updatedAtEpochMillis,
+                    )
+                } else {
+                    habit
+                }
             },
         )
     }
@@ -67,11 +71,15 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun restoreDailyHabit(id: String, updatedAtEpochMillis: Long) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
-                if (habit.id == id) habit.copy(
-                    active = true,
-                    archivedOn = null,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                ) else habit
+                if (habit.id == id) {
+                    habit.copy(
+                        active = true,
+                        archivedOn = null,
+                        updatedAtEpochMillis = updatedAtEpochMillis,
+                    )
+                } else {
+                    habit
+                }
             },
         )
     }
@@ -88,10 +96,10 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun updateDailyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
-                orders[habit.id]?.let { order -> 
+                orders[habit.id]?.let { order ->
                     habit.copy(displayOrder = order, updatedAtEpochMillis = updatedAtEpochMillis)
                 } ?: habit
-            }
+            },
         )
     }
 
@@ -104,11 +112,15 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun archiveWeeklyHabit(id: String, archivedOn: LocalDate, updatedAtEpochMillis: Long) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
-                if (habit.id == id) habit.copy(
-                    active = false,
-                    archivedOn = archivedOn,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                ) else habit
+                if (habit.id == id) {
+                    habit.copy(
+                        active = false,
+                        archivedOn = archivedOn,
+                        updatedAtEpochMillis = updatedAtEpochMillis,
+                    )
+                } else {
+                    habit
+                }
             },
         )
     }
@@ -116,11 +128,15 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun restoreWeeklyHabit(id: String, updatedAtEpochMillis: Long) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
-                if (habit.id == id) habit.copy(
-                    active = true,
-                    archivedOn = null,
-                    updatedAtEpochMillis = updatedAtEpochMillis,
-                ) else habit
+                if (habit.id == id) {
+                    habit.copy(
+                        active = true,
+                        archivedOn = null,
+                        updatedAtEpochMillis = updatedAtEpochMillis,
+                    )
+                } else {
+                    habit
+                }
             },
         )
     }
@@ -135,10 +151,10 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun updateWeeklyHabitOrders(orders: Map<String, Int>, updatedAtEpochMillis: Long) {
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
-                orders[habit.id]?.let { order -> 
+                orders[habit.id]?.let { order ->
                     habit.copy(displayOrder = order, updatedAtEpochMillis = updatedAtEpochMillis)
                 } ?: habit
-            }
+            },
         )
     }
 
@@ -216,9 +232,13 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         sheetUrl = url
     }
     override suspend fun getSheetLastSync(): Long = sheetLastSync
-    override suspend fun setSheetLastSync(epochMillis: Long) { sheetLastSync = epochMillis }
+    override suspend fun setSheetLastSync(epochMillis: Long) {
+        sheetLastSync = epochMillis
+    }
     override suspend fun getSheetSyncedKeys(): Set<String> = sheetSyncedKeys
-    override suspend fun setSheetSyncedKeys(keys: Set<String>) { sheetSyncedKeys = keys }
+    override suspend fun setSheetSyncedKeys(keys: Set<String>) {
+        sheetSyncedKeys = keys
+    }
     override suspend fun setSheetManagedHabitIds(ids: Set<String>) {
         mutableSnapshot.value = mutableSnapshot.value.copy(sheetManagedHabitIds = ids)
     }
@@ -284,7 +304,9 @@ private fun <T, K> List<T>.upsert(value: T, key: (T) -> K): List<T> {
         if (key(current) == target) {
             replaced = true
             value
-        } else current
+        } else {
+            current
+        }
     }
     return if (replaced) updated else updated + value
 }

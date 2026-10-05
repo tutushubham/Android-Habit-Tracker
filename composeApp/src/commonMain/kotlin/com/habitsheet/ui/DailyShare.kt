@@ -26,26 +26,26 @@ interface ShareService {
 @Composable
 fun ShareImageContent(
     summary: DailyShareSummary,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .width(360.dp) // Fixed width for consistent image generation
             .background(Color(0xFF020617)) // Match dark aesthetic
-            .padding(32.dp)
+            .padding(32.dp),
     ) {
         Text(
             "Habit Tracker",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
-            letterSpacing = 2.sp
+            letterSpacing = 2.sp,
         )
-        
+
         Text(
             text = formatFullDate(summary.date),
             style = MaterialTheme.typography.headlineMedium,
             color = Color.White,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = 4.dp),
         )
 
         Spacer(Modifier.height(40.dp))
@@ -53,37 +53,37 @@ fun ShareImageContent(
         Text(
             "TODAY",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        
+
         Row(
             modifier = Modifier.padding(top = 8.dp),
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.Bottom,
         ) {
             Text(
                 "${summary.completedCount} / ${summary.totalCount}",
                 style = MaterialTheme.typography.headlineLarge,
                 color = Color.White,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
             Text(
                 " COMPLETED",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
+                modifier = Modifier.padding(start = 8.dp, bottom = 6.dp),
             )
         }
-        
+
         SubtleProgress(
             progress = summary.percentage,
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         )
-        
+
         Text(
             text = summary.percentage.percentLabel() + " complete",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 8.dp)
+            modifier = Modifier.padding(top = 8.dp),
         )
 
         Spacer(Modifier.height(48.dp))
@@ -94,15 +94,15 @@ fun ShareImageContent(
                 "Nothing completed yet",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp)
+                modifier = Modifier.padding(top = 12.dp),
             )
         } else if (summary.doneHabits.size == summary.totalCount) {
-             Text(
+            Text(
                 "All habits completed ✓",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 12.dp),
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             )
         } else {
             summary.doneHabits.forEach { habit ->
@@ -117,7 +117,7 @@ fun ShareImageContent(
                 ShareHabitRow(habit.name, habit.categoryName, false)
             }
         }
-        
+
         Spacer(Modifier.height(48.dp))
     }
 }
@@ -128,7 +128,7 @@ private fun SectionTitle(title: String) {
         title,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        letterSpacing = 1.sp
+        letterSpacing = 1.sp,
     )
 }
 
@@ -141,21 +141,21 @@ private fun ShareHabitRow(name: String, category: String?, completed: Boolean) {
                 color = if (completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(end = 12.dp)
+                modifier = Modifier.padding(end = 12.dp),
             )
             Column {
                 Text(
                     name,
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
                 )
                 if (category != null) {
                     Text(
                         category,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             }
@@ -167,68 +167,68 @@ private fun ShareHabitRow(name: String, category: String?, completed: Boolean) {
 fun SharePreviewScreen(
     summary: DailyShareSummary,
     onShare: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color = MaterialTheme.colorScheme.background,
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     "Share Today",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
                 )
                 IconButton(onClick = onClose) {
                     Text(
-                        "✕", 
+                        "✕",
                         fontSize = 20.sp,
-                        modifier = Modifier.semantics { contentDescription = "Close preview" }
+                        modifier = Modifier.semantics { contentDescription = "Close preview" },
                     )
                 }
             }
-            
+
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(24.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()),
                 ) {
                     ShareImageContent(summary)
                 }
             }
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Text("Cancel")
                 }
                 Button(
                     onClick = onShare,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Text("Share")
                 }

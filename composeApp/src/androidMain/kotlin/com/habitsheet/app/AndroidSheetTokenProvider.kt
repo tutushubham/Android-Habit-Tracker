@@ -59,9 +59,12 @@ internal class AndroidSheetTokenProvider(
 
     private fun failureText(error: Exception): String = when {
         error is IOException -> SheetTokenProvider.NETWORK_ERROR
+
         error is ApiException && error.statusCode == CommonStatusCodes.NETWORK_ERROR -> SheetTokenProvider.NETWORK_ERROR
+
         // Access was revoked in the Google Account, or the account no longer exists.
         error is ApiException && error.statusCode == CommonStatusCodes.SIGN_IN_REQUIRED -> "Google access was revoked. Sign in again."
+
         else -> "Google authorization unavailable on this device."
     }
 
@@ -73,8 +76,10 @@ internal class AndroidSheetTokenProvider(
             .addOnSuccessListener { result ->
                 when {
                     !result.hasResolution() -> completion(result.accessToken, null)
+
                     // Consent or sign-in is needed but nobody is looking at the screen (revoked / first run).
                     !interactive -> completion(null, null)
+
                     else -> launchConsent(result.pendingIntent, completion)
                 }
             }
@@ -90,7 +95,12 @@ internal class AndroidSheetTokenProvider(
             return
         }
         val accepted = synchronized(lock) {
-            if (pendingCompletion != null) false else { pendingCompletion = completion; true }
+            if (pendingCompletion != null) {
+                false
+            } else {
+                pendingCompletion = completion
+                true
+            }
         }
         if (!accepted) {
             completion(null, "Another Google sign-in is already open.")

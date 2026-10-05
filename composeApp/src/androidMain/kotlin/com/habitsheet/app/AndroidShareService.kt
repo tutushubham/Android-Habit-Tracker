@@ -27,7 +27,7 @@ class AndroidShareService(private val activity: Activity) : ShareService {
         val composeView = ComposeView(activity).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                ViewGroup.LayoutParams.WRAP_CONTENT,
             )
             visibility = View.GONE
             setContent {

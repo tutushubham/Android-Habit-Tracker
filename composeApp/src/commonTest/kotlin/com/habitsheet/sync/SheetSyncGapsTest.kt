@@ -24,25 +24,38 @@ class SheetSyncGapsTest {
     private val link = "https://docs.google.com/spreadsheets/d/test-sheet/edit"
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer) = SheetSync(
-        repo, repo,
+        repo,
+        repo,
         object : SheetTokenProvider {
             override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("t", null)
         },
-        server.client(), dates, RetryPolicy(sleep = { }),
+        server.client(),
+        dates,
+        RetryPolicy(sleep = { }),
     )
 
     @Test
     fun simultaneousSyncCallsRunOneAfterTheOtherNeverInterleaved() = runTest {
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),
-            dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1")),
-        )).also { it.setSheetUrl(link) }
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),
+                dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1")),
+            ),
+        ).also { it.setSheetUrl(link) }
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-15", "Run", "Easy", false, false))
         val sync = sync(repo, server)
 
         listOf(async { sync.sync() }, async { sync.sync() }, async { sync.sync() }).awaitAll()
 
-        val shape = server.calls.map { if (it.isMetadata) "meta" else if (it.isRead) "read" else it.toString() }
+        val shape = server.calls.map {
+            if (it.isMetadata) {
+                "meta"
+            } else if (it.isRead) {
+                "read"
+            } else {
+                it.toString()
+            }
+        }
         assertEquals(List(3) { listOf("meta", "read") }.flatten(), shape)
     }
 
@@ -50,7 +63,7 @@ class SheetSyncGapsTest {
     fun rollingWindowStartsThirtyOneDaysBeforeTheMonthAndEndsOneEightyDaysAhead() {
         val window = SheetSyncWindow.rolling(day)
         assertEquals(LocalDate(2026, 8, 31), window.start) // Oct 1 minus 31 days
-        assertEquals(LocalDate(2027, 4, 13), window.end)  // Oct 15 plus 180 days
+        assertEquals(LocalDate(2027, 4, 13), window.end) // Oct 15 plus 180 days
 
         val snapshot = HabitSnapshot(dailyHabits = listOf(DailyHabit("water", "Water", null, 30, 0, true, LocalDate(2026, 1, 1), null, 1, 1)))
         val rows = planRowsFor(snapshot, window)
@@ -62,10 +75,12 @@ class SheetSyncGapsTest {
     @Test
     fun datedSessionsOutsideTheWindowAreNotUploaded() = runTest {
         val outside = LocalDate(2028, 1, 1)
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),
-            dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "in"), DayPlan("run", outside, "Far", false, 1, "out")),
-        )).also { it.setSheetUrl(link) }
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),
+                dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "in"), DayPlan("run", outside, "Far", false, 1, "out")),
+            ),
+        ).also { it.setSheetUrl(link) }
         val server = FakeSheetsServer()
         sync(repo, server).sync()
         assertEquals(listOf("in"), server.rowsAsText().drop(1).map { it[0] })
@@ -74,13 +89,18 @@ class SheetSyncGapsTest {
     @Test
     fun aFailureOnTheThirdCallOfAnExistingTabSyncLeavesLocalStateAndLastSyncUntouched() = runTest {
         // calls: 1 metadata, 2 read, 3 append of the local-only habit -> 400 (not retried)
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(
-                DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true),
-                DailyHabit("journal", "Journal", null, 0, 1, true, day, null, 1, 1, datedOnly = true),
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(
+                    DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true),
+                    DailyHabit("journal", "Journal", null, 0, 1, true, day, null, 1, 1, datedOnly = true),
+                ),
+                dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1"), DayPlan("journal", day, "Page", false, 1, "j-1")),
             ),
-            dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1"), DayPlan("journal", day, "Page", false, 1, "j-1")),
-        )).also { it.setSheetUrl(link); it.setSheetLastSync(100) }
+        ).also {
+            it.setSheetUrl(link)
+            it.setSheetLastSync(100)
+        }
         val before = repo.snapshot.value
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-15", "Run", "Changed", false, false))
         server.failCallNumber(3, FaultAction.Status(400))

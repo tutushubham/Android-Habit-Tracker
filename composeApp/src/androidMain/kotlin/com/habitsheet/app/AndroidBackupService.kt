@@ -86,6 +86,7 @@ class AndroidBackupService(
         val callback = exportCallback.also { exportCallback = null }
         val result = when {
             uri == null -> BackupResult.Cancelled
+
             else -> try {
                 val bytes = file.takeIf { it.exists() }?.readBytes()
                     ?: throw BackupIoException("The backup to save was lost. Please export again.")

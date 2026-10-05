@@ -153,11 +153,14 @@ internal object PlanReconciler {
             val owner = planOwner[row.id]?.let(habitsById::get)
             val habit = when {
                 candidates.size == 1 -> candidates.single()
+
                 candidates.size > 1 && owner != null && candidates.any { it.id == owner.id } -> owner
+
                 candidates.size > 1 -> {
                     skippedByName[row.habit] = (skippedByName[row.habit] ?: 0) + 1
                     continue
                 }
+
                 else -> DailyHabit(
                     id = newId(),
                     name = row.habit,
@@ -186,8 +189,11 @@ internal object PlanReconciler {
             val pending = localDone != null && CompletionKey(row.id, row.date) in snapshot.pendingCompletions
             if (pending) {
                 val ack = CompletionAck(row.id, row.date, localDone.updatedAtEpochMillis)
-                if (localDone.completed != row.done) uploads += DoneUpload(row.sheetRow, row.doneColumn, localDone.completed, ack)
-                else acks += ack
+                if (localDone.completed != row.done) {
+                    uploads += DoneUpload(row.sheetRow, row.doneColumn, localDone.completed, ack)
+                } else {
+                    acks += ack
+                }
             } else if (localDone?.completed != row.done) {
                 completions += DailyHabitCompletion(habit.id, row.date, row.done, nowMillis, row.id)
             }

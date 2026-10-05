@@ -56,6 +56,7 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
         super.onReceive(context, intent)
         when (intent.action) {
             ACTION_TOGGLE_DAILY, ACTION_TOGGLE_WEEKLY -> handleToggle(context, intent)
+
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,

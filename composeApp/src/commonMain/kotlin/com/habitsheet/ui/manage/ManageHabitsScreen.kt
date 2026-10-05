@@ -78,22 +78,22 @@ fun ManageHabitsScreen(
             val wide = tabletLayout
             if (wide) {
                 Column(Modifier.fillMaxSize()) {
-                        ManageTopBar(wide = true)
-                        Column(
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            lists(24.dp)
-                        }
+                    ManageTopBar(wide = true)
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        lists(24.dp)
+                    }
                 }
             } else {
                 Scaffold(
                     topBar = { ManageTopBar(wide = false) },
                     bottomBar = { BottomNavigation(selectedTracker = false, onTracker = onTracker, onManage = {}) },
-                    contentWindowInsets = WindowInsets(0, 0, 0, 0)
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 ) { innerPadding ->
                     Column(
                         Modifier
@@ -116,19 +116,37 @@ fun ManageHabitsScreen(
             categories = state.categories.filter { it.active },
             onDismiss = { editor = null },
             onSaveDaily = { existing, name, categoryId, goal, kind, datedOnly ->
-                if (existing == null) viewModel.addDailyHabit(name, categoryId, goal, kind, datedOnly)
-                else viewModel.updateDailyHabit(existing.copy(name = name, categoryId = categoryId, monthlyGoal = goal, kind = kind, datedOnly = datedOnly))
+                if (existing == null) {
+                    viewModel.addDailyHabit(name, categoryId, goal, kind, datedOnly)
+                } else {
+                    viewModel.updateDailyHabit(existing.copy(name = name, categoryId = categoryId, monthlyGoal = goal, kind = kind, datedOnly = datedOnly))
+                }
                 editor = null
             },
             onSaveWeekly = { existing, name, categoryId ->
-                if (existing == null) viewModel.addWeeklyHabit(name, categoryId)
-                else viewModel.updateWeeklyHabit(existing.copy(name = name, categoryId = categoryId))
+                if (existing == null) {
+                    viewModel.addWeeklyHabit(name, categoryId)
+                } else {
+                    viewModel.updateWeeklyHabit(existing.copy(name = name, categoryId = categoryId))
+                }
                 editor = null
             },
-            onArchiveDaily = { viewModel.archiveDailyHabit(it.id); editor = null },
-            onArchiveWeekly = { viewModel.archiveWeeklyHabit(it.id); editor = null },
-            onRestoreDaily = { viewModel.restoreDailyHabit(it.id); editor = null },
-            onRestoreWeekly = { viewModel.restoreWeeklyHabit(it.id); editor = null },
+            onArchiveDaily = {
+                viewModel.archiveDailyHabit(it.id)
+                editor = null
+            },
+            onArchiveWeekly = {
+                viewModel.archiveWeeklyHabit(it.id)
+                editor = null
+            },
+            onRestoreDaily = {
+                viewModel.restoreDailyHabit(it.id)
+                editor = null
+            },
+            onRestoreWeekly = {
+                viewModel.restoreWeeklyHabit(it.id)
+                editor = null
+            },
             onDeleteDaily = { itemToDelete = it },
             onDeleteWeekly = { itemToDelete = it },
         )
@@ -161,10 +179,12 @@ fun ManageHabitsScreen(
                             viewModel.deleteDailyHabit(item.id)
                             editor = null
                         }
+
                         is WeeklyHabit -> {
                             viewModel.deleteWeeklyHabit(item.id)
                             editor = null
                         }
+
                         is Category -> viewModel.deleteCategory(item.id)
                     }
                     itemToDelete = null
@@ -181,7 +201,7 @@ fun ManageHabitsScreen(
                 TextButton(onClick = viewModel::clearError) {
                     Text("OK", color = MaterialTheme.colorScheme.primary)
                 }
-            }
+            },
         ) {
             Text(msg)
         }

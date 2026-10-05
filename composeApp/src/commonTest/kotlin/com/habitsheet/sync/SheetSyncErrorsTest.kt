@@ -23,21 +23,30 @@ class SheetSyncErrorsTest {
         override fun nowEpochMillis() = 0L
     }
     private val sleeps = mutableListOf<Long>()
+
     /** random = 1.0 makes backoff deterministic: 500, 1000, 2000 ... */
     private val retry get() = RetryPolicy(random = { 1.0 }, sleep = { sleeps += it })
     private val okRow = listOf("run-1", "2026-10-01", "Run", "Easy", false, false)
 
-    private suspend fun repo() = InMemoryHabitRepository(HabitSnapshot(
-        dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),
-        dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1")),
-    )).also { it.setSheetUrl("https://docs.google.com/spreadsheets/d/test-sheet/edit"); it.setSheetLastSync(100) }
+    private suspend fun repo() = InMemoryHabitRepository(
+        HabitSnapshot(
+            dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),
+            dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1")),
+        ),
+    ).also {
+        it.setSheetUrl("https://docs.google.com/spreadsheets/d/test-sheet/edit")
+        it.setSheetLastSync(100)
+    }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer, token: String? = "t") = SheetSync(
-        repo, repo,
+        repo,
+        repo,
         object : SheetTokenProvider {
             override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(token, null)
         },
-        server.client(), dates, retry,
+        server.client(),
+        dates,
+        retry,
     )
 
     private suspend fun failWith(action: FaultAction, times: Int = 100, setup: FakeSheetsServer.() -> Unit = {}, matches: (RecordedCall) -> Boolean = { true }): Pair<SheetSyncState, FakeSheetsServer> {
@@ -167,11 +176,14 @@ class SheetSyncErrorsTest {
         val server = FakeSheetsServer().withPlanRows(okRow)
         val repository = repo()
         val sync = SheetSync(
-            repository, repository,
+            repository,
+            repository,
             object : SheetTokenProvider {
                 override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(null, "Sign-in cancelled")
             },
-            server.client(), dates, retry,
+            server.client(),
+            dates,
+            retry,
         )
         sync.sync()
         val error = assertIs<SyncError.AuthExpired>(sync.state.value.error)
@@ -185,11 +197,14 @@ class SheetSyncErrorsTest {
             val server = FakeSheetsServer().withPlanRows(okRow)
             val repository = repo()
             val sync = SheetSync(
-                repository, repository,
+                repository,
+                repository,
                 object : SheetTokenProvider {
                     override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion(null, text)
                 },
-                server.client(), dates, retry,
+                server.client(),
+                dates,
+                retry,
             )
             sync.sync()
             if (expectOffline) assertIs<SyncError.Offline>(sync.state.value.error) else assertIs<SyncError.AuthExpired>(sync.state.value.error)

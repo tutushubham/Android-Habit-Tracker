@@ -125,15 +125,20 @@ class DestructiveActionsConfirmationTest {
     private class FakeBackupService(private val payload: String? = null) : BackupService {
         override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) = Unit
         override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
-        override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) { payload?.let(onImport) }
+        override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {
+            payload?.let(onImport)
+        }
     }
 
     @Test
     fun resetAndSuccessfulImportNotifyButFailedImportDoesNot() = runTest {
         var notified = 0
         fun viewModel(repo: InMemoryHabitRepository, payload: String?) = BackupViewModel(
-            repo, FakeBackupService(payload), scope = backgroundScope,
-            callbackDispatcher = UnconfinedTestDispatcher(testScheduler), onDataReplaced = { notified++ },
+            repo,
+            FakeBackupService(payload),
+            scope = backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+            onDataReplaced = { notified++ },
         )
 
         viewModel(InMemoryHabitRepository(snapshot), null).clearAllData()

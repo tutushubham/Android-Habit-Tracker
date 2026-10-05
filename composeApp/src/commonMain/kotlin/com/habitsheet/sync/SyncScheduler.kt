@@ -60,7 +60,9 @@ class SyncScheduler(
                 }
                 retryDelay = if (shouldRetry()) {
                     ((retryDelay ?: (retryDelayMillis / 2)) * 2).coerceAtMost(maxRetryDelayMillis)
-                } else null
+                } else {
+                    null
+                }
             }
         }
     }

@@ -35,28 +35,37 @@ class SheetSyncTest {
 
     @Test
     fun uploadsOfflineCheckWithoutOverwritingItFromSheet() = runTest {
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(run),
-            dayPlans = listOf(DayPlan("run", day, "Easy 6 km", false, 1, "run-1")),
-            dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1")),
-        ))
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(run),
+                dayPlans = listOf(DayPlan("run", day, "Easy 6 km", false, 1, "run-1")),
+                dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 150, "run-1")),
+            ),
+        )
         repo.setSheetUrl(url)
         repo.setSheetLastSync(100)
         repo.setDailyCompletion(DailyHabitCompletion("run", day, true, 150, "run-1")) // marks it pending
         var writes = 0
-        val client = HttpClient(MockEngine { request ->
-            when {
-                request.url.toString().contains("values:batchUpdate") -> {
-                    writes++
-                    respond("{}", headers = jsonHeaders)
-                }
-                request.url.toString().contains("/values/") -> respond("""{"values":[
+        val client = HttpClient(
+            MockEngine { request ->
+                when {
+                    request.url.toString().contains("values:batchUpdate") -> {
+                        writes++
+                        respond("{}", headers = jsonHeaders)
+                    }
+
+                    request.url.toString().contains("/values/") -> respond(
+                        """{"values":[
                     ["ID","Date","Habit","Session","Done","Skip"],
                     ["run-1","2026-10-01","Run","Easy 6 km",false,false]
-                ]}""", headers = jsonHeaders)
-                else -> respond("""{"sheets":[{"properties":{"title":"Plan"}}]}""", headers = jsonHeaders)
-            }
-        })
+                ]}""",
+                        headers = jsonHeaders,
+                    )
+
+                    else -> respond("""{"sheets":[{"properties":{"title":"Plan"}}]}""", headers = jsonHeaders)
+                }
+            },
+        )
         SheetSync(repo, repo, provider, client, dates).sync(interactive = true)
         assertEquals(1, writes)
         assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
@@ -66,33 +75,39 @@ class SheetSyncTest {
     @Test
     fun missingTabSeedsDatedAndDailyRows() = runTest {
         val protein = DailyHabit("protein", "Protein", null, 30, 1, true, day, null, 1, 1)
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(run, protein),
-            dayPlans = listOf(DayPlan("run", day, "Easy 6 km", false, 1)),
-            weeklyPlans = listOf(WeeklyPlan("run", 2, "Plan in OND sheet", 1)),
-        ))
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(run, protein),
+                dayPlans = listOf(DayPlan("run", day, "Easy 6 km", false, 1)),
+                weeklyPlans = listOf(WeeklyPlan("run", 2, "Plan in OND sheet", 1)),
+            ),
+        )
         repo.setSheetUrl(url)
         var created = false
         var formatted = false
         var uploaded = false
-        val client = HttpClient(MockEngine { request ->
-            when {
-                request.url.toString().contains(":batchUpdate") -> {
-                    if (created) {
-                        formatted = true
-                        respond("{}", headers = jsonHeaders)
-                    } else {
-                        created = true
-                        respond("""{"replies":[{"addSheet":{"properties":{"sheetId":10}}}]}""", headers = jsonHeaders)
+        val client = HttpClient(
+            MockEngine { request ->
+                when {
+                    request.url.toString().contains(":batchUpdate") -> {
+                        if (created) {
+                            formatted = true
+                            respond("{}", headers = jsonHeaders)
+                        } else {
+                            created = true
+                            respond("""{"replies":[{"addSheet":{"properties":{"sheetId":10}}}]}""", headers = jsonHeaders)
+                        }
                     }
+
+                    request.url.toString().contains("/values/") -> {
+                        uploaded = true
+                        respond("{}", headers = jsonHeaders)
+                    }
+
+                    else -> respond("""{"sheets":[]}""", headers = jsonHeaders)
                 }
-                request.url.toString().contains("/values/") -> {
-                    uploaded = true
-                    respond("{}", headers = jsonHeaders)
-                }
-                else -> respond("""{"sheets":[]}""", headers = jsonHeaders)
-            }
-        })
+            },
+        )
         val sync = SheetSync(repo, repo, provider, client, dates)
         sync.sync(interactive = true)
         assertTrue(created)

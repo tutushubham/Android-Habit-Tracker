@@ -1,8 +1,8 @@
 package com.habitsheet.domain.backup
 
 import com.habitsheet.domain.model.HabitSnapshot
-import kotlinx.datetime.LocalDate
 import com.habitsheet.domain.model.SheetLink
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -20,7 +20,7 @@ import kotlinx.serialization.json.put
 data class BackupContainer(
     val version: Int,
     val timestamp: Long,
-    val data: HabitSnapshot
+    val data: HabitSnapshot,
 )
 
 /**

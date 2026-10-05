@@ -91,14 +91,25 @@ private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: (
                     categories = state.categories,
                     goal = "${habit.monthlyGoal}/month",
                     onEdit = { onEdit(habit) },
-                    onMoveUp = if (!archived && index > 0) { { onMove(index, index - 1) } } else null,
-                    onMoveDown = if (!archived && index < habits.size - 1) { { onMove(index, index + 1) } } else null
+                    onMoveUp = if (!archived && index > 0) {
+                        { onMove(index, index - 1) }
+                    } else {
+                        null
+                    },
+                    onMoveDown = if (!archived && index < habits.size - 1) {
+                        { onMove(index, index + 1) }
+                    } else {
+                        null
+                    },
                 )
             }
         }
     }
-    if (!archived) AddButton("Add Daily Habit", onAdd)
-    else Spacer(Modifier.height(16.dp))
+    if (!archived) {
+        AddButton("Add Daily Habit", onAdd)
+    } else {
+        Spacer(Modifier.height(16.dp))
+    }
 }
 
 @Composable
@@ -121,14 +132,25 @@ private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: 
                     categories = state.categories,
                     goal = "1/week",
                     onEdit = { onEdit(habit) },
-                    onMoveUp = if (!archived && index > 0) { { onMove(index, index - 1) } } else null,
-                    onMoveDown = if (!archived && index < habits.size - 1) { { onMove(index, index + 1) } } else null
+                    onMoveUp = if (!archived && index > 0) {
+                        { onMove(index, index - 1) }
+                    } else {
+                        null
+                    },
+                    onMoveDown = if (!archived && index < habits.size - 1) {
+                        { onMove(index, index + 1) }
+                    } else {
+                        null
+                    },
                 )
             }
         }
     }
-    if (!archived) AddButton("Add Weekly Habit", onAdd)
-    else Spacer(Modifier.height(16.dp))
+    if (!archived) {
+        AddButton("Add Weekly Habit", onAdd)
+    } else {
+        Spacer(Modifier.height(16.dp))
+    }
 }
 
 @Composable
@@ -224,7 +246,7 @@ private fun ManageCategorySection(categories: List<Category>, onManage: () -> Un
             "No categories created yet.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
         )
     } else {
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -266,7 +288,7 @@ internal fun ManageHabitLists(
     ) {
         Row(
             Modifier.fillMaxWidth().padding(bottom = tabsBottomPadding),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             ArchiveTab("Active", isSelected = !showArchived, onClick = { onShowArchivedChange(false) })
             ArchiveTab("Archived", isSelected = showArchived, onClick = { onShowArchivedChange(true) })
@@ -288,12 +310,12 @@ private fun ArchiveTab(label: String, isSelected: Boolean, onClick: () -> Unit) 
     TextButton(
         onClick = onClick,
         colors = ButtonDefaults.textButtonColors(
-            contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         ),
         modifier = Modifier.semantics {
             role = Role.Tab
             selected = isSelected
-        }
+        },
     ) {
         Text(label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
     }

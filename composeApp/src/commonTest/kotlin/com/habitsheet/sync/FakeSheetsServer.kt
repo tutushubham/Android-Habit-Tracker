@@ -56,6 +56,7 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     val otherTabs = mutableListOf<String>()
     var hasPlanTab = false
         private set
+
     /** Row 0 is the header, exactly as stored in the sheet. */
     val planValues = mutableListOf<MutableList<JsonElement>>()
     val calls = mutableListOf<RecordedCall>()
@@ -114,7 +115,9 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
                 fault.remaining--
                 when (val action = fault.action) {
                     FaultAction.Timeout -> throw HttpRequestTimeoutException(url.toString(), 1)
+
                     FaultAction.ConnectionFailure -> throw kotlinx.io.IOException("Unable to resolve host")
+
                     is FaultAction.Status -> return respond(
                         action.body ?: """{"error":{"code":${action.code}}}""",
                         HttpStatusCode.fromValue(action.code),
@@ -131,13 +134,19 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
             return json(buildJsonObject { put("error", reason) }, HttpStatusCode.BadRequest)
         }
         return when {
-            call.isMetadata -> json(buildJsonObject {
-                put("sheets", buildJsonArray {
-                    (otherTabs + listOfNotNull("Plan".takeIf { hasPlanTab })).forEach { title ->
-                        add(buildJsonObject { put("properties", buildJsonObject { put("title", title) }) })
-                    }
-                })
-            })
+            call.isMetadata -> json(
+                buildJsonObject {
+                    put(
+                        "sheets",
+                        buildJsonArray {
+                            (otherTabs + listOfNotNull("Plan".takeIf { hasPlanTab })).forEach { title ->
+                                add(buildJsonObject { put("properties", buildJsonObject { put("title", title) }) })
+                            }
+                        },
+                    )
+                },
+            )
+
             call.isAddSheet -> {
                 // Google rejects duplicate tab names case-insensitively.
                 if (hasPlanTab || otherTabs.any { it.equals("Plan", ignoreCase = true) }) {
@@ -147,30 +156,44 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
                 planValues.clear()
                 val id = nextSheetId++
                 planSheetId = id
-                json(buildJsonObject {
-                    put("replies", buildJsonArray {
-                        add(buildJsonObject {
-                            put("addSheet", buildJsonObject { put("properties", buildJsonObject { put("sheetId", id) }) })
-                        })
-                    })
-                })
+                json(
+                    buildJsonObject {
+                        put(
+                            "replies",
+                            buildJsonArray {
+                                add(
+                                    buildJsonObject {
+                                        put("addSheet", buildJsonObject { put("properties", buildJsonObject { put("sheetId", id) }) })
+                                    },
+                                )
+                            },
+                        )
+                    },
+                )
             }
+
             call.isFormat -> json(buildJsonObject {})
+
             call.isRead -> {
                 if (!hasPlanTab) return json(buildJsonObject { put("error", "no Plan tab") }, HttpStatusCode.BadRequest)
-                json(buildJsonObject {
-                    if (planValues.isNotEmpty()) put("values", JsonArray(planValues.map { JsonArray(it) }))
-                })
+                json(
+                    buildJsonObject {
+                        if (planValues.isNotEmpty()) put("values", JsonArray(planValues.map { JsonArray(it) }))
+                    },
+                )
             }
+
             call.isPut -> {
                 planValues.clear()
                 valuesOf(body).forEach { planValues += it.toMutableList() }
                 json(buildJsonObject {})
             }
+
             call.isAppend -> {
                 valuesOf(body).forEach { planValues += it.toMutableList() }
                 json(buildJsonObject {})
             }
+
             call.isDoneWrite -> {
                 Json.parseToJsonElement(body).jsonObject["data"]!!.jsonArray.forEach { update ->
                     val range = update.jsonObject["range"]!!.jsonPrimitive.content // e.g. Plan!E5
@@ -184,6 +207,7 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
                 }
                 json(buildJsonObject {})
             }
+
             else -> json(buildJsonObject { put("error", "unmodelled $call") }, HttpStatusCode.NotFound)
         }
     }
@@ -191,17 +215,22 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     /** Null if the write only touches the Plan tab; otherwise why it does not. */
     private fun writeViolation(call: RecordedCall): String? = when {
         !call.isWrite -> null
+
         call.isAddSheet -> if (Regex(""""title"\s*:\s*"Plan"""").containsMatchIn(call.body)) null else "addSheet with a title other than Plan"
+
         call.isFormat -> {
             val ids = Regex(""""sheetId"\s*:\s*(\d+)""").findAll(call.body).map { it.groupValues[1].toInt() }.toSet()
             if (ids.isNotEmpty() && ids.all { it == planSheetId }) null else "format request touches sheetIds $ids, Plan is $planSheetId"
         }
+
         call.isPut || call.isAppend -> if (call.path.startsWith("/values/Plan!")) null else "write to ${call.path}"
+
         call.isDoneWrite -> {
             val ranges = Json.parseToJsonElement(call.body).jsonObject["data"]!!.jsonArray.map { it.jsonObject["range"]!!.jsonPrimitive.content }
             if (ranges.all { it.startsWith("Plan!") }) null else "done write to $ranges"
         }
-        else -> "unmodelled write ${call}"
+
+        else -> "unmodelled write $call"
     }
 
     private fun valuesOf(body: String): List<List<JsonElement>> =

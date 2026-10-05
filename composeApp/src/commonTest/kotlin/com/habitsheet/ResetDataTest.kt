@@ -25,14 +25,14 @@ class ResetDataTest {
         repository.saveCategory(Category("c1", "Cat", 0, true, 0))
         repository.saveDailyHabit(DailyHabit("d1", "H1", null, 10, 0, true, LocalDate(2026, 8, 1), null, 0, 0))
         repository.setDailyCompletion(DailyHabitCompletion("d1", LocalDate(2026, 8, 26), true, 0))
-        
+
         assertTrue(repository.snapshot.value.categories.isNotEmpty())
         assertTrue(repository.snapshot.value.dailyHabits.isNotEmpty())
         assertTrue(repository.snapshot.value.dailyCompletions.isNotEmpty())
 
         // 2. Reset
         viewModel.clearAllData()
-        
+
         // 3. Verify
         val snapshot = repository.snapshot.first { it.categories.isEmpty() }
         assertTrue(snapshot.categories.isEmpty())

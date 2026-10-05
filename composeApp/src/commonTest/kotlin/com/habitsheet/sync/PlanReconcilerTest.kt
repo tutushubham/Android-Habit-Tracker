@@ -105,11 +105,14 @@ class PlanReconcilerTest {
             dailyHabits = listOf(habit("a", "Run"), habit("b", " run")),
             dayPlans = listOf(plan("b", day, "Easy", "run-1")),
         )
-        val result = reconcile(snapshot, listOf(
-            row("run-1", day, "Run", "Edited"),
-            row("run-2", tomorrow, "Run", "Mystery", sheetRow = 3),
-            row("run-3", tomorrow, "RUN", "Mystery 2", sheetRow = 4),
-        ))
+        val result = reconcile(
+            snapshot,
+            listOf(
+                row("run-1", day, "Run", "Edited"),
+                row("run-2", tomorrow, "Run", "Mystery", sheetRow = 3),
+                row("run-3", tomorrow, "RUN", "Mystery 2", sheetRow = 4),
+            ),
+        )
         assertEquals(listOf(DayPlan("b", day, "Edited", false, now, "run-1")), result.changes.plansToSave)
         assertEquals(listOf(SyncWarning.AmbiguousHabitName("Run", 1), SyncWarning.AmbiguousHabitName("RUN", 1)), result.warnings)
         assertEquals(1, result.sessionCount)
@@ -120,10 +123,13 @@ class PlanReconcilerTest {
     @Test
     fun renamingAllRowsOfAHabitInTheSheetRenamesTheLocalHabit() {
         val snapshot = runSnapshot.copy(dayPlans = runSnapshot.dayPlans + plan("run", tomorrow, "Long", "run-2"))
-        val result = reconcile(snapshot, listOf(
-            row("run-1", day, "Jog", "Easy"),
-            row("run-2", tomorrow, "jog", "Long", sheetRow = 3),
-        ))
+        val result = reconcile(
+            snapshot,
+            listOf(
+                row("run-1", day, "Jog", "Easy"),
+                row("run-2", tomorrow, "jog", "Long", sheetRow = 3),
+            ),
+        )
         assertEquals(listOf(HabitRename("run", "Run", "Jog")), result.renames)
         assertEquals(listOf("run"), result.changes.habitsToSave.map { it.id })
         assertEquals("Jog", result.changes.habitsToSave.single().name)
@@ -146,10 +152,13 @@ class PlanReconcilerTest {
     @Test
     fun retypingOneRowOfSeveralIsAMoveNotARename() {
         val snapshot = runSnapshot.copy(dayPlans = runSnapshot.dayPlans + plan("run", tomorrow, "Long", "run-2"))
-        val result = reconcile(snapshot, listOf(
-            row("run-1", day, "Run", "Easy"),
-            row("run-2", tomorrow, "Jog", "Long", sheetRow = 3),
-        ))
+        val result = reconcile(
+            snapshot,
+            listOf(
+                row("run-1", day, "Run", "Easy"),
+                row("run-2", tomorrow, "Jog", "Long", sheetRow = 3),
+            ),
+        )
         assertTrue(result.renames.isEmpty())
         val jog = result.changes.habitsToSave.single()
         assertEquals("Jog", jog.name)

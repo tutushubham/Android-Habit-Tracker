@@ -20,8 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,21 +28,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.habitsheet.AppGraph
-import com.habitsheet.presentation.VersionProvider
-import com.habitsheet.presentation.SettingsViewModel
-import com.habitsheet.presentation.ThemeMode
+import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
-import com.habitsheet.presentation.BackupViewModel
+import com.habitsheet.presentation.SettingsViewModel
+import com.habitsheet.presentation.ThemeMode
+import com.habitsheet.presentation.VersionProvider
 import com.habitsheet.ui.manage.ManageHabitsScreen
 import com.habitsheet.ui.month.MonthScreen
 import com.habitsheet.ui.navigation.AppBackStack
@@ -73,11 +73,13 @@ fun HabitSheetApp(
     BackHandler(enabled = backStack.canGoBack) { backStack.back() }
 
     val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
-    HabitSheetTheme(darkTheme = when (themeMode) {
-        ThemeMode.System -> androidx.compose.foundation.isSystemInDarkTheme()
-        ThemeMode.Light -> false
-        ThemeMode.Dark -> true
-    }) {
+    HabitSheetTheme(
+        darkTheme = when (themeMode) {
+            ThemeMode.System -> androidx.compose.foundation.isSystemInDarkTheme()
+            ThemeMode.Light -> false
+            ThemeMode.Dark -> true
+        },
+    ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val tabletLayout = maxWidth >= 720.dp
             AdaptiveFrame(
@@ -135,37 +137,45 @@ private fun AppDestination(
     navigate: (Destination) -> Unit,
     back: () -> Unit,
 ) {
-        when (destination) {
-            Destination.Tracker -> MonthScreen(
-                viewModel = monthViewModel,
-                onManage = { navigate(Destination.Manage) },
-                onSettings = { navigate(Destination.Settings) },
-                onPlan = { navigate(Destination.Plan) },
-                shareService = shareService,
-                tabletLayout = tabletLayout,
-            )
-            Destination.Manage -> ManageHabitsScreen(
-                viewModel = manageHabitsViewModel,
-                onTracker = { navigate(Destination.Tracker) },
-                tabletLayout = tabletLayout,
-                openCategories = openCategories,
-                onCategoriesOpened = onCategoriesOpened,
-            )
-            Destination.Plan -> {
-                val sheetUrl by settingsViewModel.sheetUrl.collectAsStateWithLifecycle()
-                PlanScreen(monthViewModel, onBack = back, showBack = !tabletLayout, sheetUrl = sheetUrl)
-            }
-            Destination.Settings -> SettingsScreen(
-                viewModel = settingsViewModel,
-                onBack = back,
-                onManageCategories = { requestCategories(); navigate(Destination.Manage) },
-                onBackup = { if (backupViewModel != null) navigate(Destination.Backup) },
-                onAbout = { navigate(Destination.About) },
-                showBack = !tabletLayout,
-            )
-            Destination.Backup -> backupViewModel?.let { DataBackupScreen(it, onBack = back, showBack = !tabletLayout) }
-            Destination.About -> AboutScreen(versionProvider, onBack = back, showBack = !tabletLayout)
+    when (destination) {
+        Destination.Tracker -> MonthScreen(
+            viewModel = monthViewModel,
+            onManage = { navigate(Destination.Manage) },
+            onSettings = { navigate(Destination.Settings) },
+            onPlan = { navigate(Destination.Plan) },
+            shareService = shareService,
+            tabletLayout = tabletLayout,
+        )
+
+        Destination.Manage -> ManageHabitsScreen(
+            viewModel = manageHabitsViewModel,
+            onTracker = { navigate(Destination.Tracker) },
+            tabletLayout = tabletLayout,
+            openCategories = openCategories,
+            onCategoriesOpened = onCategoriesOpened,
+        )
+
+        Destination.Plan -> {
+            val sheetUrl by settingsViewModel.sheetUrl.collectAsStateWithLifecycle()
+            PlanScreen(monthViewModel, onBack = back, showBack = !tabletLayout, sheetUrl = sheetUrl)
         }
+
+        Destination.Settings -> SettingsScreen(
+            viewModel = settingsViewModel,
+            onBack = back,
+            onManageCategories = {
+                requestCategories()
+                navigate(Destination.Manage)
+            },
+            onBackup = { if (backupViewModel != null) navigate(Destination.Backup) },
+            onAbout = { navigate(Destination.About) },
+            showBack = !tabletLayout,
+        )
+
+        Destination.Backup -> backupViewModel?.let { DataBackupScreen(it, onBack = back, showBack = !tabletLayout) }
+
+        Destination.About -> AboutScreen(versionProvider, onBack = back, showBack = !tabletLayout)
+    }
 }
 
 @Composable

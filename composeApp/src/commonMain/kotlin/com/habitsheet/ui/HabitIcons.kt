@@ -1,6 +1,7 @@
 package com.habitsheet.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -11,7 +12,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.LocalContentColor
 
 internal enum class HabitIconGlyph {
     Tracker,
@@ -52,6 +52,7 @@ internal fun HabitIcon(
                 drawCircle(tint, 1.2f * unit, point(8f, 14f))
                 drawCircle(tint, 1.2f * unit, point(13f, 14f))
             }
+
             HabitIconGlyph.Tracker -> {
                 drawRoundRect(
                     tint,
@@ -63,6 +64,7 @@ internal fun HabitIcon(
                 line(7f, 12f, 10.2f, 15.2f)
                 line(10.2f, 15.2f, 17.2f, 8.4f)
             }
+
             HabitIconGlyph.Manage -> {
                 line(4f, 7f, 20f, 7f)
                 line(4f, 12f, 20f, 12f)
@@ -71,12 +73,19 @@ internal fun HabitIcon(
                 drawCircle(tint, 2.2f * unit, point(15f, 12f))
                 drawCircle(tint, 2.2f * unit, point(11f, 17f))
             }
+
             HabitIconGlyph.Settings -> {
                 drawCircle(tint, 4.2f * unit, point(12f, 12f), style = stroke)
                 drawCircle(tint, 1.3f * unit, point(12f, 12f))
                 listOf(
-                    12f to 2.5f, 12f to 21.5f, 2.5f to 12f, 21.5f to 12f,
-                    5.3f to 5.3f, 18.7f to 18.7f, 18.7f to 5.3f, 5.3f to 18.7f,
+                    12f to 2.5f,
+                    12f to 21.5f,
+                    2.5f to 12f,
+                    21.5f to 12f,
+                    5.3f to 5.3f,
+                    18.7f to 18.7f,
+                    18.7f to 5.3f,
+                    5.3f to 18.7f,
                 ).forEach { (x, y) ->
                     val dx = x - 12f
                     val dy = y - 12f
@@ -84,10 +93,12 @@ internal fun HabitIcon(
                     line(12f + dx * 6.2f / length, 12f + dy * 6.2f / length, x, y)
                 }
             }
+
             HabitIconGlyph.Add -> {
                 line(12f, 5f, 12f, 19f)
                 line(5f, 12f, 19f, 12f)
             }
+
             HabitIconGlyph.Back, HabitIconGlyph.Forward -> {
                 val path = Path()
                 if (glyph == HabitIconGlyph.Back) {
@@ -101,6 +112,7 @@ internal fun HabitIcon(
                 }
                 drawPath(path, tint, style = stroke)
             }
+
             HabitIconGlyph.Share -> {
                 drawRoundRect(
                     tint,
@@ -113,6 +125,7 @@ internal fun HabitIcon(
                 line(12f, 3f, 7.8f, 7.2f)
                 line(12f, 3f, 16.2f, 7.2f)
             }
+
             HabitIconGlyph.Edit -> {
                 line(5f, 19f, 8.5f, 18.3f)
                 line(8.5f, 18.3f, 19f, 7.8f)
@@ -120,14 +133,17 @@ internal fun HabitIcon(
                 line(5f, 19f, 5.8f, 15.5f)
                 line(5.8f, 15.5f, 16.2f, 5f)
             }
+
             HabitIconGlyph.Up -> {
                 line(6f, 15f, 12f, 9f)
                 line(12f, 9f, 18f, 15f)
             }
+
             HabitIconGlyph.Down -> {
                 line(6f, 9f, 12f, 15f)
                 line(12f, 15f, 18f, 9f)
             }
+
             HabitIconGlyph.Categories -> {
                 listOf(4f to 4f, 13f to 4f, 4f to 13f, 13f to 13f).forEach { (x, y) ->
                     drawRoundRect(

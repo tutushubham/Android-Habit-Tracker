@@ -26,7 +26,9 @@ import kotlinx.datetime.LocalDate
 class LocalHabitRepository private constructor(
     private val db: LocalDatabase,
     settings: SettingsStoreImpl = SettingsStoreImpl(db),
-) : HabitRepository, SettingsStore by settings, BackupStore by BackupStoreImpl(db, settings) {
+) : HabitRepository,
+    SettingsStore by settings,
+    BackupStore by BackupStoreImpl(db, settings) {
 
     constructor(driverFactory: DriverFactory) : this(LocalDatabase.open(driverFactory))
 
@@ -125,7 +127,9 @@ class LocalHabitRepository private constructor(
         require(plan.weekday in 1..7 && plan.detail.isNotBlank())
         db.write {
             upsertWeeklyPlan(
-                plan.habitId, plan.weekday.toLong(), plan.detail,
+                plan.habitId,
+                plan.weekday.toLong(),
+                plan.detail,
                 monotonicUpdatedAt(
                     plan.updatedAtEpochMillis,
                     selectWeeklyPlanUpdatedAt(plan.habitId, plan.weekday.toLong()).executeAsOneOrNull(),
@@ -142,7 +146,11 @@ class LocalHabitRepository private constructor(
         require(plan.detail.isNotBlank())
         db.write {
             upsertDayPlan(
-                plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(),
+                plan.id,
+                plan.habitId,
+                plan.date.toString(),
+                plan.detail,
+                plan.skipped.toDbLong(),
                 nextDayPlanTime(plan.id, plan.updatedAtEpochMillis),
             )
         }

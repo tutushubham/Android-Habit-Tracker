@@ -1,7 +1,7 @@
 package com.habitsheet.data
 
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.habitsheet.database.HabitsDatabase
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,22 +11,34 @@ class PlanMigrationTest {
     fun existingPlanAndCompletionKeepTheirIdentityAfterMigration() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         try {
-            driver.execute(null, """CREATE TABLE dailyHabitEntity (
+            driver.execute(
+                null,
+                """CREATE TABLE dailyHabitEntity (
                 id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, category_id TEXT,
                 monthly_goal INTEGER NOT NULL, display_order INTEGER NOT NULL,
                 active INTEGER NOT NULL, created_on TEXT NOT NULL, archived_on TEXT,
                 created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-            )""", 0)
+            )""",
+                0,
+            )
             driver.execute(null, "INSERT INTO dailyHabitEntity VALUES ('run','Run',NULL,12,0,1,'2026-10-01',NULL,1,1)", 0)
-            driver.execute(null, """CREATE TABLE dayPlanEntity (
+            driver.execute(
+                null,
+                """CREATE TABLE dayPlanEntity (
                 habit_id TEXT NOT NULL, date TEXT NOT NULL, detail TEXT NOT NULL,
                 skipped INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(habit_id,date)
-            )""", 0)
+            )""",
+                0,
+            )
             driver.execute(null, "INSERT INTO dayPlanEntity VALUES ('run','2026-10-01','Easy 6 km',0,1)", 0)
-            driver.execute(null, """CREATE TABLE dailyCompletionEntity (
+            driver.execute(
+                null,
+                """CREATE TABLE dailyCompletionEntity (
                 habit_id TEXT NOT NULL, date TEXT NOT NULL, completed INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL, PRIMARY KEY(habit_id,date)
-            )""", 0)
+            )""",
+                0,
+            )
             driver.execute(null, "INSERT INTO dailyCompletionEntity VALUES ('run','2026-10-01',1,2)", 0)
             HabitsDatabase.Schema.migrate(driver, 3, 4)
             fun value(sql: String) = driver.executeQuery(null, sql, { cursor ->
@@ -36,10 +48,13 @@ class PlanMigrationTest {
             assertEquals("run|2026-10-01", value("SELECT id FROM dayPlanEntity"))
             assertEquals("run|2026-10-01", value("SELECT plan_id FROM dailyCompletionEntity"))
             assertEquals("ACTION", value("SELECT kind FROM dailyHabitEntity"))
-            assertEquals("0", driver.executeQuery(null, "SELECT dated_only FROM dailyHabitEntity", { cursor ->
-                cursor.next().value
-                QueryResult.Value((cursor.getLong(0) ?: -1L).toString())
-            }, 0).value)
+            assertEquals(
+                "0",
+                driver.executeQuery(null, "SELECT dated_only FROM dailyHabitEntity", { cursor ->
+                    cursor.next().value
+                    QueryResult.Value((cursor.getLong(0) ?: -1L).toString())
+                }, 0).value,
+            )
         } finally {
             driver.close()
         }
@@ -67,12 +82,16 @@ class PlanMigrationTest {
     fun versionOneDatabaseKeepsHabitsWhenPlansAreAdded() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         try {
-            driver.execute(null, """CREATE TABLE dailyHabitEntity (
+            driver.execute(
+                null,
+                """CREATE TABLE dailyHabitEntity (
                 id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, category_id TEXT,
                 monthly_goal INTEGER NOT NULL, display_order INTEGER NOT NULL,
                 active INTEGER NOT NULL, created_on TEXT NOT NULL, archived_on TEXT,
                 created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-            )""", 0)
+            )""",
+                0,
+            )
             driver.execute(null, "INSERT INTO dailyHabitEntity VALUES ('run','Run',NULL,12,0,1,'2026-10-01',NULL,1,1)", 0)
             HabitsDatabase.Schema.migrate(driver, 1, 2)
             val habitCount = driver.executeQuery(null, "SELECT COUNT(*) FROM dailyHabitEntity", { cursor ->

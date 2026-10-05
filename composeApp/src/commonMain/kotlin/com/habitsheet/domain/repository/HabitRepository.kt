@@ -5,7 +5,10 @@ package com.habitsheet.domain.repository
  * this type; ViewModels and sync depend on the narrow store they actually use ([HabitStore], [SettingsStore],
  * [BackupStore]). `LocalHabitRepository` (SQLite) and `InMemoryHabitRepository` (tests) implement all three.
  */
-interface HabitRepository : HabitStore, SettingsStore, BackupStore
+interface HabitRepository :
+    HabitStore,
+    SettingsStore,
+    BackupStore
 
 fun interface IdGenerator {
     fun newId(): String

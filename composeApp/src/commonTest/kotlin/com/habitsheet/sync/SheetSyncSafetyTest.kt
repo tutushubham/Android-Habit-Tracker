@@ -26,17 +26,22 @@ class SheetSyncSafetyTest {
 
     private fun habit(id: String, name: String) = DailyHabit(id, name, null, 12, 0, true, day, null, 1, 1, datedOnly = true)
 
-    private suspend fun repo(): InMemoryHabitRepository = InMemoryHabitRepository(HabitSnapshot(
-        dailyHabits = listOf(habit("run", "Run"), habit("journal", "Journal")),
-        dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1"), DayPlan("journal", day, "Page", false, 1, "j-1")),
-    )).also { it.setSheetUrl("https://docs.google.com/spreadsheets/d/test-sheet/edit") }
+    private suspend fun repo(): InMemoryHabitRepository = InMemoryHabitRepository(
+        HabitSnapshot(
+            dailyHabits = listOf(habit("run", "Run"), habit("journal", "Journal")),
+            dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1"), DayPlan("journal", day, "Page", false, 1, "j-1")),
+        ),
+    ).also { it.setSheetUrl("https://docs.google.com/spreadsheets/d/test-sheet/edit") }
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer) = SheetSync(
-        repo, repo,
+        repo,
+        repo,
         object : SheetTokenProvider {
             override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("t", null)
         },
-        server.client(), dates, RetryPolicy(sleep = { }),
+        server.client(),
+        dates,
+        RetryPolicy(sleep = { }),
     )
 
     private fun assertOnlyPlanTabTouched(server: FakeSheetsServer) {
@@ -66,9 +71,9 @@ class SheetSyncSafetyTest {
     @Test
     fun headerMissingASchemaColumnIsTreatedAsForeign() = runTest {
         for (header in listOf(
-            listOf("ID", "Date", "Habit", "Session", "Done"),          // no Skip
-            listOf("Date", "ID", "Habit", "Session", "Done", "Skip"),  // wrong order
-            listOf("id", "date", "habit", "session", "done", "skip"),  // exact names are required
+            listOf("ID", "Date", "Habit", "Session", "Done"), // no Skip
+            listOf("Date", "ID", "Habit", "Session", "Done", "Skip"), // wrong order
+            listOf("id", "date", "habit", "session", "done", "skip"), // exact names are required
         )) {
             val server = FakeSheetsServer().withPlanTab(header, listOf("run-1", "2026-10-01", "Run", "Easy", false, false))
             val before = server.rowsAsText()

@@ -16,10 +16,12 @@ class InMemoryApplySheetSyncTest {
 
     @Test
     fun failureMidApplyLeavesStateKeysAndLastSyncUntouched() = runTest {
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(habit("run", "Run")),
-            dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1")),
-        ))
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(habit("run", "Run")),
+                dayPlans = listOf(DayPlan("run", day, "Easy", false, 1, "run-1")),
+            ),
+        )
         repo.setSheetSyncedKeys(setOf("run-1"))
         repo.setSheetLastSync(100)
         val before = repo.snapshot.value

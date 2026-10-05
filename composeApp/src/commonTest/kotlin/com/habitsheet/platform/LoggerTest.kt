@@ -15,8 +15,8 @@ import com.habitsheet.sync.RetryPolicy
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.yield
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -107,11 +107,15 @@ class LoggerTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Secret Habit", "Secret Session", false, false))
         server.fail(FaultAction.Status(500), times = 100)
         val sync = SheetSync(
-            repo, repo,
+            repo,
+            repo,
             object : SheetTokenProvider {
                 override fun requestToken(interactive: Boolean, completion: (String?, String?) -> Unit) = completion("tok-SECRET", null)
             },
-            server.client(), dates, RetryPolicy(sleep = { }), logger,
+            server.client(),
+            dates,
+            RetryPolicy(sleep = { }),
+            logger,
         )
 
         sync.sync()

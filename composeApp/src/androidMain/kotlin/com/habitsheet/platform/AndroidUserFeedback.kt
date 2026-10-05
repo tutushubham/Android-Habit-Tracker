@@ -17,8 +17,10 @@ private class AndroidUserFeedback(
                 when {
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && completed ->
                         HapticFeedbackConstants.CONFIRM
+
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
                         HapticFeedbackConstants.GESTURE_END
+
                     else -> HapticFeedbackConstants.VIRTUAL_KEY
                 },
             )

@@ -80,7 +80,12 @@ class ViewModelLifecycleTest {
     @Test
     fun theStoreKeepsOneInstancePerClassAndSeparateStoresDoNotShare() {
         assertSame(provider[MonthViewModel::class], provider[MonthViewModel::class])
-        val other = ViewModelProvider.create(object : ViewModelStoreOwner { override val viewModelStore = ViewModelStore() }, factory)
+        val other = ViewModelProvider.create(
+            object : ViewModelStoreOwner {
+                override val viewModelStore = ViewModelStore()
+            },
+            factory,
+        )
         assertNotSame(provider[MonthViewModel::class], other[MonthViewModel::class])
     }
 
@@ -146,5 +151,7 @@ class ViewModelLifecycleTest {
 
 private class Probe : ViewModel() {
     var cleared = false
-    public override fun onCleared() { cleared = true }
+    public override fun onCleared() {
+        cleared = true
+    }
 }

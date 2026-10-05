@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.detekt)
 }
 
 kotlin {
@@ -185,4 +187,57 @@ val checkReleaseSigning by tasks.registering {
 }
 tasks.matching { it.name.matches(Regex("(assemble|bundle|package)Release.*")) }.configureEach {
     dependsOn(checkReleaseSigning)
+}
+
+// --- Code quality (P1-2 step 10): `./gradlew check` runs the tests, Spotless (ktlint) and detekt. ---
+
+// Formatting: ktlint through Spotless, style in /.editorconfig. `./gradlew spotlessApply` fixes what it can.
+// Spotless does not pass ktlint_* settings from .editorconfig on to ktlint, so they are listed here.
+val ktlintRuleSwitches = mapOf(
+    // IntelliJ IDEA's default Kotlin style (what the code was written in), not ktlint's stricter "ktlint_official".
+    "ktlint_code_style" to "intellij_idea",
+    // Composables are PascalCase functions.
+    "ktlint_function_naming_ignore_when_annotated_with" to "Composable",
+    // Long single-line Compose modifier chains and parameter lists are kept as written.
+    "ktlint_standard_function-signature" to "disabled",
+    "ktlint_standard_multiline-expression-wrapping" to "disabled",
+    "ktlint_standard_chain-method-continuation" to "disabled",
+    // IntelliJ's own import layout (star import from 5 names of one package) is allowed.
+    "ktlint_standard_no-wildcard-imports" to "disabled",
+)
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        ktlint(libs.versions.ktlint.get())
+            .setEditorConfigPath(rootProject.file(".editorconfig"))
+            .editorConfigOverride(ktlintRuleSwitches)
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint(libs.versions.ktlint.get())
+            .setEditorConfigPath(rootProject.file(".editorconfig"))
+            .editorConfigOverride(ktlintRuleSwitches)
+    }
+}
+
+// Static analysis: detekt's default rules plus config/detekt/detekt.yml. Findings that existed when it was added are
+// listed in detekt-baseline.xml (regenerate only deliberately: ./gradlew :composeApp:detektBaseline); new code must be clean.
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    baseline = file("detekt-baseline.xml")
+    source.setFrom(
+        "src/commonMain/kotlin",
+        "src/androidMain/kotlin",
+        "src/iosMain/kotlin",
+        "src/commonTest/kotlin",
+        "src/androidUnitTest/kotlin",
+    )
+    parallel = true
+}
+// detekt 1.23 runs its own Kotlin 2.0 compiler; keep the project's Kotlin version out of its classpath.
+configurations.matching { it.name == "detekt" }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") useVersion(libs.versions.detekt.kotlin.get())
+    }
 }

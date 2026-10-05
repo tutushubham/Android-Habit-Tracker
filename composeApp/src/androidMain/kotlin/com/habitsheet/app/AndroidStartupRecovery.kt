@@ -63,22 +63,27 @@ internal class AndroidStartupRecovery(
         val callback = exportCallback.also { exportCallback = null }
         val result = if (uri == null) {
             BackupResult.Cancelled
-        } else try {
-            val bytes = pending.takeIf { it.exists() }?.readBytes() ?: throw BackupIoException("The copy was lost. Please try again.")
-            BackupStreams.writeBytes({ activity.contentResolver.openOutputStream(uri, "wt") }, bytes)
-            BackupResult.Success("Saved. Keep this file safe; it contains your habits and history.")
-        } catch (e: BackupIoException) {
-            logger.e(TAG, "Writing the data file copy failed", e.cause ?: e)
-            runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
-            BackupResult.Failure(e.userMessage)
-        } catch (e: Exception) {
-            logger.e(TAG, "Writing the data file copy failed", e)
-            runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
-            BackupResult.Failure("Couldn't save the file.")
+        } else {
+            try {
+                val bytes = pending.takeIf { it.exists() }?.readBytes() ?: throw BackupIoException("The copy was lost. Please try again.")
+                BackupStreams.writeBytes({ activity.contentResolver.openOutputStream(uri, "wt") }, bytes)
+                BackupResult.Success("Saved. Keep this file safe; it contains your habits and history.")
+            } catch (e: BackupIoException) {
+                logger.e(TAG, "Writing the data file copy failed", e.cause ?: e)
+                runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
+                BackupResult.Failure(e.userMessage)
+            } catch (e: Exception) {
+                logger.e(TAG, "Writing the data file copy failed", e)
+                runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
+                BackupResult.Failure("Couldn't save the file.")
+            }
         }
         pending.delete()
-        if (callback != null) callback(result)
-        else if (result is BackupResult.Success) Toast.makeText(activity, result.message, Toast.LENGTH_LONG).show()
+        if (callback != null) {
+            callback(result)
+        } else if (result is BackupResult.Success) {
+            Toast.makeText(activity, result.message, Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun setAsideDatabase(): BackupResult = try {

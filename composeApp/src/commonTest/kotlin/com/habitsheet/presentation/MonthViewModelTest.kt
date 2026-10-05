@@ -5,20 +5,20 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MonthViewModelTest {
     private val repository = InMemoryHabitRepository()
-    
+
     private var currentTime = 1000L
     private val fixedDate = LocalDate(2026, 8, 26)
     private val dateProvider = object : DateProvider {
@@ -36,11 +36,11 @@ class MonthViewModelTest {
     @Test
     fun navigateToPreviousAndNextMonth() = runTest {
         val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
-        
+
         viewModel.previousMonth()
         val statePrev = viewModel.state.first { it.selectedMonth.month == 7 }
         assertEquals(MonthKey(2026, 7), statePrev.selectedMonth)
-        
+
         viewModel.nextMonth()
         val stateNext = viewModel.state.first { it.selectedMonth.month == 8 }
         assertEquals(MonthKey(2026, 8), stateNext.selectedMonth)
@@ -49,11 +49,11 @@ class MonthViewModelTest {
     @Test
     fun todayActionReturnsToCurrentMonth() = runTest {
         val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
-        
+
         viewModel.selectMonth(MonthKey(2025, 12))
         val stateHist = viewModel.state.first { it.selectedMonth.year == 2025 }
         assertEquals(MonthKey(2025, 12), stateHist.selectedMonth)
-        
+
         viewModel.currentMonth()
         val stateToday = viewModel.state.first { it.selectedMonth.year == 2026 }
         assertEquals(MonthKey(2026, 8), stateToday.selectedMonth)
@@ -86,10 +86,10 @@ class MonthViewModelTest {
     fun scrollToTodayTriggerUpdatesEvenIfAlreadyInCurrentMonth() = runTest {
         val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         val initialTrigger = viewModel.state.first().scrollToTodayTrigger
-        
+
         viewModel.currentMonth()
         val nextState = viewModel.state.first { it.scrollToTodayTrigger > initialTrigger }
-        
+
         assertTrue(nextState.scrollToTodayTrigger > initialTrigger)
     }
 
@@ -122,13 +122,15 @@ class MonthViewModelTest {
     @Test
     fun separateSessionsCompleteIndependentlyAndRemovalKeepsHistory() = runTest {
         val habit = DailyHabit("run", "Run", null, 12, 0, true, fixedDate, null, 0, 0, datedOnly = true)
-        val repo = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(habit),
-            dayPlans = listOf(
-                DayPlan("run", fixedDate, "Easy run", false, 1, "run-a"),
-                DayPlan("run", fixedDate, "Mobility", false, 1, "run-b"),
+        val repo = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(habit),
+                dayPlans = listOf(
+                    DayPlan("run", fixedDate, "Easy run", false, 1, "run-a"),
+                    DayPlan("run", fixedDate, "Mobility", false, 1, "run-b"),
+                ),
             ),
-        ))
+        )
         val viewModel = MonthViewModel(repo, repo, dateProvider, backgroundScope)
         viewModel.togglePlanned("run-a", fixedDate)
         runCurrent()
@@ -166,9 +168,11 @@ class MonthViewModelTest {
 
     @Test
     fun tutorialIsNotShownToInstallsThatAlreadyHaveHabits() = runTest {
-        val existing = InMemoryHabitRepository(HabitSnapshot(
-            dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, fixedDate, null, 1, 1)),
-        ))
+        val existing = InMemoryHabitRepository(
+            HabitSnapshot(
+                dailyHabits = listOf(DailyHabit("run", "Run", null, 12, 0, true, fixedDate, null, 1, 1)),
+            ),
+        )
         val viewModel = MonthViewModel(existing, existing, dateProvider, backgroundScope)
         runCurrent()
         assertFalse(viewModel.state.value.onboardingVisible)

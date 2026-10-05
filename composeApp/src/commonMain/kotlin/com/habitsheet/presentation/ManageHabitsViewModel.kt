@@ -1,7 +1,6 @@
 package com.habitsheet.presentation
 
 import androidx.lifecycle.ViewModel
-
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitKind
@@ -28,7 +27,7 @@ class ManageHabitsViewModel(
     /** Defaults to the ViewModel's own background scope; tests inject theirs. */
     private val scope: CoroutineScope = scope ?: backgroundScope()
     val state: StateFlow<com.habitsheet.domain.model.HabitSnapshot> = repository.snapshot
-    
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -52,7 +51,7 @@ class ManageHabitsViewModel(
 
     fun addCategory(name: String) {
         val active = state.value.categories.filter { it.active }
-        if (active.size >= MaxCategories) return
+        if (active.size >= MAX_CATEGORIES) return
         saveCategory(
             id = idGenerator.newId(),
             name = name,
@@ -79,8 +78,8 @@ class ManageHabitsViewModel(
     fun addDailyHabit(name: String, categoryId: String?, monthlyGoal: Int, kind: HabitKind = HabitKind.ACTION, datedOnly: Boolean = false) {
         val trimmed = name.trim()
         if (trimmed.isEmpty() || monthlyGoal < 0) return
-        if (state.value.dailyHabits.count { it.active } >= MaxDailyHabits) {
-            _error.value = "Maximum $MaxDailyHabits daily habits allowed."
+        if (state.value.dailyHabits.count { it.active } >= MAX_DAILY_HABITS) {
+            _error.value = "Maximum $MAX_DAILY_HABITS daily habits allowed."
             return
         }
         val now = dateProvider.nowEpochMillis()
@@ -156,10 +155,10 @@ class ManageHabitsViewModel(
     fun moveDailyHabit(fromIndex: Int, toIndex: Int) {
         val habits = state.value.dailyHabits.filter { it.active }.sortedBy { it.displayOrder }.toMutableList()
         if (fromIndex !in habits.indices || toIndex !in habits.indices) return
-        
+
         val habit = habits.removeAt(fromIndex)
         habits.add(toIndex, habit)
-        
+
         val newOrders = habits.mapIndexed { index, h -> h.id to index }.toMap()
         scope.launch {
             runCatchingCancellable {
@@ -174,8 +173,8 @@ class ManageHabitsViewModel(
     fun addWeeklyHabit(name: String, categoryId: String?) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        if (state.value.weeklyHabits.count { it.active } >= MaxWeeklyHabits) {
-            _error.value = "Maximum $MaxWeeklyHabits weekly habits allowed."
+        if (state.value.weeklyHabits.count { it.active } >= MAX_WEEKLY_HABITS) {
+            _error.value = "Maximum $MAX_WEEKLY_HABITS weekly habits allowed."
             return
         }
         val now = dateProvider.nowEpochMillis()
@@ -248,10 +247,10 @@ class ManageHabitsViewModel(
     fun moveWeeklyHabit(fromIndex: Int, toIndex: Int) {
         val habits = state.value.weeklyHabits.filter { it.active }.sortedBy { it.displayOrder }.toMutableList()
         if (fromIndex !in habits.indices || toIndex !in habits.indices) return
-        
+
         val habit = habits.removeAt(fromIndex)
         habits.add(toIndex, habit)
-        
+
         val newOrders = habits.mapIndexed { index, h -> h.id to index }.toMap()
         scope.launch {
             runCatchingCancellable {
@@ -265,8 +264,8 @@ class ManageHabitsViewModel(
 
     companion object {
         private const val TAG = "ManageHabits"
-        const val MaxCategories = 10
-        const val MaxDailyHabits = 20
-        const val MaxWeeklyHabits = 20
+        const val MAX_CATEGORIES = 10
+        const val MAX_DAILY_HABITS = 20
+        const val MAX_WEEKLY_HABITS = 20
     }
 }

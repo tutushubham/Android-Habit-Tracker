@@ -9,7 +9,13 @@ import androidx.compose.runtime.setValue
 
 /** The app's screens. Navigation is hierarchical: every screen except [Tracker] has one [parent]. */
 internal enum class Destination {
-    Tracker, Manage, Plan, Settings, Backup, About;
+    Tracker,
+    Manage,
+    Plan,
+    Settings,
+    Backup,
+    About,
+    ;
 
     /** Where Back leads (on-screen and system back alike); null for the start screen. */
     val parent: Destination?

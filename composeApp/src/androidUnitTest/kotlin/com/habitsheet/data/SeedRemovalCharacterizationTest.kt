@@ -6,9 +6,9 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.WeeklyPlan
-import java.nio.file.Files
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
+import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -18,7 +18,10 @@ class SeedRemovalCharacterizationTest {
     private fun withDatabase(block: suspend (url: String) -> Unit) = runTest {
         val file = Files.createTempFile("habit-sheet-seed-removal", ".db")
         val url = "jdbc:sqlite:${file.toAbsolutePath()}"
-        JdbcSqliteDriver(url).also { HabitsDatabase.Schema.create(it); it.close() }
+        JdbcSqliteDriver(url).also {
+            HabitsDatabase.Schema.create(it)
+            it.close()
+        }
         try {
             block(url)
         } finally {

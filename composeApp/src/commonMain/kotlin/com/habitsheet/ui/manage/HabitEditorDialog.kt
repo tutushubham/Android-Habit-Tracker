@@ -73,13 +73,23 @@ internal fun HabitEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (daily != null || weekly != null) "Edit habit" else if (isDaily) "Add daily habit" else "Add weekly habit") },
+        title = {
+            Text(
+                if (daily != null || weekly != null) {
+                    "Edit habit"
+                } else if (isDaily) {
+                    "Add daily habit"
+                } else {
+                    "Add weekly habit"
+                },
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
             ) {
                 OutlinedTextField(
                     value = name,
@@ -90,19 +100,30 @@ internal fun HabitEditorDialog(
                     isError = !isNameValid && name.isNotEmpty(),
                     supportingText = if (!isNameValid && name.isNotEmpty()) {
                         { Text("Name cannot be empty") }
-                    } else null,
+                    } else {
+                        null
+                    },
                     keyboardOptions = KeyboardOptions(imeAction = if (isDaily) ImeAction.Next else ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (isDaily) {
-                    Text("TRACK AS", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 16.dp))
+                    Text(
+                        "TRACK AS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(selected = kind == HabitKind.ACTION, onClick = { kind = HabitKind.ACTION }, label = { Text("Do") })
                         FilterChip(selected = kind == HabitKind.AVOIDANCE, onClick = { kind = HabitKind.AVOIDANCE }, label = { Text("Avoid") })
                     }
-                    if (kind == HabitKind.AVOIDANCE) Text("Name it as a positive check-off, e.g. No Sugar.",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (kind == HabitKind.AVOIDANCE) {
+                        Text(
+                            "Name it as a positive check-off, e.g. No Sugar.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Only on planned dates", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                         androidx.compose.material3.Switch(checked = datedOnly, onCheckedChange = { datedOnly = it })
@@ -128,19 +149,19 @@ internal fun HabitEditorDialog(
                     text = "CATEGORY",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
+                    modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
                 )
 
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     FilterChip(
                         selected = categoryId == null,
                         onClick = { categoryId = null },
                         enabled = !isArchived,
-                        label = { Text("None") }
+                        label = { Text("None") },
                     )
                     categories.forEach { category ->
                         FilterChip(
@@ -158,24 +179,33 @@ internal fun HabitEditorDialog(
                 TextButton(
                     enabled = canSave,
                     onClick = {
-                        if (isDaily) onSaveDaily(daily, name.trim(), categoryId, goal ?: 0, kind, datedOnly)
-                        else onSaveWeekly(weekly, name.trim(), categoryId)
+                        if (isDaily) {
+                            onSaveDaily(daily, name.trim(), categoryId, goal ?: 0, kind, datedOnly)
+                        } else {
+                            onSaveWeekly(weekly, name.trim(), categoryId)
+                        }
                     },
                 ) { Text("Save") }
             } else {
                 Row {
                     TextButton(
                         onClick = {
-                            if (daily != null) onDeleteDaily(daily)
-                            else if (weekly != null) onDeleteWeekly(weekly)
-                        }
+                            if (daily != null) {
+                                onDeleteDaily(daily)
+                            } else if (weekly != null) {
+                                onDeleteWeekly(weekly)
+                            }
+                        },
                     ) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
                     TextButton(
                         onClick = {
-                            if (daily != null) onRestoreDaily(daily)
-                            else if (weekly != null) onRestoreWeekly(weekly)
+                            if (daily != null) {
+                                onRestoreDaily(daily)
+                            } else if (weekly != null) {
+                                onRestoreWeekly(weekly)
+                            }
                         },
                     ) { Text("Restore") }
                 }

@@ -37,8 +37,11 @@ class AppStartupTest {
         val existed = dbFile.exists()
         val driver: SqlDriver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
         try {
-            if (!existed) HabitsDatabase.Schema.create(driver)
-            else if (migrateFrom != null) HabitsDatabase.Schema.migrate(driver, migrateFrom, HabitsDatabase.Schema.version)
+            if (!existed) {
+                HabitsDatabase.Schema.create(driver)
+            } else if (migrateFrom != null) {
+                HabitsDatabase.Schema.migrate(driver, migrateFrom, HabitsDatabase.Schema.version)
+            }
         } catch (e: Throwable) {
             driver.close()
             throw e

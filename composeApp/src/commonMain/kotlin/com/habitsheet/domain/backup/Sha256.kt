@@ -33,8 +33,14 @@ internal object Sha256 {
         padded[message.size] = 0x80.toByte()
         for (i in 0 until 8) padded[paddedSize - 1 - i] = (bitLength ushr (8 * i)).toByte()
 
-        var h0 = 0x6a09e667u.toInt(); var h1 = 0xbb67ae85u.toInt(); var h2 = 0x3c6ef372u.toInt(); var h3 = 0xa54ff53au.toInt()
-        var h4 = 0x510e527fu.toInt(); var h5 = 0x9b05688cu.toInt(); var h6 = 0x1f83d9abu.toInt(); var h7 = 0x5be0cd19u.toInt()
+        var h0 = 0x6a09e667u.toInt()
+        var h1 = 0xbb67ae85u.toInt()
+        var h2 = 0x3c6ef372u.toInt()
+        var h3 = 0xa54ff53au.toInt()
+        var h4 = 0x510e527fu.toInt()
+        var h5 = 0x9b05688cu.toInt()
+        var h6 = 0x1f83d9abu.toInt()
+        var h7 = 0x5be0cd19u.toInt()
         val w = IntArray(64)
         for (chunk in 0 until paddedSize step 64) {
             for (i in 0 until 16) {
@@ -47,7 +53,14 @@ internal object Sha256 {
                 val s1 = w[i - 2].rotr(17) xor w[i - 2].rotr(19) xor (w[i - 2] ushr 10)
                 w[i] = w[i - 16] + s0 + w[i - 7] + s1
             }
-            var a = h0; var b = h1; var c = h2; var d = h3; var e = h4; var f = h5; var g = h6; var h = h7
+            var a = h0
+            var b = h1
+            var c = h2
+            var d = h3
+            var e = h4
+            var f = h5
+            var g = h6
+            var h = h7
             for (i in 0 until 64) {
                 val s1 = e.rotr(6) xor e.rotr(11) xor e.rotr(25)
                 val ch = (e and f) xor (e.inv() and g)
@@ -55,9 +68,23 @@ internal object Sha256 {
                 val s0 = a.rotr(2) xor a.rotr(13) xor a.rotr(22)
                 val maj = (a and b) xor (a and c) xor (b and c)
                 val t2 = s0 + maj
-                h = g; g = f; f = e; e = d + t1; d = c; c = b; b = a; a = t1 + t2
+                h = g
+                g = f
+                f = e
+                e = d + t1
+                d = c
+                c = b
+                b = a
+                a = t1 + t2
             }
-            h0 += a; h1 += b; h2 += c; h3 += d; h4 += e; h5 += f; h6 += g; h7 += h
+            h0 += a
+            h1 += b
+            h2 += c
+            h3 += d
+            h4 += e
+            h5 += f
+            h6 += g
+            h7 += h
         }
         val out = ByteArray(32)
         intArrayOf(h0, h1, h2, h3, h4, h5, h6, h7).forEachIndexed { i, v ->

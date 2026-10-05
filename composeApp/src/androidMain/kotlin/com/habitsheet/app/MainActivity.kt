@@ -50,7 +50,9 @@ class MainActivity : ComponentActivity() {
                     backupService,
                     AndroidVersionProvider(this),
                 )
+
                 is StartupState.Failed -> HabitSheetTheme { StartupFailureScreen(state.cause, recovery, onRetry = ::start) }
+
                 null -> Unit
             }
         }

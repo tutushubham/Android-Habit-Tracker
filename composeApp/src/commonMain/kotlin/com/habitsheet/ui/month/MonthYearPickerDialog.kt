@@ -33,7 +33,7 @@ import com.habitsheet.ui.HabitSheetTheme
 internal fun MonthYearPickerDialog(
     current: MonthKey,
     onDismiss: () -> Unit,
-    onSelect: (MonthKey) -> Unit
+    onSelect: (MonthKey) -> Unit,
 ) {
     var year by remember { mutableStateOf(current.year) }
 
@@ -54,12 +54,12 @@ internal fun MonthYearPickerDialog(
             Column(Modifier.fillMaxWidth()) {
                 val months = listOf(
                     "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
+                    "July", "August", "September", "October", "November", "December",
                 )
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     months.forEachIndexed { index, name ->
                         val m = index + 1
@@ -67,7 +67,7 @@ internal fun MonthYearPickerDialog(
                         FilterChip(
                             selected = selected,
                             onClick = { onSelect(MonthKey(year, m)) },
-                            label = { Text(name) }
+                            label = { Text(name) },
                         )
                     }
                 }
@@ -76,7 +76,7 @@ internal fun MonthYearPickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
+        },
     )
 }
 

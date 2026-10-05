@@ -86,12 +86,18 @@ class NarrowStoresTest {
         repository.setThemeMode(2)
         var exported: String? = null
         val service = object : BackupService {
-            override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) { exported = json }
+            override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) {
+                exported = json
+            }
             override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
             override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) = Unit
         }
         val viewModel = BackupViewModel(
-            OnlyBackups(repository), service, dates, backgroundScope, callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+            OnlyBackups(repository),
+            service,
+            dates,
+            backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
 
         viewModel.exportBackup()

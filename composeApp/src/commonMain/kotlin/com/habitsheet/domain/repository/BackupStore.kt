@@ -16,6 +16,7 @@ interface BackupStore {
      * (the tutorial shows again; theme is kept). Local only: the Google Sheet is never touched.
      */
     suspend fun clearAllData()
+
     /**
      * Replaces all habit data with [snapshot] in one transaction (validated first, so a bad backup changes nothing).
      * Sheet sync state is always cleared (synced keys, last sync, managed habits, pending flags) so the next sync

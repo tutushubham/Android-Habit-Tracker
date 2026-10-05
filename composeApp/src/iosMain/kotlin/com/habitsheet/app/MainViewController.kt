@@ -7,20 +7,20 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.uikit.LocalUIViewController
 import androidx.compose.ui.window.ComposeUIViewController
 import com.habitsheet.AppGraph
 import com.habitsheet.AppStartup
 import com.habitsheet.StartupState
+import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.platform.IosLogger
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.HabitSheetTheme
-import com.habitsheet.ui.StartupFailureScreen
 import com.habitsheet.ui.ShareService
-import com.habitsheet.domain.calculation.DailyShareSummary
+import com.habitsheet.ui.StartupFailureScreen
 import platform.Foundation.NSCalendarDayChangedNotification
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
@@ -32,6 +32,8 @@ import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
 
+// Called from Swift as MainViewControllerKt.MainViewController(tokenProvider:), so the name stays PascalCase.
+@Suppress("ktlint:standard:function-naming", "FunctionNaming")
 fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewController {
     val logger = remember { IosLogger() }
     var attempt by remember { mutableIntStateOf(0) }
@@ -43,6 +45,7 @@ fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewControl
             val recovery = remember(hostController) { IosStartupRecovery({ topViewController(hostController) }, logger) }
             HabitSheetTheme { StartupFailureScreen(startup.cause, recovery, onRetry = { attempt++ }) }
         }
+
         is StartupState.Ready -> ReadyApp(startup.graph, hostController)
     }
 }

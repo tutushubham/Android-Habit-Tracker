@@ -30,7 +30,7 @@ data class TutorialStep(
     val title: String,
     val description: String,
     val targetTag: String,
-    val nextButtonText: String = "Next"
+    val nextButtonText: String = "Next",
 )
 
 @Composable
@@ -38,14 +38,14 @@ fun TutorialOverlay(
     steps: List<TutorialStep>,
     targetPositions: Map<String, Rect>,
     onComplete: () -> Unit,
-    onSkip: () -> Unit
+    onSkip: () -> Unit,
 ) {
     var currentStepIndex by remember { mutableStateOf(0) }
     val currentStep = steps.getOrNull(currentStepIndex) ?: return
     val targetRect = targetPositions[currentStep.targetTag]
-    
+
     val density = LocalDensity.current
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -53,8 +53,8 @@ fun TutorialOverlay(
             .background(Color.Black.copy(alpha = 0.7f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { /* Block clicks to underlying UI */ }
+                indication = null,
+            ) { /* Block clicks to underlying UI */ },
     ) {
         // Spotlight effect would be nice but simple highlight is required
         if (targetRect != null) {
@@ -62,13 +62,13 @@ fun TutorialOverlay(
                 modifier = Modifier
                     .offset(
                         x = with(density) { targetRect.left.toDp() } - 4.dp,
-                        y = with(density) { targetRect.top.toDp() } - 4.dp
+                        y = with(density) { targetRect.top.toDp() } - 4.dp,
                     )
                     .size(
                         width = with(density) { targetRect.width.toDp() } + 8.dp,
-                        height = with(density) { targetRect.height.toDp() } + 8.dp
+                        height = with(density) { targetRect.height.toDp() } + 8.dp,
                     )
-                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
             )
         }
 
@@ -79,43 +79,43 @@ fun TutorialOverlay(
                 .padding(32.dp)
                 .widthIn(max = 400.dp)
                 .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                .padding(24.dp)
+                .padding(24.dp),
         ) {
             Text(
                 text = "${currentStepIndex + 1} / ${steps.size}",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
-            
+
             Text(
                 text = currentStep.title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             )
-            
+
             Text(
                 text = currentStep.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             )
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onSkip) {
                     Text(
-                        "Skip", 
+                        "Skip",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { contentDescription = "Skip tutorial" }
+                        modifier = Modifier.semantics { contentDescription = "Skip tutorial" },
                     )
                 }
-                
+
                 Button(
                     onClick = {
                         if (currentStepIndex < steps.size - 1) {
@@ -124,7 +124,7 @@ fun TutorialOverlay(
                             onComplete()
                         }
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Text(currentStep.nextButtonText)
                 }
@@ -135,7 +135,7 @@ fun TutorialOverlay(
 
 fun Modifier.tutorialTarget(
     tag: String,
-    onPositioned: (String, Rect) -> Unit
+    onPositioned: (String, Rect) -> Unit,
 ) = this.onGloballyPositioned { coords ->
     val rect = Rect(coords.positionInRoot(), coords.size.toSize())
     onPositioned(tag, rect)

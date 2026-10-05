@@ -21,7 +21,10 @@ class BackupRestoreSqliteTest {
     private suspend fun withSyncedDatabase(block: suspend (url: String, repo: LocalHabitRepository) -> Unit) {
         val file = Files.createTempFile("habit-sheet-backup-restore", ".db")
         val url = "jdbc:sqlite:${file.toAbsolutePath()}"
-        JdbcSqliteDriver(url).also { HabitsDatabase.Schema.create(it); it.close() }
+        JdbcSqliteDriver(url).also {
+            HabitsDatabase.Schema.create(it)
+            it.close()
+        }
         try {
             val repo = LocalHabitRepository({ JdbcSqliteDriver(url) })
             repo.restoreFromSnapshot(BackupSerializer.deserialize(BackupFixtures.V3))

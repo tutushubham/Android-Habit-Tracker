@@ -107,11 +107,13 @@ class SheetSyncCharacterizationTest {
 
     @Test
     fun uploadsBooleanDoneAndSkipFromLocalCompletions() = runTest {
-        val repo = repo(HabitSnapshot(
-            dailyHabits = listOf(habit("run", "Run")),
-            dayPlans = listOf(plan("run", day, "Easy", "run-1"), plan("run", tomorrow, "Rest", "run-2", skipped = true)),
-            dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 5, "run-1")),
-        ))
+        val repo = repo(
+            HabitSnapshot(
+                dailyHabits = listOf(habit("run", "Run")),
+                dayPlans = listOf(plan("run", day, "Easy", "run-1"), plan("run", tomorrow, "Rest", "run-2", skipped = true)),
+                dailyCompletions = listOf(DailyHabitCompletion("run", day, true, 5, "run-1")),
+            ),
+        )
         val server = FakeSheetsServer()
         sync(repo, server).sync()
 
@@ -344,10 +346,12 @@ class SheetSyncCharacterizationTest {
     @Test
     fun localOnlyHabitRowsAreAppendedAndThenBecomeSheetManaged() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
-        val repo = repo(HabitSnapshot(
-            dailyHabits = listOf(habit("run", "Run"), habit("journal", "Journal")),
-            dayPlans = listOf(plan("run", day, "Easy 6 km", "run-1"), plan("journal", tomorrow, "Evening page", "journal-1")),
-        ))
+        val repo = repo(
+            HabitSnapshot(
+                dailyHabits = listOf(habit("run", "Run"), habit("journal", "Journal")),
+                dayPlans = listOf(plan("run", day, "Easy 6 km", "run-1"), plan("journal", tomorrow, "Evening page", "journal-1")),
+            ),
+        )
         val sync = sync(repo, server)
 
         sync.sync()
@@ -363,10 +367,12 @@ class SheetSyncCharacterizationTest {
     @Test
     fun alreadyManagedHabitMissingFromSheetIsNotReappended() = runTest {
         val server = FakeSheetsServer().withPlanRows(listOf("run-1", "2026-10-01", "Run", "Easy 6 km", false, false))
-        val repo = repo(HabitSnapshot(
-            dailyHabits = listOf(habit("run", "Run"), habit("journal", "Journal")),
-            dayPlans = listOf(plan("run", day, "Easy 6 km", "run-1"), plan("journal", tomorrow, "Evening page", "journal-1")),
-        ))
+        val repo = repo(
+            HabitSnapshot(
+                dailyHabits = listOf(habit("run", "Run"), habit("journal", "Journal")),
+                dayPlans = listOf(plan("run", day, "Easy 6 km", "run-1"), plan("journal", tomorrow, "Evening page", "journal-1")),
+            ),
+        )
         repo.setSheetManagedHabitIds(setOf("run", "journal"))
         sync(repo, server).sync()
 
@@ -466,10 +472,12 @@ class SheetSyncCharacterizationTest {
             listOf("run-1", "2026-10-01", "Run", "Edited", false, false),
             listOf("run-9", "2026-10-02", "Run", "Unknown id", false, false),
         )
-        val repo = repo(HabitSnapshot(
-            dailyHabits = listOf(habit("run", "Run"), habit("run2", "run ")),
-            dayPlans = listOf(plan("run", day, "Easy", "run-1")),
-        ))
+        val repo = repo(
+            HabitSnapshot(
+                dailyHabits = listOf(habit("run", "Run"), habit("run2", "run ")),
+                dayPlans = listOf(plan("run", day, "Easy", "run-1")),
+            ),
+        )
         val sync = sync(repo, server)
 
         sync.sync()

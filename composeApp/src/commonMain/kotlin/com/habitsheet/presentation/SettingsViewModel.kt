@@ -1,9 +1,8 @@
 package com.habitsheet.presentation
 
 import androidx.lifecycle.ViewModel
-
-import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.domain.model.SheetLink
+import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
@@ -17,9 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** What the settings screen shows about the last sync. [isError] is false for "Will sync when online." */
@@ -32,7 +31,9 @@ internal fun SheetSyncState.toStatus(): SyncStatus = when (val failure = error) 
 }
 
 enum class ThemeMode {
-    System, Light, Dark
+    System,
+    Light,
+    Dark,
 }
 
 class SettingsViewModel(

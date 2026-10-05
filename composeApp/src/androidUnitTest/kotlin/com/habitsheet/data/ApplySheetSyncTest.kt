@@ -156,7 +156,8 @@ class ApplySheetSyncTest {
                     completionsToSave = listOf(DailyHabitCompletion("run", day, false, 25, "run-1")), // sheet value read earlier
                     managedHabitIds = setOf("run"),
                 ),
-                setOf("run-1"), 9,
+                setOf("run-1"),
+                9,
             )
 
             assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
@@ -171,7 +172,8 @@ class ApplySheetSyncTest {
             repo.applySheetSync(SheetSyncChanges(completionsToAcknowledge = listOf(CompletionAck("run-1", day, 1)), managedHabitIds = setOf("run")), setOf("run-1"), 8)
             repo.applySheetSync(
                 SheetSyncChanges(completionsToSave = listOf(DailyHabitCompletion("run", day, true, 25, "run-1")), managedHabitIds = setOf("run")),
-                setOf("run-1"), 9,
+                setOf("run-1"),
+                9,
             )
             assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
             assertTrue(repo.snapshot.value.pendingCompletions.isEmpty())
