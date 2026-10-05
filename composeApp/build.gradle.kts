@@ -31,6 +31,15 @@ kotlin {
         }
     }
 
+    // Warnings fail the build for production code: every Android and iOS main compilation (which compiles commonMain
+    // together with androidMain / iosMain). Not for the shared-metadata compilations, whose only warnings are KLIB
+    // resolver notices about duplicate library names in the dependency graph, and not for tests.
+    targets.matching { it.platformType != org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.common }.configureEach {
+        compilations.matching { it.name in setOf("main", "debug", "release") }.configureEach {
+            compileTaskProvider.configure { compilerOptions.allWarningsAsErrors.set(true) }
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -185,7 +194,9 @@ val checkReleaseSigning by tasks.registering {
         }
     }
 }
-tasks.matching { it.name.matches(Regex("(assemble|bundle|package)Release.*")) }.configureEach {
+// Only the tasks that produce a signed release artifact; release unit tests and lint (part of `check`) need no keystore.
+val signedReleaseTasks = setOf("assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle", "signReleaseBundle")
+tasks.matching { it.name in signedReleaseTasks }.configureEach {
     dependsOn(checkReleaseSigning)
 }
 

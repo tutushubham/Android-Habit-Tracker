@@ -4,11 +4,13 @@ import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.*
 import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.ui.BackupService
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.*
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ResetDataTest {
 
     @Test

@@ -1,0 +1,3 @@
+# Formatting-only commits; use with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# P1-2 step 10 (1/2): Spotless + ktlint, whole codebase formatted
+bc92e4f4266a8006a0585e7d337fec80695b8030

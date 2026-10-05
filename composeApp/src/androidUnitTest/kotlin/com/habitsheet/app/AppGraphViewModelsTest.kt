@@ -26,7 +26,7 @@ class AppGraphViewModelsTest {
         override val usesClipboard = false
         override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) = Unit
         override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
-        override fun importBackup(onFailure: (String) -> Unit, onImport: (String) -> Unit) = Unit
+        override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) = Unit
     }
     private val graph = AppGraph(
         DriverFactory { JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { HabitsDatabase.Schema.create(it) } },

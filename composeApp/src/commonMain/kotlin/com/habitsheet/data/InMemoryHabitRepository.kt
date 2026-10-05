@@ -292,7 +292,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         sheetLastSync = 0L
         settings?.themeMode?.let { themeMode = it }
         settings?.onboardingCompleted?.let { onboardingCompleted = it }
-        if (restoreSheetLink && !settings?.sheetUrl.isNullOrBlank()) sheetUrl = settings!!.sheetUrl!!
+        if (restoreSheetLink && !settings?.sheetUrl.isNullOrBlank()) sheetUrl = settings.sheetUrl
         mutableSnapshot.value = snapshot.copy(sheetManagedHabitIds = emptySet(), pendingCompletions = emptySet())
     }
 }

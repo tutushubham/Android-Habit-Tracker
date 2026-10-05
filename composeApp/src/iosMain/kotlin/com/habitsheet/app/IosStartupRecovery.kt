@@ -104,7 +104,7 @@ internal class IosStartupRecovery(
             logger.e(TAG, "Moving the database aside failed", e)
             return BackupResult.Failure("Couldn't move the data file. Nothing was changed.")
         }
-        val all = (fileManager.contentsOfDirectoryAtPath(directory, null) as? List<*>).orEmpty().filterIsInstance<String>()
+        val all = fileManager.contentsOfDirectoryAtPath(directory, null).orEmpty().filterIsInstance<String>()
         DatabaseFileNames.staleAsideNames(all, name, keep = 3).forEach { fileManager.removeItemAtPath("$directory/$it", null) }
         logger.i(TAG, "Moved ${moved.size} database file(s) aside")
         return BackupResult.Success("The old data file was moved aside.")

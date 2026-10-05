@@ -36,7 +36,7 @@ internal object BackupStreams {
                     if (total > maxBytes) throw BackupIoException("That file is too large to be a Habit Sheet backup.")
                     out.write(buffer, 0, read)
                 }
-                return out.toByteArray().decodeToString().removePrefix("﻿")
+                return out.toByteArray().decodeToString().removePrefix("\uFEFF")
             }
         } catch (e: IOException) {
             throw BackupIoException("The file couldn't be read completely.", e)

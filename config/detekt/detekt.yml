@@ -32,3 +32,6 @@ style:
     excludes: ['**/commonTest/**', '**/androidUnitTest/**']
   ReturnCount:
     max: 4
+  WildcardImport:
+    # IntelliJ's import layout (star import from 5 names of one package) is allowed, as in ktlint.
+    active: false

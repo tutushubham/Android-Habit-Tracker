@@ -1,0 +1,188 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CsvGenerator.kt$CsvGenerator$!value.contains(",") &amp;&amp; !value.contains("\"") &amp;&amp; !value.contains("\n") &amp;&amp; !value.contains("\r")</ID>
+    <ID>ComplexCondition:PlanReconciler.kt$PlanReconciler$currentPlan?.habitId != habit.id || currentPlan.date != row.date || currentPlan.detail != row.session || currentPlan.skipped != row.skip</ID>
+    <ID>ComplexCondition:SyncError.kt$current is IOException || current is HttpRequestTimeoutException || current is ConnectTimeoutException || current is SocketTimeoutException</ID>
+    <ID>ComplexCondition:SyncError.kt$name.contains("UnknownHost") || name.contains("UnresolvedAddress") || name.contains("ConnectException") || name.contains("DarwinHttpRequestException")</ID>
+    <ID>CyclomaticComplexMethod:FakeSheetsServer.kt$FakeSheetsServer$private suspend fun MockRequestHandleScope.handle(request: HttpRequestData): HttpResponseData</ID>
+    <ID>CyclomaticComplexMethod:PlanReconciler.kt$PlanReconciler$fun reconcile( snapshot: HabitSnapshot, remoteRows: List&lt;SheetPlanRow&gt;, oldKeys: Set&lt;String&gt;, nowMillis: Long, newId: () -&gt; String, ): ReconcileResult</ID>
+    <ID>CyclomaticComplexMethod:PlanTable.kt$internal fun parsePlanTable(values: JsonArray): List&lt;SheetPlanRow&gt;</ID>
+    <ID>CyclomaticComplexMethod:SheetSync.kt$SheetSync$suspend fun sync(interactive: Boolean = false)</ID>
+    <ID>EmptyFunctionBlock:ProductionReadinessTest.kt$ProductionReadinessTest.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:ResetDataTest.kt$ResetDataTest.&lt;no name provided&gt;${}</ID>
+    <ID>ForEachOnRange:PlanScreen.kt$1..7</ID>
+    <ID>LongMethod:BackupModels.kt$BackupValidator$fun validate(snapshot: HabitSnapshot)</ID>
+    <ID>LongMethod:FakeSheetsServer.kt$FakeSheetsServer$private suspend fun MockRequestHandleScope.handle(request: HttpRequestData): HttpResponseData</ID>
+    <ID>LongMethod:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$private fun buildRemoteViews( context: Context, manager: AppWidgetManager, widgetId: Int, snapshot: HabitSnapshot, ): RemoteViews</ID>
+    <ID>LongMethod:PlanReconciler.kt$PlanReconciler$fun reconcile( snapshot: HabitSnapshot, remoteRows: List&lt;SheetPlanRow&gt;, oldKeys: Set&lt;String&gt;, nowMillis: Long, newId: () -&gt; String, ): ReconcileResult</ID>
+    <ID>LongMethod:Sha256.kt$Sha256$fun digest(message: ByteArray): ByteArray</ID>
+    <ID>LongMethod:SnapshotParityTest.kt$SnapshotParityTest$@Test fun everyWriteLeavesTheSnapshotEqualToAFreshRead()</ID>
+    <ID>LongMethod:SnapshotParityTest.kt$SnapshotParityTest$@Test fun snapshotListsKeepTheirDocumentedOrder()</ID>
+    <ID>LongParameterList:BackupViewModel.kt$BackupViewModel$( private val repository: BackupStore, private val backupService: BackupService, private val dateProvider: DateProvider = SystemDateProvider, scope: CoroutineScope? = null, private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main, private val logger: Logger = NoOpLogger, /** Called on the callback dispatcher after a reset or restore succeeded (settings screens re-read storage). */ private val onDataReplaced: () -&gt; Unit = {}, )</ID>
+    <ID>LongParameterList:MonthActions.kt$MonthActions$( val previousDay: () -&gt; Unit = {}, val nextDay: () -&gt; Unit = {}, val currentDay: () -&gt; Unit = {}, val previousMonth: () -&gt; Unit = {}, val nextMonth: () -&gt; Unit = {}, val currentMonth: () -&gt; Unit = {}, val setTodayMode: (Boolean) -&gt; Unit = {}, val openDay: (LocalDate) -&gt; Unit = {}, val togglePlanned: (planId: String, date: LocalDate) -&gt; Unit = { _, _ -&gt; }, val toggleWeekly: (habitId: String, weekStart: LocalDate) -&gt; Unit = { _, _ -&gt; }, )</ID>
+    <ID>LongParameterList:MonthUiStateGoldenTest.kt$MonthUiStateGoldenTest$( id: String, order: Int, categoryId: String?, createdOn: LocalDate = LocalDate(2020, 1, 1), archivedOn: LocalDate? = null, datedOnly: Boolean = false, )</ID>
+    <ID>LongParameterList:MonthViewModel.kt$( month: MonthKey, today: LocalDate, selectedDay: LocalDate, onboardingVisible: Boolean, scrollToTodayTrigger: Long, todayMode: Boolean, error: String?, )</ID>
+    <ID>LongParameterList:PlanReconcilerTest.kt$PlanReconcilerTest$(id: String, date: LocalDate, habit: String, session: String, done: Boolean = false, skip: Boolean = false, sheetRow: Int = 2, area: String? = null, doneColumn: String = "E")</ID>
+    <ID>LongParameterList:SheetSync.kt$SheetSync$( private val repository: HabitStore, private val settings: SettingsStore, private val tokenProvider: SheetTokenProvider, private val client: HttpClient = createSheetsHttpClient(), private val dateProvider: DateProvider = SystemDateProvider, private val retryPolicy: RetryPolicy = RetryPolicy(), private val logger: Logger = NoOpLogger, )</ID>
+    <ID>LongParameterList:SyncScheduler.kt$SyncScheduler$( scope: CoroutineScope, private val debounceMillis: Long = DEFAULT_DEBOUNCE_MILLIS, private val retryDelayMillis: Long = DEFAULT_RETRY_MILLIS, private val maxRetryDelayMillis: Long = DEFAULT_MAX_RETRY_MILLIS, private val shouldRetry: () -&gt; Boolean = { false }, private val logger: Logger = NoOpLogger, private val runSync: suspend (interactive: Boolean) -&gt; Unit, )</ID>
+    <ID>LoopWithTooManyJumpStatements:SyncScheduler.kt$SyncScheduler$while</ID>
+    <ID>MagicNumber:AndroidShareService.kt$AndroidShareService$100</ID>
+    <ID>MagicNumber:BackupModels.kt$BackupSerializer$4</ID>
+    <ID>MagicNumber:BackupModels.kt$BackupValidator$7</ID>
+    <ID>MagicNumber:BackupStreams.kt$BackupStreams$1024</ID>
+    <ID>MagicNumber:BackupStreams.kt$BackupStreams$16</ID>
+    <ID>MagicNumber:DefaultIdGenerator.kt$DefaultIdGenerator$36</ID>
+    <ID>MagicNumber:HabitCalculations.kt$HabitCalculations$4</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$150</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$180</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$220</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$3</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$300</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$5</ID>
+    <ID>MagicNumber:HabitCompletionWidgetProvider.kt$HabitCompletionWidgetProvider.Companion$7</ID>
+    <ID>MagicNumber:IosStartupRecovery.kt$IosStartupRecovery$1000</ID>
+    <ID>MagicNumber:LocalHabitRepository.kt$LocalHabitRepository$7</ID>
+    <ID>MagicNumber:Logger.kt$5</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$10</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$100</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$11</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$12</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$28</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$29</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$3</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$30</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$31</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$4</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$400</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$5</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$6</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$7</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$8</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthEngine$9</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthKey$12</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthKey$4</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthKey$6</ID>
+    <ID>MagicNumber:MonthKey.kt$MonthKey$7</ID>
+    <ID>MagicNumber:MonthViewModel.kt$MonthViewModel$7</ID>
+    <ID>MagicNumber:PlanTable.kt$12</ID>
+    <ID>MagicNumber:PlanTable.kt$1899</ID>
+    <ID>MagicNumber:PlanTable.kt$3</ID>
+    <ID>MagicNumber:PlanTable.kt$30</ID>
+    <ID>MagicNumber:PlanTable.kt$4</ID>
+    <ID>MagicNumber:PlanTable.kt$5</ID>
+    <ID>MagicNumber:PlanTable.kt$6</ID>
+    <ID>MagicNumber:PlanTable.kt$8</ID>
+    <ID>MagicNumber:SerializingTokenProvider.kt$SerializingTokenProvider$3</ID>
+    <ID>MagicNumber:SerializingTokenProvider.kt$SerializingTokenProvider$60_000L</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$0xff</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$10</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$11</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$13</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$15</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$16</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$17</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$18</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$19</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$22</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$24</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$25</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$3</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$32</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$4</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$6</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$63</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$64</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$7</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$8</ID>
+    <ID>MagicNumber:Sha256.kt$Sha256$9</ID>
+    <ID>MagicNumber:SheetsApi.kt$15_000</ID>
+    <ID>MagicNumber:SheetsApi.kt$30_000</ID>
+    <ID>MagicNumber:SheetsApi.kt$45_000</ID>
+    <ID>MagicNumber:SheetsApi.kt$RetryPolicy$20</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$1000</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$200</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$299</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$401</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$403</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$404</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$429</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$500</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$503</ID>
+    <ID>MagicNumber:SheetsApi.kt$SheetsApi$599</ID>
+    <ID>MagicNumber:SyncError.kt$6</ID>
+    <ID>MagicNumber:UiFormatting.kt$100</ID>
+    <ID>MagicNumber:UiFormatting.kt$3</ID>
+    <ID>MaxLineLength:AboutScreen.kt$"Your habits and completion history are stored locally on your device. The app does not require an account or an internet connection to track your habits."</ID>
+    <ID>MaxLineLength:BackupViewModel.kt$BackupViewModel$val settings = runCatchingCancellable { repository.backupSettings(includeSheetLink) }.onFailure { logger.w(TAG, "Reading settings for the backup failed; exporting data only", it) }.getOrNull()</ID>
+    <ID>MaxLineLength:DataBackupScreen.kt$description = "Permanently remove all habits, history, and categories from this device and disconnect the sheet link. Your Google Sheet is untouched. This cannot be undone."</ID>
+    <ID>MaxLineLength:DataBackupScreen.kt$description = if (viewModel.usesClipboard) "Copy all habits, plans, and history as JSON." else "Save your categories, habits, plans, and entire completion history to a local file."</ID>
+    <ID>MaxLineLength:DataBackupScreen.kt$description = if (viewModel.usesClipboard) "Copy your habit history as CSV." else "Export your daily and weekly habit history for use in Excel or Google Sheets."</ID>
+    <ID>MaxLineLength:DataBackupScreen.kt$description = if (viewModel.usesClipboard) "Restore JSON currently copied to the clipboard." else "Restore your data from a previously exported JSON backup file."</ID>
+    <ID>MaxLineLength:DataBackupScreen.kt$if (viewModel.usesClipboard) "Copy a JSON backup and save it in Files, Notes, or another safe place. Copy it again before importing." else "Keep your habit tracking data safe. You can export all your history to a JSON file and restore it later or on another device."</ID>
+    <ID>MaxLineLength:InMemoryHabitRepository.kt$InMemoryHabitRepository$categories = mutableSnapshot.value.categories.upsert(category.copy(updatedAtEpochMillis = monotonicUpdatedAt(category.updatedAtEpochMillis, previous))) { it.id }</ID>
+    <ID>MaxLineLength:InMemoryHabitRepository.kt$InMemoryHabitRepository$dailyHabits = mutableSnapshot.value.dailyHabits.upsert(habit.copy(updatedAtEpochMillis = monotonicUpdatedAt(habit.updatedAtEpochMillis, previous))) { it.id }</ID>
+    <ID>MaxLineLength:InMemoryHabitRepository.kt$InMemoryHabitRepository$mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.filterNot { it.habitId == habitId &amp;&amp; it.weekday == weekday })</ID>
+    <ID>MaxLineLength:ManageSections.kt$Text("Goal $goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 8.dp), maxLines = 1)</ID>
+    <ID>MaxLineLength:ManageSections.kt$Text("Goal $goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:ManageSections.kt$private</ID>
+    <ID>MaxLineLength:MonthGrid.kt$)</ID>
+    <ID>MaxLineLength:MonthScreen.kt$PhoneMonthScreen(state, actions, onManage, onSettings, onPlan, onShare = { showSharePreview = true }, onPosition = { tag, rect -&gt; targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })</ID>
+    <ID>MaxLineLength:MonthScreen.kt$TabletMonthScreen(state, actions, onManage, onSettings, onPlan, onShare = { showSharePreview = true }, onPosition = { tag, rect -&gt; targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })</ID>
+    <ID>MaxLineLength:MonthScreen.kt$TutorialStep("Plan and track your day", "Open Plan to schedule sessions, then tap a habit to check it off. To plan from a laptop, link a Google Sheet in Settings.", "today")</ID>
+    <ID>MaxLineLength:MonthScreen.kt$topBar = { MonthTopBar(state, actions, compact = true, onShare = onShare, onSettings = onSettings, onPosition = onPosition, onShowPicker = onShowPicker) }</ID>
+    <ID>MaxLineLength:PlanScreen.kt$"${selectedDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}, ${selectedDate.day} ${MonthKey.from(selectedDate).monthName()} ${selectedDate.year}"</ID>
+    <ID>MaxLineLength:PlanScreen.kt$Text("Tap a weekday to set the session for that habit. Habits with a weekly plan appear only on their planned days.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))</ID>
+    <ID>MaxLineLength:PlanScreen.kt$val recurring = state.weeklyPlans.firstOrNull { it.habitId == selected.habit.id &amp;&amp; it.weekday == (selected.weekday ?: selectedDate.dayOfWeek.ordinal + 1) }</ID>
+    <ID>MaxLineLength:PlanScreen.kt$var detail by remember(selected, selectedDate) { mutableStateOf(if (selected.weekday == null) dayPlan?.detail ?: recurring?.detail.orEmpty() else recurring?.detail.orEmpty()) }</ID>
+    <ID>MaxLineLength:PlanTable.kt$SheetPlanRow</ID>
+    <ID>MaxLineLength:SettingsStoreImpl.kt$SettingsStoreImpl$upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), nextDayPlanTime(plan.id, plan.updatedAtEpochMillis))</ID>
+    <ID>MaxLineLength:SheetSync.kt$SheetSync$mutableState.value.copy(busy = false, error = null, message = "Google sign-in was cancelled or failed. If you did choose an account, the app's Google OAuth client may not match this build's signing key (see SHEET_SYNC.md).")</ID>
+    <ID>MaxLineLength:SheetSync.kt$SheetSync$settings.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds, completionsToAcknowledge = upload.acknowledged), upload.syncedKeys, now)</ID>
+    <ID>MaxLineLength:SyncError.kt$SyncError.Unknown$class</ID>
+    <ID>MaxLineLength:TodayList.kt$"${state.selectedDay.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}, ${state.selectedDay.day} ${state.selectedMonth.monthName()}"</ID>
+    <ID>MaxLineLength:TodayList.kt$Text(name, style = MaterialTheme.typography.bodyLarge, color = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)</ID>
+    <ID>MayBeConst:BackupFixtures.kt$BackupFixtures$val V1 = """ { "version": 1, "timestamp": 1000, "data": { "categories": [ { "id": "cat1", "name": "Fitness", "displayOrder": 0, "updatedAtEpochMillis": 100 } ], "dailyHabits": [ { "id": "run", "name": "Run", "categoryId": "cat1", "monthlyGoal": 12, "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200 } ], "dailyCompletions": [ { "habitId": "run", "date": "2026-08-05", "completed": true, "updatedAtEpochMillis": 300 } ], "weeklyHabits": [ { "id": "gym", "name": "Gym", "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200, "categoryId": null } ], "weeklyCompletions": [ { "weeklyHabitId": "gym", "weekStartDate": "2026-08-03", "completed": true, "updatedAtEpochMillis": 300 } ] } } """</ID>
+    <ID>MayBeConst:BackupFixtures.kt$BackupFixtures$val V2 = """ { "version": 2, "timestamp": 1000, "data": { "categories": [ { "id": "cat1", "name": "Fitness", "displayOrder": 0, "updatedAtEpochMillis": 100 } ], "dailyHabits": [ { "id": "run", "name": "Run", "categoryId": "cat1", "monthlyGoal": 12, "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200 } ], "dailyCompletions": [ { "habitId": "run", "date": "2026-08-05", "completed": true, "updatedAtEpochMillis": 300 } ], "weeklyHabits": [ { "id": "gym", "name": "Gym", "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200, "categoryId": null } ], "weeklyCompletions": [ { "weeklyHabitId": "gym", "weekStartDate": "2026-08-03", "completed": true, "updatedAtEpochMillis": 300 } ], "weeklyPlans": [ { "habitId": "run", "weekday": 2, "detail": "Intervals", "updatedAtEpochMillis": 250 } ] } } """</ID>
+    <ID>MayBeConst:BackupFixtures.kt$BackupFixtures$val V3 = """ { "version": 3, "timestamp": 1000, "data": { "categories": [ { "id": "cat1", "name": "Fitness", "displayOrder": 0, "updatedAtEpochMillis": 100 } ], "dailyHabits": [ { "id": "run", "name": "Run", "categoryId": "cat1", "monthlyGoal": 12, "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200, "kind": "ACTION", "datedOnly": true } ], "dailyCompletions": [ { "habitId": "run", "date": "2026-08-05", "completed": true, "updatedAtEpochMillis": 300, "planId": "run|2026-08-05" } ], "weeklyHabits": [ { "id": "gym", "name": "Gym", "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200, "categoryId": null } ], "weeklyCompletions": [ { "weeklyHabitId": "gym", "weekStartDate": "2026-08-03", "completed": true, "updatedAtEpochMillis": 300 } ], "weeklyPlans": [ { "habitId": "run", "weekday": 2, "detail": "Intervals", "updatedAtEpochMillis": 250 } ], "dayPlans": [ { "habitId": "run", "date": "2026-08-06", "detail": "Easy 6 km", "skipped": false, "updatedAtEpochMillis": 260, "id": "run|2026-08-06" } ] } } """</ID>
+    <ID>MayBeConst:BackupFixtures.kt$BackupFixtures$val V4 = """ { "version": 4, "timestamp": 1000, "checksum": "sha256:ec56a1a7c64844f564006886713339e60156e401d7254b2ade9f36462a2f8f92", "settings": { "themeMode": 2, "onboardingCompleted": true, "sheetUrl": "https://docs.google.com/spreadsheets/d/FIXTURESHEETID/edit" }, "data": { "categories": [ { "id": "cat1", "name": "Fitness", "displayOrder": 0, "updatedAtEpochMillis": 100 } ], "dailyHabits": [ { "id": "run", "name": "Run", "categoryId": "cat1", "monthlyGoal": 12, "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200, "kind": "ACTION", "datedOnly": true } ], "dailyCompletions": [ { "habitId": "run", "date": "2026-08-05", "completed": true, "updatedAtEpochMillis": 300, "planId": "run|2026-08-05" } ], "weeklyHabits": [ { "id": "gym", "name": "Gym", "displayOrder": 0, "active": true, "createdOn": "2026-08-01", "createdAtEpochMillis": 100, "updatedAtEpochMillis": 200, "categoryId": null } ], "weeklyCompletions": [ { "weeklyHabitId": "gym", "weekStartDate": "2026-08-03", "completed": true, "updatedAtEpochMillis": 300 } ], "weeklyPlans": [ { "habitId": "run", "weekday": 2, "detail": "Intervals", "updatedAtEpochMillis": 250 } ], "dayPlans": [ { "habitId": "run", "date": "2026-08-06", "detail": "Easy 6 km", "skipped": false, "updatedAtEpochMillis": 260, "id": "run|2026-08-06" } ] } } """</ID>
+    <ID>NestedBlockDepth:BackupStreams.kt$BackupStreams$fun readText(open: () -&gt; InputStream?, maxBytes: Long = MAX_IMPORT_BYTES): String</ID>
+    <ID>NestedBlockDepth:SheetSync.kt$SheetSync$suspend fun sync(interactive: Boolean = false)</ID>
+    <ID>ReturnCount:FakeSheetsServer.kt$FakeSheetsServer$private suspend fun MockRequestHandleScope.handle(request: HttpRequestData): HttpResponseData</ID>
+    <ID>SwallowedException:AndroidVersionProvider.kt$AndroidVersionProvider$e: Exception</ID>
+    <ID>ThrowsCount:BackupModels.kt$BackupSerializer$fun parse(jsonString: String): ParsedBackup</ID>
+    <ID>ThrowsCount:BackupModels.kt$BackupSerializer$private fun parseV4(root: JsonObject): ParsedBackup</ID>
+    <ID>ThrowsCount:BackupStreams.kt$BackupStreams$fun readText(open: () -&gt; InputStream?, maxBytes: Long = MAX_IMPORT_BYTES): String</ID>
+    <ID>ThrowsCount:BackupStreams.kt$BackupStreams$fun writeBytes(open: () -&gt; OutputStream?, bytes: ByteArray)</ID>
+    <ID>ThrowsCount:PlanTable.kt$internal fun parsePlanTable(values: JsonArray): List&lt;SheetPlanRow&gt;</ID>
+    <ID>ThrowsCount:SheetsApi.kt$SheetsApi$private suspend fun call(idempotent: Boolean, request: suspend () -&gt; HttpResponse): String</ID>
+    <ID>TooGenericExceptionCaught:AndroidBackupService.kt$AndroidBackupService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AndroidSheetTokenProvider.kt$AndroidSheetTokenProvider$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AndroidStartupRecovery.kt$AndroidStartupRecovery$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AndroidVersionProvider.kt$AndroidVersionProvider$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:HabitWidgetLogic.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:IosStartupRecovery.kt$IosStartupRecovery$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LocalDatabase.kt$LocalDatabase.Companion$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:Logger.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SerializingTokenProvider.kt$SerializingTokenProvider$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SheetSync.kt$SheetSync$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SheetsApi.kt$SheetsApi$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SyncScheduler.kt$SyncScheduler$e: Exception</ID>
+    <ID>TooManyFunctions:HabitStore.kt$HabitStore</ID>
+    <ID>TooManyFunctions:InMemoryHabitRepository.kt$InMemoryHabitRepository : HabitRepository</ID>
+    <ID>TooManyFunctions:LocalHabitRepository.kt$LocalHabitRepository : HabitRepositorySettingsStoreBackupStore</ID>
+    <ID>TooManyFunctions:ManageHabitsViewModel.kt$ManageHabitsViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:ManageSections.kt$com.habitsheet.ui.manage.ManageSections.kt</ID>
+    <ID>TooManyFunctions:MonthGrid.kt$com.habitsheet.ui.month.MonthGrid.kt</ID>
+    <ID>TooManyFunctions:MonthViewModel.kt$MonthViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:RowMappers.kt$com.habitsheet.data.RowMappers.kt</ID>
+    <ID>TooManyFunctions:SettingsStore.kt$SettingsStore</ID>
+    <ID>TooManyFunctions:SettingsStoreImpl.kt$SettingsStoreImpl : SettingsStore</ID>
+    <ID>UnusedPrivateProperty:HabitUsabilityTest.kt$HabitUsabilityTest$val id2 = habits[1].id</ID>
+    <ID>UnusedPrivateProperty:ProductionReadinessTest.kt$ProductionReadinessTest$val backupViewModel = BackupViewModel( repository, object : com.habitsheet.ui.BackupService { override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -&gt; Unit) {} override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -&gt; Unit) {} override fun importBackup(onImport: (String) -&gt; Unit, onFailure: (String) -&gt; Unit) {} }, dateProvider, backgroundScope, )</ID>
+    <ID>UseCheckOrError:IosStartupRecovery.kt$IosStartupRecovery$throw IllegalStateException("copy")</ID>
+    <ID>UseCheckOrError:IosStartupRecovery.kt$IosStartupRecovery$throw IllegalStateException("move")</ID>
+    <ID>UseCheckOrError:IosStartupRecovery.kt$IosStartupRecovery$throw IllegalStateException("staging")</ID>
+  </CurrentIssues>
+</SmellBaseline>
