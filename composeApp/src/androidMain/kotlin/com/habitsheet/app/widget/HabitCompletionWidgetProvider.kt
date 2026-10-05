@@ -10,22 +10,17 @@ import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 import com.habitsheet.app.AndroidDriverFactory
+import com.habitsheet.app.AndroidLogger
 import com.habitsheet.app.MainActivity
 import com.habitsheet.app.R
 import com.habitsheet.data.LocalHabitRepository
-import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.HabitSnapshot
-import com.habitsheet.domain.model.MonthKey
-import com.habitsheet.domain.model.WeeklyHabitCompletion
-import com.habitsheet.domain.model.sessionToToggle
-import com.habitsheet.domain.model.todaySessions
 import com.habitsheet.presentation.SystemDateProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import java.text.DateFormat
 import java.util.Date
@@ -73,22 +68,16 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
         val pendingResult = goAsync()
         widgetScope.launch {
             try {
-                mutationMutex.withLock {
+                runWidgetWork(storeOpener(context), logger, lock = mutationMutex) { store ->
                     val today = SystemDateProvider.today()
-                    val renderedDate = intent.getStringExtra(EXTRA_RENDERED_DATE)
                     val habitId = intent.getStringExtra(EXTRA_HABIT_ID)
-                    val planId = intent.getStringExtra(EXTRA_PLAN_ID)
-                    if (renderedDate != today.toString() || habitId.isNullOrBlank()) {
-                        // A launcher can retain yesterday's RemoteViews after midnight.
-                        // Refresh instead of recording a completion for an unseen date.
-                        return@withLock
-                    }
-
-                    withRepository(context) { repository ->
-                        when (intent.action) {
-                            ACTION_TOGGLE_DAILY -> toggleDaily(repository, planId, habitId, today)
-                            ACTION_TOGGLE_WEEKLY -> toggleWeekly(repository, habitId, today)
-                        }
+                    // A launcher can retain yesterday's RemoteViews after midnight.
+                    // Refresh instead of recording a completion for an unseen date.
+                    if (habitId == null || !HabitWidgetLogic.isForToday(intent.getStringExtra(EXTRA_RENDERED_DATE), habitId, today)) return@runWidgetWork
+                    val now = SystemDateProvider.nowEpochMillis()
+                    when (intent.action) {
+                        ACTION_TOGGLE_DAILY -> HabitWidgetLogic.toggleDaily(store, intent.getStringExtra(EXTRA_PLAN_ID), habitId, today, now)
+                        ACTION_TOGGLE_WEEKLY -> HabitWidgetLogic.toggleWeekly(store, habitId, today, now)
                     }
                 }
             } finally {
@@ -99,50 +88,6 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
                 pendingResult.finish()
             }
         }
-    }
-
-    private suspend fun toggleDaily(
-        repository: LocalHabitRepository,
-        planId: String?,
-        habitId: String,
-        today: LocalDate,
-    ) {
-        val snapshot = repository.snapshot.value
-        val session = snapshot.sessionToToggle(today, planId, habitId) ?: return
-        val completed = snapshot.dailyCompletions.any {
-            it.planId == session.id && it.date == today && it.completed
-        }
-        repository.setDailyCompletion(
-            DailyHabitCompletion(
-                habitId = session.habit.id,
-                date = today,
-                completed = !completed,
-                updatedAtEpochMillis = SystemDateProvider.nowEpochMillis(),
-                planId = session.id,
-            ),
-        )
-    }
-
-    private suspend fun toggleWeekly(
-        repository: LocalHabitRepository,
-        habitId: String,
-        today: LocalDate,
-    ) {
-        val snapshot = repository.snapshot.value
-        val habit = snapshot.weeklyHabits.firstOrNull { it.id == habitId } ?: return
-        if (!habit.isActiveOn(today)) return
-        val weekStart = MonthKey.from(today).weekStartFor(today) ?: return
-        val completed = snapshot.weeklyCompletions.any {
-            it.weeklyHabitId == habitId && it.weekStartDate == weekStart && it.completed
-        }
-        repository.setWeeklyCompletion(
-            WeeklyHabitCompletion(
-                weeklyHabitId = habitId,
-                weekStartDate = weekStart,
-                completed = !completed,
-                updatedAtEpochMillis = SystemDateProvider.nowEpochMillis(),
-            ),
-        )
     }
 
     private fun updateWidgetsAsync(
@@ -174,21 +119,28 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
         private const val EXTRA_PLAN_ID = "plan_id"
         private const val EXTRA_RENDERED_DATE = "rendered_date"
 
+        /** All database work runs here, off the main thread; every job is bounded by [runWidgetWork]. */
         private val widgetScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val mutationMutex = Mutex()
+        private val logger = AndroidLogger()
 
-        internal fun updateWidget(
+        /** Opens the app's own database (the same repository and queries as the app) for one action. */
+        private fun storeOpener(context: Context) = WidgetStoreOpener {
+            val repository = LocalHabitRepository(AndroidDriverFactory(context.applicationContext))
+            WidgetStore(repository) { repository.close() }
+        }
+
+        internal suspend fun updateWidget(
             context: Context,
             manager: AppWidgetManager,
             widgetId: Int,
         ) {
-            val views = runCatching {
-                withRepository(context) { repository ->
-                    buildRemoteViews(context, manager, widgetId, repository.snapshot.value)
-                }
-            }.getOrElse {
-                errorRemoteViews(context)
-            }
+            var snapshot: HabitSnapshot? = null
+            val read = runWidgetWork(storeOpener(context), logger) { store -> snapshot = store.snapshot.value }
+            // A damaged or missing database (or anything failing while drawing) shows the "unavailable" state.
+            val views = snapshot.takeIf { read }
+                ?.let { data -> runCatching { buildRemoteViews(context, manager, widgetId, data) }.getOrNull() }
+                ?: errorRemoteViews(context)
             manager.updateAppWidget(widgetId, views)
         }
 
@@ -199,38 +151,7 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
             snapshot: HabitSnapshot,
         ): RemoteViews {
             val today = SystemDateProvider.today()
-            val currentWeekStart = MonthKey.from(today).weekStartFor(today)
-            val weeklyCompletionIds = snapshot.weeklyCompletions.asSequence()
-                .filter { it.weekStartDate == currentWeekStart && it.completed }
-                .map { it.weeklyHabitId }
-                .toSet()
-
-            val items = buildList {
-                snapshot.todaySessions(today).forEach { session ->
-                    add(
-                        WidgetHabit(
-                            id = session.habitId,
-                            planId = session.planId,
-                            name = session.label,
-                            weekly = false,
-                            completed = session.completed,
-                        ),
-                    )
-                }
-                snapshot.weeklyHabits
-                    .filter { it.isActiveOn(today) }
-                    .sortedBy { it.displayOrder }
-                    .forEach { habit ->
-                        add(
-                            WidgetHabit(
-                                id = habit.id,
-                                name = habit.name,
-                                weekly = true,
-                                completed = habit.id in weeklyCompletionIds,
-                            ),
-                        )
-                    }
-            }.sortedWith(compareBy<WidgetHabit> { it.completed }.thenBy { it.weekly })
+            val items = HabitWidgetLogic.items(snapshot, today)
 
             val options = manager.getAppWidgetOptions(widgetId)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
@@ -371,18 +292,6 @@ class HabitCompletionWidgetProvider : AppWidgetProvider() {
                 setOnClickPendingIntent(R.id.widget_header, openAppPendingIntent(context))
                 setOnClickPendingIntent(R.id.widget_footer, openAppPendingIntent(context))
             }
-
-        private inline fun <T> withRepository(
-            context: Context,
-            block: (LocalHabitRepository) -> T,
-        ): T {
-            val repository = LocalHabitRepository(AndroidDriverFactory(context.applicationContext))
-            return try {
-                block(repository)
-            } finally {
-                repository.close()
-            }
-        }
     }
 }
 
@@ -401,11 +310,3 @@ object HabitWidgetUpdater {
         appContext.sendBroadcast(updateIntent)
     }
 }
-
-private data class WidgetHabit(
-    val id: String,
-    val planId: String? = null,
-    val name: String,
-    val weekly: Boolean,
-    val completed: Boolean,
-)
