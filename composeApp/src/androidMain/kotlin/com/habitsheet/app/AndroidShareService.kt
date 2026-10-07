@@ -80,6 +80,6 @@ class AndroidShareService(private val activity: Activity) : ShareService {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        activity.startActivity(Intent.createChooser(intent, "Share Today's Habits"))
+        activity.startActivity(Intent.createChooser(intent, activity.getString(R.string.share_chooser_title)))
     }
 }

@@ -27,6 +27,7 @@ import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.platform.w
+import com.habitsheet.resources.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,7 +69,7 @@ data class MonthUiState(
     val onboardingVisible: Boolean,
     val scrollToTodayTrigger: Long,
     val todayMode: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 ) {
     val isEmpty: Boolean get() = habits.isEmpty() && weeklyHabits.isEmpty()
 }
@@ -89,7 +90,7 @@ class MonthViewModel(
     private val onboardingVisible = MutableStateFlow(false)
     private val scrollToTodayTrigger = MutableStateFlow(0L)
     private val todayMode = MutableStateFlow(true)
-    private val error = MutableStateFlow<String?>(null)
+    private val error = MutableStateFlow<UiText?>(null)
     private val completionMutex = Mutex()
     private val today = MutableStateFlow(dateProvider.today())
 
@@ -123,7 +124,7 @@ class MonthViewModel(
                     repository.snapshot.value.dailyHabits.isEmpty()
             }.onFailure {
                 logger.e(TAG, "loading onboarding state failed", it)
-                error.value = "Couldn't load app settings."
+                error.value = UiText.of(Res.string.err_load_settings)
             }
         }
     }
@@ -132,7 +133,7 @@ class MonthViewModel(
     private data class Selection(val month: MonthKey, val today: LocalDate, val day: LocalDate, val todayMode: Boolean)
 
     /** Screen chrome that does not depend on the data. */
-    private data class Chrome(val onboardingVisible: Boolean, val scrollToTodayTrigger: Long, val error: String?)
+    private data class Chrome(val onboardingVisible: Boolean, val scrollToTodayTrigger: Long, val error: UiText?)
 
     val state: StateFlow<MonthUiState> = combine(
         repository.snapshot,
@@ -240,7 +241,7 @@ class MonthViewModel(
                 }
             }.onFailure {
                 logger.e(TAG, "togglePlanned failed", it)
-                error.value = "Couldn't update habit. Please try again."
+                error.value = UiText.of(Res.string.err_update_habit_retry)
             }
         }
     }
@@ -252,7 +253,7 @@ class MonthViewModel(
                 repository.saveDayPlan(DayPlan(habitId, date, detail.trim(), skipped, dateProvider.nowEpochMillis(), id))
             }.onFailure {
                 logger.e(TAG, "saveDayPlan failed", it)
-                error.value = "Couldn't save the day plan."
+                error.value = UiText.of(Res.string.err_save_day_plan)
             }
         }
     }
@@ -261,7 +262,7 @@ class MonthViewModel(
         scope.launch {
             runCatchingCancellable { repository.deleteDayPlan(habitId, date) }.onFailure {
                 logger.e(TAG, "deleteDayPlan failed", it)
-                error.value = "Couldn't remove the day plan."
+                error.value = UiText.of(Res.string.err_remove_day_plan)
             }
         }
     }
@@ -270,7 +271,7 @@ class MonthViewModel(
         scope.launch {
             runCatchingCancellable { repository.deleteDayPlanById(id) }.onFailure {
                 logger.e(TAG, "deleteDayPlanById failed", it)
-                error.value = "Couldn't remove the day plan."
+                error.value = UiText.of(Res.string.err_remove_day_plan)
             }
         }
     }
@@ -280,7 +281,7 @@ class MonthViewModel(
         scope.launch {
             runCatchingCancellable { repository.saveWeeklyPlan(WeeklyPlan(habitId, weekday, detail.trim(), dateProvider.nowEpochMillis())) }.onFailure {
                 logger.e(TAG, "saveWeeklyPlan failed", it)
-                error.value = "Couldn't save the weekly plan."
+                error.value = UiText.of(Res.string.err_save_weekly_plan)
             }
         }
     }
@@ -289,7 +290,7 @@ class MonthViewModel(
         scope.launch {
             runCatchingCancellable { repository.deleteWeeklyPlan(habitId, weekday) }.onFailure {
                 logger.e(TAG, "deleteWeeklyPlan failed", it)
-                error.value = "Couldn't remove the weekly plan."
+                error.value = UiText.of(Res.string.err_remove_weekly_plan)
             }
         }
     }
@@ -312,7 +313,7 @@ class MonthViewModel(
                 }
             }.onFailure {
                 logger.e(TAG, "toggleWeekly failed", it)
-                error.value = "Couldn't update weekly habit. Please try again."
+                error.value = UiText.of(Res.string.err_update_weekly_habit_retry)
             }
         }
     }
@@ -329,7 +330,7 @@ internal fun HabitSnapshot.toUiState(
     onboardingVisible: Boolean,
     scrollToTodayTrigger: Long,
     todayMode: Boolean,
-    error: String?,
+    error: UiText?,
 ): MonthUiState {
     val monthPlan = month.dates().associateWith(::plannedHabitsOn)
     val dueKeys = monthPlan.flatMap { (date, planned) -> planned.filterNot { it.skipped }.map { it.id to date } }.toSet()

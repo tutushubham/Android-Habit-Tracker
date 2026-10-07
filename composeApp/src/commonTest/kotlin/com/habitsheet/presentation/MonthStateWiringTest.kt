@@ -5,6 +5,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.domain.repository.SettingsStore
+import com.habitsheet.testing.English
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -12,6 +13,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -97,7 +99,7 @@ class MonthStateWiringTest {
         }
         val viewModel = MonthViewModel(inner, failingSettings, dates, backgroundScope)
         runCurrent()
-        assertEquals("Couldn't load app settings.", viewModel.state.value.error)
+        assertEquals("Couldn't load app settings.", English.render(assertNotNull(viewModel.state.value.error)))
         viewModel.clearError()
         runCurrent()
         assertNull(viewModel.state.value.error)

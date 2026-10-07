@@ -29,11 +29,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.habitsheet.presentation.MonthUiState
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SectionLabel
 import com.habitsheet.ui.monthName
 import com.habitsheet.ui.percentLabel
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun WeeklySection(
@@ -42,7 +44,7 @@ internal fun WeeklySection(
     modifier: Modifier = Modifier.padding(horizontal = 16.dp),
 ) {
     Column(modifier) {
-        SectionLabel("Weekly Habits", Modifier.padding(bottom = 16.dp))
+        SectionLabel(stringResource(Res.string.weekly_title), Modifier.padding(bottom = 16.dp))
         if (state.weeklyHabits.isEmpty()) {
             Column(
                 Modifier
@@ -52,12 +54,12 @@ internal fun WeeklySection(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "No weekly habits yet",
+                    stringResource(Res.string.weekly_empty_title),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "Add habits you want to track each week.",
+                    stringResource(Res.string.weekly_empty_text),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
@@ -79,7 +81,7 @@ internal fun WeeklySection(
                     },
             ) {
                 Box(Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
-                    Text("HABIT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(Res.string.grid_habit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 state.weeklyHabits.forEach { habit ->
                     Box(
@@ -95,9 +97,9 @@ internal fun WeeklySection(
                         Text(habit.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                SummaryLabel("DONE", 36.dp)
-                SummaryLabel("LEFT", 36.dp)
-                SummaryLabel("GOAL", 36.dp)
+                SummaryLabel(stringResource(Res.string.grid_done), 36.dp)
+                SummaryLabel(stringResource(Res.string.grid_left), 36.dp)
+                SummaryLabel(stringResource(Res.string.grid_goal), 36.dp)
                 SummaryLabel("%", 36.dp)
             }
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
@@ -109,7 +111,11 @@ internal fun WeeklySection(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             DonutProgress(block.percentage, Modifier.size(20.dp))
-                            Text("W${block.index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                stringResource(Res.string.week_short, block.index + 1),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                         state.weeklyHabits.forEach { habit ->
                             Box(
@@ -125,7 +131,12 @@ internal fun WeeklySection(
                                     completed = habit.id to block.weekStartDate in state.weeklyCompletionKeys,
                                     currentDay = state.today in state.selectedMonth.datesForWeek(block.index),
                                     enabled = state.selectedMonth.datesForWeek(block.index).any(habit::isActiveOn),
-                                    description = "${habit.name}, week ${block.index + 1} of ${state.selectedMonth.monthName()}",
+                                    description = stringResource(
+                                        Res.string.week_cell_description,
+                                        habit.name,
+                                        block.index + 1,
+                                        state.selectedMonth.monthName(),
+                                    ),
                                     width = weekWidth,
                                     height = 46.dp,
                                     onClick = { onToggleWeekly(habit.id, block.weekStartDate) },

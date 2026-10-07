@@ -10,6 +10,7 @@ import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
+import com.habitsheet.presentation.UiText
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -34,7 +35,7 @@ class ProductionReadinessTest {
             object : com.habitsheet.ui.BackupService {
                 override fun exportBackup(json: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
                 override fun exportCsv(csv: String, onResult: (com.habitsheet.ui.BackupResult) -> Unit) {}
-                override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {}
+                override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) {}
             },
             dateProvider,
             backgroundScope,

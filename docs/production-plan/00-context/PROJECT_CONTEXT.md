@@ -21,7 +21,7 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **P1-2 done** (device/iPad checks owed, see `PROGRESS.md`): narrow stores and a split repository with a fast snapshot, hierarchical back stack with system back, screens split into leaf composables with previews, typed UI state, crash-safe widget, Spotless/ktlint + detekt + warnings as errors, `./gradlew check` green, ADRs in `docs/adr/`.
 - Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, P1-3, P2.
 - Verification state (2026-10-05, on a Mac): **`./gradlew check` green** = 359 JVM tests, migration verification, Android lint, Spotless, detekt, and **281 common tests on the iOS simulator**; `assembleDebug` and the iOS klib compiles OK; P1-2 refactors compared on an Android emulator (40 screenshots pixel-identical, back navigation and process death checked, widget toggles and a damaged database checked). The iOS app itself builds with Xcode for the simulator and runs (navigation and edge swipe checked). `assembleRelease`/`bundleRelease` last verified in P0-C. Device checks owed (see `PROGRESS.md`).
-- Branching: **single-branch policy — everything lives on `master`, no branches are created.** P0 and P1-1 are on `master`; P1-2 and later commit directly to `master`, one commit per step, with the full test run before each commit.
+- Branching: **single-branch policy — everything lives on `master`, no branches are created.** P0 and P1-1 are on `master`; P1-2 is on `master` too (pushed 2026-10-05, audit 2026-10-07); `main`/`origin/main` were deleted. P1-3 and later commit directly to `master`, one commit per step, with the full test run before each commit.
 
 ## Tech snapshot (verified in repo)
 
@@ -42,14 +42,14 @@ Read this at the start of every plan session. It is the shared memory for all pl
 
 - **ViewModels (after P1-2 step 3):** all four extend `androidx.lifecycle.ViewModel`; no `close()`. Constructor parameter `scope: CoroutineScope? = null` is a test override (tests pass `backgroundScope`); by default they use `backgroundScope()` (viewModelScope's Job + `Dispatchers.Default`, because the repository does no dispatching of its own). `Logger` stays the last parameter, `BackupViewModel` keeps `callbackDispatcher` (default `Dispatchers.Main`; tests using the default need `Dispatchers.setMain`) and `onDataReplaced`. `AppGraph` is the `ViewModelStoreOwner`; `HabitSheetApp(graph, shareService, backupService, versionProvider)`.
 - **Logging rule:** log fixed descriptions plus the throwable (rendered as class names only). Never log sheet URLs/ids, tokens, habit/category names or session text.
-- **Destructive actions** go through `DestructiveAction` (text) + `DestructiveConfirmDialog` (UI). `androidUnitTest/.../DestructiveCallSitesTest` scans `commonMain/.../ui/*.kt` (non-recursive, by file name: `DataBackupScreen`, `ManageHabitsScreen`, `PlanScreen`, `SettingsScreen`) and **will break when those screens are split into `ui/month/*`, `ui/manage/*`**: update it to scan recursively and keep the reviewed list of calls.
+- **Destructive actions** go through `DestructiveAction` (text) + `DestructiveConfirmDialog` (UI). `androidUnitTest/.../DestructiveCallSitesTest` scans `commonMain/.../ui/**` recursively (files named by path, e.g. `manage/ManageHabitsScreen.kt`) and keeps the reviewed list of destructive calls; each listed file must show `DestructiveConfirmDialog`. A new screen with a destructive call fails it until reviewed. (Updated in P1-2 step 7.)
 - **Dates:** `MonthViewModel.refreshToday()` is called by the platform shells (foreground, time-zone/date change); `AppGraph.refreshToday()` forwards to it. `ClockDateProvider(clock, zone)` is the testable provider. Stored dates are plain `LocalDate`s.
 - **`updated_at`:** SQL `UPDATE`s use `MAX(updated_at, :updated_at)`; upserts of plans/completions read the previous stamp (`monotonicUpdatedAt`; completions are strictly increasing because upload acknowledgements compare `updated_at`). Do not "simplify" this away.
 - **Deletes cascade explicitly** (`deleteDailyHabit`, `deleteWeeklyHabit`, `deleteCategory` run several statements in one transaction) because the JVM driver ignores `PRAGMA foreign_keys`.
 - **Schema changes** need `N.sqm` + a new snapshot (`generateCommonMainHabitsDatabaseSchema`) + a new case in `SchemaMigrationTest`; never edit a shipped `.sqm` or a committed `.db` (one recorded exception in `3.sqm`). See `sqldelight/databases/README.md`.
 - **Backups:** writers always produce v4; `BackupSerializer.parse` reads v1–v4. Frozen fixtures `BackupFixtures.V1`–`V4` stand for files people hold: never regenerate them to make a test pass.
 - **Android SQLite:** `AndroidDriverFactory` overrides `onCorruption` (no-op) so the framework does not delete a corrupt database; the startup failure screen decides. `DATABASE_NAME` lives there.
-- **`loadSnapshot()` cost:** 209 ms median for 36k completions (target 100). Proposal in `notes/p1-1-load-snapshot-timings.md`: read completions once, drop the `ORDER BY`, update in memory for single check-offs.
+- **`loadSnapshot()` cost (resolved in P1-2 step 5):** was 209 ms median for 36k completions; now 37 ms (82 ms before on the same Mac) and a check-off 1 ms, because completions are read once, unsorted by SQL, and single check-offs patch the snapshot. See "Facts from P1-2" and `notes/p1-1-load-snapshot-timings.md`.
 - **Test-only trap:** `Map.merge` and other JVM-only APIs compile in `androidUnitTest` and `commonTest` on the JVM but break the iOS compile (`compileTestKotlinIosSimulatorArm64`); run both before declaring done.
 
 ## Facts from P1-2 that later plans must respect
@@ -72,6 +72,16 @@ Read this at the start of every plan session. It is the shared memory for all pl
   has `allWarningsAsErrors`; the detekt baseline is not regenerated to hide new findings; formatting-only commits go in
   `.git-blame-ignore-revs`. The release-signing check only guards the tasks that produce signed artifacts.
 - **Visual verification:** `scripts/screenshots/` (emulator, seeded data, 40 screens, pixel comparison).
+
+## Facts from P1-3 step 1 (strings) that later plans must respect
+
+- **Copy is in `composeResources/values/strings.xml`.** Add text there, never as a literal in `ui/` (`NoHardCodedTextTest` fails). Escape `'` as `\'` and `&` as `&amp;`; keep leading/trailing spaces out of values (use format arguments); percent signs and plural handling follow `%1$d` / `%1$s` (pass an already-formatted string for a literal `%`).
+- **Presentation returns `UiText`, not `String`:** `MonthUiState.error`, `ManageHabitsViewModel.error`, `SettingsViewModel.sheetMessage`, `SyncStatus.text`, `SheetSyncState.message`, `ConfirmationText.*`, `BackupResult.message`, `BackupService.importBackup(onFailure: (UiText) -> Unit)`. Data stays `Raw`. `SyncError.userMessage()` and `SyncWarning.describe()` return `UiText`; `SyncError.MalformedPlanTab.problem` (`PlanTabProblem`) carries both the user text and the English `logText` (kept in logs and in `reason`).
+- **Tests:** compare `UiText` values for behaviour; use `English.render(...)` when the wording matters. `DestructiveCallSitesTest`, `UiStructureTest`, `NoHardCodedTextTest` all scan `ui/**` and will fail on structure or literals.
+- **Still English in code (P1-3 step 2):** `UiFormatting.monthNames`, `DailyShare.monthNames`, weekday names from `DayOfWeek.name`, first day of week, date/number formats. **Not translated by design:** logs, the CSV header, `BackupValidator` diagnostics, token-provider technical messages.
+- **Wording quirks kept from the old code** (fix in a copy pass): "Synced 1 sessions", "1 checks uploaded", "Plan tab created · 1 sessions uploaded".
+- **Platform:** iOS builds the shared text from the catalog (`getString`); Android's share-sheet title is an Android string. The widget keeps `widget_strings.xml`.
+- **Copy-change policy:** moving text must not change it. `verbatim` check used in P1-3 step 1: compare each catalog string with the literals of the previous commit (see ADR 0005).
 
 ## Audit findings (the source for every plan)
 

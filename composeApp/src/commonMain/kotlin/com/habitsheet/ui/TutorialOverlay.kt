@@ -25,12 +25,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.habitsheet.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 data class TutorialStep(
     val title: String,
     val description: String,
     val targetTag: String,
-    val nextButtonText: String = "Next",
+    val nextButtonText: String? = null,
 )
 
 @Composable
@@ -82,7 +84,7 @@ fun TutorialOverlay(
                 .padding(24.dp),
         ) {
             Text(
-                text = "${currentStepIndex + 1} / ${steps.size}",
+                text = stringResource(Res.string.tutorial_step_of, currentStepIndex + 1, steps.size),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -109,10 +111,11 @@ fun TutorialOverlay(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onSkip) {
+                    val skipDescription = stringResource(Res.string.tutorial_skip_description)
                     Text(
-                        "Skip",
+                        stringResource(Res.string.tutorial_skip),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { contentDescription = "Skip tutorial" },
+                        modifier = Modifier.semantics { contentDescription = skipDescription },
                     )
                 }
 
@@ -126,7 +129,7 @@ fun TutorialOverlay(
                     },
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text(currentStep.nextButtonText)
+                    Text(currentStep.nextButtonText ?: stringResource(Res.string.tutorial_next))
                 }
             }
         }

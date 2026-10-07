@@ -6,6 +6,9 @@ import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.resources.Res
+import com.habitsheet.resources.backup_err_invalid
+import com.habitsheet.resources.backup_err_not_backup
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +19,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -109,7 +113,7 @@ class BackupViewModelTest {
 
     @Test
     fun exportReportsTheServicesResultToTheCaller() = runTest {
-        for (result in listOf(BackupResult.Success("ok"), BackupResult.Failure("disk full"), BackupResult.Cancelled)) {
+        for (result in listOf(BackupResult.Success(UiText.Raw("ok")), BackupResult.Failure(UiText.Raw("disk full")), BackupResult.Cancelled)) {
             val viewModel = BackupViewModel(
                 repository = InMemoryHabitRepository(validSnapshot()),
                 backupService = RecordingBackupService(exportResult = result),
@@ -129,18 +133,18 @@ class BackupViewModelTest {
         val repository = InMemoryHabitRepository(original)
         val viewModel = BackupViewModel(
             repository = repository,
-            backupService = RecordingBackupService(importFailure = "The clipboard is empty."),
+            backupService = RecordingBackupService(importFailure = UiText.Raw("The clipboard is empty.")),
             scope = backgroundScope,
             callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         var succeeded = false
-        var error: String? = null
+        var error: UiText? = null
 
         viewModel.importBackup(onSuccess = { succeeded = true }, onError = { error = it })
         runCurrent()
 
         assertFalse(succeeded)
-        assertEquals("The clipboard is empty.", error)
+        assertEquals(UiText.Raw("The clipboard is empty."), error)
         assertEquals(original, repository.snapshot.value)
     }
 
@@ -160,7 +164,7 @@ class BackupViewModelTest {
             callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         var successCount = 0
-        var error: String? = null
+        var error: UiText? = null
 
         viewModel.importBackup(
             onSuccess = { successCount += 1 },
@@ -185,7 +189,7 @@ class BackupViewModelTest {
             callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         var succeeded = false
-        var error: String? = null
+        var error: UiText? = null
 
         viewModel.importBackup(
             onSuccess = { succeeded = true },
@@ -195,7 +199,7 @@ class BackupViewModelTest {
 
         assertFalse(succeeded)
         assertEquals(original, repository.snapshot.value)
-        assertEquals("This isn't a valid Habit Sheet backup file.", error)
+        assertEquals(UiText.of(Res.string.backup_err_not_backup), error)
     }
 
     @Test
@@ -216,13 +220,15 @@ class BackupViewModelTest {
             scope = backgroundScope,
             callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
-        var error: String? = null
+        var error: UiText? = null
 
         viewModel.importBackup(onSuccess = {}, onError = { error = it })
         runCurrent()
 
         assertEquals(original, repository.snapshot.value)
-        assertTrue(error.orEmpty().contains("missing habit"))
+        val problem = assertIs<UiText.Res>(error)
+        assertEquals(Res.string.backup_err_invalid, problem.resource)
+        assertTrue(assertIs<UiText.Raw>(problem.args.single()).value.contains("missing habit"))
     }
 
     private fun validSnapshot(): HabitSnapshot {
@@ -250,8 +256,8 @@ class BackupViewModelTest {
 
 private class RecordingBackupService(
     private val importPayload: String? = null,
-    private val importFailure: String? = null,
-    private val exportResult: BackupResult = BackupResult.Success("saved"),
+    private val importFailure: UiText? = null,
+    private val exportResult: BackupResult = BackupResult.Success(UiText.Raw("saved")),
 ) : BackupService {
     var exportedBackup: String? = null
     var exportedCsv: String? = null
@@ -266,7 +272,7 @@ private class RecordingBackupService(
         onResult(exportResult)
     }
 
-    override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {
+    override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) {
         importFailure?.let(onFailure)
         importPayload?.let(onImport)
     }

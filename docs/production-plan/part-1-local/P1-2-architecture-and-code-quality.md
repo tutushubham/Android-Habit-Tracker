@@ -27,7 +27,7 @@ State at handoff: 291 JVM tests, schema v5 with verified migrations, `check` run
 - **Known follow-up for P1-3, not P1-2:** safety copy/prompt before Reset/Import, import preview, iOS file-based backup (see `PROGRESS.md`).
 - **Do not touch:** frozen `BackupFixtures`, committed `N.db` snapshots, shipped `.sqm` files.
 
-## 1. Code analysis
+## 1. Code analysis (the state *before* P1-2; what was done is in section 5 and `PROGRESS.md`)
 
 - **ViewModels:** `MonthViewModel`, `ManageHabitsViewModel`, `SettingsViewModel`, `BackupViewModel` are plain classes, each with `CoroutineScope(SupervisorJob()+Dispatchers.Default)` and a manual `close()`. They are created in `AppGraph` (Activity/`remember` scope) — no `viewModelScope`, no `SavedStateHandle`, no lifecycle-aware collection (`collectAsState()` instead of `collectAsStateWithLifecycle`). `AppGraph` is created in `MainActivity.onCreate` and closed in `onDestroy` (config changes are swallowed by manifest `configChanges`, which hides lifecycle problems).
 - **Navigation:** `ui/HabitSheetApp.kt` — `private enum class Destination { Tracker, Manage, Plan, Settings, Backup, About }` held in `remember`; two layout branches (phone/tablet) duplicate the `AppDestination(...)` call with 14 parameters; no back stack/system back.

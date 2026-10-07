@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.toStatus
+import com.habitsheet.testing.English
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
@@ -63,12 +64,12 @@ class SheetSyncErrorsTest {
     fun offlineTimeoutsAreRetriedThenReportedAsOfflineNotAsAnError() = runTest {
         val (state, server) = failWith(FaultAction.Timeout)
         assertIs<SyncError.Offline>(state.error)
-        assertEquals("Will sync when online.", state.message)
+        assertEquals("Will sync when online.", English.render(state.message))
         assertEquals(4, server.calls.size)
         assertEquals(listOf(500L, 1_000L, 2_000L), sleeps)
         val status = state.toStatus()
         assertFalse(status.isError)
-        assertEquals("Will sync when online.", status.text)
+        assertEquals("Will sync when online.", English.render(status.text))
     }
 
     @Test
@@ -82,7 +83,7 @@ class SheetSyncErrorsTest {
     fun authExpiredOn401IsNotRetried() = runTest {
         val (state, server) = failWith(FaultAction.Status(401))
         assertIs<SyncError.AuthExpired>(state.error)
-        assertEquals("Google sign-in needed. Tap Connect & sync to sign in again.", state.message)
+        assertEquals("Google sign-in needed. Tap Connect & sync to sign in again.", English.render(state.message))
         assertEquals(1, server.calls.size)
         assertTrue(sleeps.isEmpty())
         assertTrue(state.toStatus().isError)
@@ -92,7 +93,7 @@ class SheetSyncErrorsTest {
     fun accessDeniedOn403IsNotRetried() = runTest {
         val (state, server) = failWith(FaultAction.Status(403, body = """{"error":{"status":"PERMISSION_DENIED"}}"""))
         assertIs<SyncError.AccessDenied>(state.error)
-        assertEquals("No access to this sheet. Use a Google account that can edit it.", state.message)
+        assertEquals("No access to this sheet. Use a Google account that can edit it.", English.render(state.message))
         assertEquals(1, server.calls.size)
     }
 
@@ -100,7 +101,7 @@ class SheetSyncErrorsTest {
     fun notFoundOn404IsNotRetried() = runTest {
         val (state, server) = failWith(FaultAction.Status(404))
         assertIs<SyncError.NotFound>(state.error)
-        assertEquals("Spreadsheet not found. Check the link and the Google account.", state.message)
+        assertEquals("Spreadsheet not found. Check the link and the Google account.", English.render(state.message))
         assertEquals(1, server.calls.size)
     }
 
@@ -109,7 +110,7 @@ class SheetSyncErrorsTest {
         val (state, server) = failWith(FaultAction.Status(429, mapOf("Retry-After" to "3")))
         val error = assertIs<SyncError.RateLimited>(state.error)
         assertEquals(3L, error.retryAfterSeconds)
-        assertEquals("Google is limiting requests. Sync will retry shortly.", state.message)
+        assertEquals("Google is limiting requests. Sync will retry shortly.", English.render(state.message))
         assertEquals(4, server.calls.size)
         assertEquals(listOf(3_000L, 3_000L, 3_000L), sleeps, "Retry-After replaces the computed backoff")
     }
@@ -129,7 +130,7 @@ class SheetSyncErrorsTest {
         val error = assertIs<SyncError.MalformedPlanTab>(sync.state.value.error)
         assertEquals(3, error.row)
         assertEquals("use YYYY-MM-DD in Date", error.reason)
-        assertEquals("Plan tab, row 3: use YYYY-MM-DD in Date. Fix the sheet, then sync again.", sync.state.value.message)
+        assertEquals("Plan tab, row 3: use YYYY-MM-DD in Date. Fix the sheet, then sync again.", English.render(sync.state.value.message))
         assertEquals(1, server.calls.count { it.isRead }, "malformed data is not retried")
         assertTrue(server.writes.isEmpty())
     }
@@ -141,7 +142,7 @@ class SheetSyncErrorsTest {
         sync.sync()
         val error = assertIs<SyncError.MalformedPlanTab>(sync.state.value.error)
         assertNull(error.row)
-        assertTrue(sync.state.value.message.endsWith("Fix the header row, then sync again."))
+        assertTrue(English.render(sync.state.value.message).endsWith("Fix the header row, then sync again."))
     }
 
     @Test
@@ -164,7 +165,7 @@ class SheetSyncErrorsTest {
         val (state, server) = failWith(FaultAction.Status(500))
         val error = assertIs<SyncError.Unknown>(state.error)
         assertEquals(500, error.status)
-        assertEquals("Sync failed. Try again in a moment.", state.message)
+        assertEquals("Sync failed. Try again in a moment.", English.render(state.message))
         assertEquals(4, server.calls.size)
         assertTrue(state.toStatus().isError)
 
@@ -231,7 +232,7 @@ class SheetSyncErrorsTest {
         val sync = sync(repo(), server)
         sync.sync()
         assertNull(sync.state.value.error)
-        assertEquals("Synced 1 sessions", sync.state.value.message)
+        assertEquals("Synced 1 sessions", English.render(sync.state.value.message))
         assertEquals(listOf(500L, 1_000L), sleeps)
         assertEquals(3, server.calls.count { it.isRead })
     }

@@ -7,6 +7,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
 import com.habitsheet.presentation.DestructiveAction
+import com.habitsheet.presentation.asString
+import com.habitsheet.resources.Res
+import com.habitsheet.resources.action_cancel
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The one confirmation dialog for everything in [DestructiveAction]. Screens must show it before calling a
@@ -17,13 +21,13 @@ fun DestructiveConfirmDialog(action: DestructiveAction, onConfirm: () -> Unit, o
     val text = action.confirmation
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text.title) },
-        text = { Text(text.message) },
+        title = { Text(text.title.asString()) },
+        text = { Text(text.message.asString()) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(text.confirmLabel, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                Text(text.confirmLabel.asString(), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) } },
     )
 }

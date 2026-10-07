@@ -44,61 +44,6 @@ class DestructiveActionsConfirmationTest {
         dayPlans = listOf(DayPlan("run", day, "Easy 6 km", false, 1)),
     )
 
-    // ---- confirmation text names what is affected -------------------------------------------------
-
-    @Test
-    fun deletingAHabitNamesItAndWhatGoesWithIt() {
-        val text = DestructiveAction.delete(run, snapshot).confirmation
-        assertTrue("'Morning Run'" in text.message)
-        assertTrue("2 check-offs" in text.message, text.message)
-        assertTrue("2 planned sessions" in text.message, text.message)
-        assertTrue("cannot be undone" in text.message && "Archive" in text.message)
-        assertEquals("Delete", text.confirmLabel)
-
-        val weekly = DestructiveAction.delete(gym, snapshot).confirmation
-        assertTrue("'Gym'" in weekly.message && "1 check-off" in weekly.message, weekly.message)
-    }
-
-    @Test
-    fun deletingACategoryNamesItAndSaysHabitsStay() {
-        val text = DestructiveAction.delete(snapshot.categories.single(), snapshot).confirmation.message
-        assertTrue("'Fitness'" in text && "2 habits" in text && "stay" in text, text)
-        assertTrue("No habits use it" in DestructiveAction.DeleteCategory("Empty", 0).confirmation.message)
-    }
-
-    @Test
-    fun removingASessionNamesTheHabitAndTheSession() {
-        val daily = DestructiveAction.RemoveDaySession("Morning Run", day, "Easy 6 km").confirmation.message
-        assertTrue("Easy 6 km" in daily && "Morning Run" in daily && "2026-08-05" in daily && "kept" in daily, daily)
-        val weekly = DestructiveAction.RemoveWeeklySession("Morning Run", "Tuesday", "Intervals").confirmation.message
-        assertTrue("Intervals" in weekly && "every Tuesday" in weekly, weekly)
-    }
-
-    @Test
-    fun resetTextSaysItIsLocalOnlyAndWhatItRemoves() {
-        val text = DestructiveAction.ResetAllData(DataSummary.of(snapshot)).confirmation
-        assertTrue("deletes 1 daily habit, 1 weekly habit and 3 check-offs on this device" in text.message, text.message)
-        assertTrue("Your Google Sheet is untouched" in text.message)
-        assertTrue("disconnects the sheet link" in text.message)
-        assertTrue("cannot be undone" in text.message)
-        assertTrue("no habits or history" in DestructiveAction.ResetAllData(DataSummary(0, 0, 0)).confirmation.message)
-    }
-
-    @Test
-    fun startingWithEmptyDataSaysTheOldFileIsKeptAndTheSheetUntouched() {
-        val text = DestructiveAction.SetAsideDamagedData.confirmation
-        assertTrue("moves it aside" in text.message && "kept on the device" in text.message, text.message)
-        assertTrue("Google Sheet is untouched" in text.message && "save a copy first" in text.message, text.message)
-        assertEquals("Start with empty data", text.confirmLabel)
-    }
-
-    @Test
-    fun importTextSaysWhatWillBeReplacedAndThatTheSheetIsUntouched() {
-        val text = DestructiveAction.ReplaceWithBackup(DataSummary.of(snapshot)).confirmation.message
-        assertTrue("replaces 1 daily habit, 1 weekly habit and 3 check-offs" in text, text)
-        assertTrue("Google Sheet is untouched" in text && "cannot be undone" in text, text)
-    }
-
     // ---- reset: sheet link and sync state -----------------------------------------------------------
 
     @Test
@@ -125,7 +70,7 @@ class DestructiveActionsConfirmationTest {
     private class FakeBackupService(private val payload: String? = null) : BackupService {
         override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) = Unit
         override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
-        override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {
+        override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) {
             payload?.let(onImport)
         }
     }

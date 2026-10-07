@@ -29,8 +29,8 @@ import kotlin.test.assertTrue
  * 5 years x 20 daily habits of check-offs (about 36,000 rows) plus plans and weekly habits.
  *
  * The timings are printed (see the test report's standard output) and recorded in
- * docs/production-plan/notes/p1-1-load-snapshot-timings.md. The assertions are loose sanity bounds, not the
- * 100 ms target, so a slow CI machine cannot make the build flaky; the target is judged from the printed numbers.
+ * docs/production-plan/notes/p1-1-load-snapshot-timings.md. The assertions are the targets: a load under 100 ms (best of
+ * 15) and a check-off under 50 ms (median).
  */
 class LoadSnapshotPerformanceTest {
     private val start = LocalDate(2022, 1, 1)
@@ -106,7 +106,11 @@ class LoadSnapshotPerformanceTest {
             println("PERF check-off (write + reload) ms: median=${median(writes)} max=${writes.max()}")
             println("PERF month state recompute ms (first of 5, then warm): $uiState")
 
-            assertTrue(median(loads) < 5_000, "loadSnapshot is absurdly slow: ${median(loads)} ms")
+            // The P1-2 targets (docs/production-plan/notes/p1-1-load-snapshot-timings.md). Idle, an Apple-silicon Mac
+            // measures about 37 ms and 1 ms. The load bound uses the best of 15 runs so a busy machine cannot fail it;
+            // the check-off bound is what catches a return to reloading every table after each tap (83 ms before P1-2).
+            assertTrue(loads.min() < 100, "loadSnapshot is over the 100 ms target even at its best: ${loads.min()} ms")
+            assertTrue(median(writes) < 50, "a check-off is over the 50 ms target: ${median(writes)} ms")
         } finally {
             repo.close()
             Files.deleteIfExists(file)

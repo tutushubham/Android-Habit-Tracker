@@ -36,7 +36,7 @@ Reminders/notifications and an iOS widget are **not implemented** and **not part
 ## 1. Code analysis
 
 - **Strings:** `ui/` contains ~82 `Text("…")` literals and many dialog/button texts; no `stringResource`/`Res.string` usage anywhere. `composeApp/src/commonMain/composeResources/` has only `font/`. Android widget strings are in `androidMain/res/values/widget_strings.xml` (this is correct for the widget, which is a RemoteViews/Android-only surface).
-- **Accessibility:** 22 `contentDescription` usages in the UI; the month grid is custom-drawn (`ui/MonthScreen.kt`, to be split in P1-2) — checkbox cells likely need `semantics { role = Role.Checkbox; toggleableState …; contentDescription = "Run, 12 October, planned, not done" }`. Touch targets unverified. Custom `Theme.kt` colours: contrast unverified. Fonts bundled (Hanken Grotesk, Inter, JetBrains Mono) — does the UI respect system font scale (`sp`) and large-text layouts?
+- **Accessibility:** 22 `contentDescription` usages in the UI; the month grid is custom-drawn (`ui/month/MonthGrid.kt` after the P1-2 split) — checkbox cells likely need `semantics { role = Role.Checkbox; toggleableState …; contentDescription = "Run, 12 October, planned, not done" }`. Touch targets unverified. Custom `Theme.kt` colours: contrast unverified. Fonts bundled (Hanken Grotesk, Inter, JetBrains Mono) — does the UI respect system font scale (`sp`) and large-text layouts?
 - **iOS backup:** `iosMain/.../IosBackupService.kt` (21 lines) — clipboard-based; README says "copies JSON or CSV to the clipboard". Android uses SAF document pickers.
 - **First-run/empty states:** `ui/EmptyStates.kt`, `ui/TutorialOverlay.kt`, `data/DefaultData.kt`. After P0-A there are no seeded habits; P0-A re-wired the tutorial into `MonthScreen` (shown once, only on installs with no habits); verify the empty/tutorial flow explains "link a Google Sheet or add a habit".
 - **Settings sheet UX:** `ui/SettingsScreen.kt` l.50–75 — "Spreadsheet link / Save link / Connect & sync" with a one-paragraph explanation; users need a clear "Create a blank sheet in Google Sheets, paste its link" instruction, a validation message for a non-Sheets URL (`SheetLink.canonicalize`), and the Disconnect action.
@@ -47,7 +47,9 @@ Reminders/notifications and an iOS widget are **not implemented** and **not part
 
 ## 2. Steps
 
-1. **String externalisation.** Add `composeResources/values/strings.xml` (English) using Compose Multiplatform resources (`Res.string.*`, plurals). Replace every user-visible literal in `ui/` and presentation-layer messages with resource lookups (presentation emits message *keys* or sealed `UiText`, not hard-coded English). Add `values-xx/` only if you intend a second language now; otherwise just make it possible.
+1. **[DONE 2026-10-07, see ADR 0005]** **String externalisation.** Add `composeResources/values/strings.xml` (English) using Compose Multiplatform resources (`Res.string.*`, plurals). Replace every user-visible literal in `ui/` and presentation-layer messages with resource lookups (presentation emits message *keys* or sealed `UiText`, not hard-coded English). Add `values-xx/` only if you intend a second language now; otherwise just make it possible.
+> Step 1 result: 345 strings and plurals in `composeResources/values/strings.xml` (+ plurals), `UiText` from presentation/sync/platform services, `NoHardCodedTextTest` as the guard, no English changed (screens pixel-identical). **Left for step 2:** month names (`UiFormatting.monthNames`, `DailyShare.monthNames`), weekday names from `DayOfWeek.name` (date lines in `PlanScreen`/`TodayList`, accessibility text of the grid headers), first day of the week, number and date formats. Deliberately not translated: logs, the CSV header, `BackupValidator` diagnostics, token-provider technical messages.
+
 2. **Locale-correct formatting.** Dates, month names, weekday names, percentages and numbers via locale-aware formatting (kotlinx-datetime formatting + platform locale; avoid concatenated English). First day of week: respect locale (Monday vs Sunday) — check `MonthKey`/`MonthEngine` assumptions (workbook uses 5 seven-day blocks; keep the model, localise only labels).
 3. **Accessibility pass.**
    - Every icon-only button: `contentDescription`.
@@ -98,7 +100,7 @@ Run the whole plan: execute P1-3 steps 1-9 in order, a commit per step, with [ma
 Manual: switch device language/region (dates & first weekday adapt); TalkBack/VoiceOver walk-through of Month → toggle a habit → Manage → Settings; 200% font; iOS export → Files app → import on another device; fresh install flow end-to-end.
 
 ## 5. Definition of done
-- [ ] No hard-coded user-visible strings in `ui/`/presentation (guard in CI/lint).
+- [x] No hard-coded user-visible strings in `ui/`/presentation (guard: `NoHardCodedTextTest`, part of `check`). Month/weekday names and formats are step 2.
 - [ ] Accessibility checklist completed on at least one Android and one iOS device.
 - [ ] iOS backup is file-based and validated.
 - [ ] Neutral first-run; sheet-link flow has clear copy, validation and Disconnect.

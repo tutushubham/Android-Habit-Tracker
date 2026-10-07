@@ -21,3 +21,5 @@ for apk in old new; do for layout in phone tablet; do for v in "" --dark --fresh
 
 `--back-test` additionally checks system back from every screen, process death (`am kill`) and back on the start
 screen. `seeded.db`, `shots/` and `.venv/` are scratch output; do not commit them.
+
+Tips: a busy machine makes the emulator show "isn't responding" dialogs (`shots.py` taps Wait and retries failed `adb` calls); with a phone also connected set `ANDROID_SERIAL=emulator-5554`; capture the old and the new build on the same day (the app shows today's date); the grey gesture bar and a half-finished app restart can differ between runs: re-capture the screen before calling it a regression.

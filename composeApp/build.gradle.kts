@@ -94,6 +94,48 @@ val releaseSigning: Properties? = run {
     if (env.keys.all { props.getProperty(it) != null }) props else null
 }
 
+// Tests assert the exact English wording of user messages. This turns composeResources/values/strings.xml into a plain
+// Kotlin map in the common test sources, so a test can render a UiText on the JVM and on iOS without a resource environment.
+val generateEnglishCatalog by tasks.registering {
+    val stringsXml = layout.projectDirectory.file("src/commonMain/composeResources/values/strings.xml")
+    val outDir = layout.buildDirectory.dir("generated/englishCatalog")
+    inputs.file(stringsXml)
+    outputs.dir(outDir)
+    doLast {
+        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stringsXml.asFile)
+        fun unescape(raw: String) = raw.replace("\\'", "'").replace("\\\"", "\"").replace("\\n", "\n")
+        fun literal(text: String) = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("\n", "\\n") + "\""
+        val strings = StringBuilder()
+        val plurals = StringBuilder()
+        val nodes = doc.documentElement.childNodes
+        for (i in 0 until nodes.length) {
+            val node = nodes.item(i) as? org.w3c.dom.Element ?: continue
+            val name = node.getAttribute("name")
+            when (node.tagName) {
+                "string" -> strings.append("        ${literal(name)} to ${literal(unescape(node.textContent))},\n")
+
+                "plurals" -> {
+                    val items = node.getElementsByTagName("item")
+                    val entries = (0 until items.length).joinToString(", ") {
+                        val item = items.item(it) as org.w3c.dom.Element
+                        "${literal(item.getAttribute("quantity"))} to ${literal(unescape(item.textContent))}"
+                    }
+                    plurals.append("        ${literal(name)} to mapOf($entries),\n")
+                }
+            }
+        }
+        val file = outDir.get().asFile.resolve("com/habitsheet/testing/EnglishCatalog.kt")
+        file.parentFile.mkdirs()
+        file.writeText(
+            "// GENERATED from composeResources/values/strings.xml by generateEnglishCatalog. Do not edit.\n" +
+                "package com.habitsheet.testing\n\n" +
+                "internal object EnglishCatalog {\n    val strings: Map<String, String> = mapOf(\n$strings    )\n\n" +
+                "    val plurals: Map<String, Map<String, String>> = mapOf(\n$plurals    )\n}\n",
+        )
+    }
+}
+kotlin.sourceSets.named("commonTest") { kotlin.srcDir(generateEnglishCatalog.map { it.outputs.files }) }
+
 // Renders the commonMain @Preview functions in Android Studio; debug builds only, never shipped.
 dependencies {
     debugImplementation(libs.compose.ui.tooling)

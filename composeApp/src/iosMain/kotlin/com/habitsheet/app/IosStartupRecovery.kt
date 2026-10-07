@@ -7,6 +7,8 @@ import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.i
+import com.habitsheet.presentation.UiText
+import com.habitsheet.resources.*
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.StartupRecovery
 import kotlinx.cinterop.ObjCObjectVar
@@ -53,7 +55,7 @@ internal class IosStartupRecovery(
         val directory = databaseDirectory()
         val presenter = host()
         if (directory == null || presenter == null) {
-            onResult(BackupResult.Failure("There is no data file on this device to save."))
+            onResult(BackupResult.Failure(UiText.of(Res.string.recovery_no_file_to_save)))
             return
         }
         val staging = NSTemporaryDirectory() + "habitsheet-data-files"
@@ -66,7 +68,7 @@ internal class IosStartupRecovery(
             }
         } catch (e: Exception) {
             logger.e(TAG, "Preparing the data file copy failed", e)
-            onResult(BackupResult.Failure("Couldn't prepare the copy. Is the storage full?"))
+            onResult(BackupResult.Failure(UiText.of(Res.string.recovery_err_prepare)))
             return
         }
         val sheet = UIActivityViewController(copied, null)
@@ -79,8 +81,8 @@ internal class IosStartupRecovery(
             fileManager.removeItemAtPath(staging, null)
             onResult(
                 when {
-                    error != null -> BackupResult.Failure("Couldn't save the files.")
-                    completed -> BackupResult.Success("Saved. Keep these files safe; they contain your habits and history.")
+                    error != null -> BackupResult.Failure(UiText.of(Res.string.recovery_err_save_files))
+                    completed -> BackupResult.Success(UiText.of(Res.string.recovery_saved_files))
                     else -> BackupResult.Cancelled
                 },
             )
@@ -89,7 +91,7 @@ internal class IosStartupRecovery(
     }
 
     override fun setAsideDatabase(): BackupResult {
-        val directory = databaseDirectory() ?: return BackupResult.Success("There was no data file to move.")
+        val directory = databaseDirectory() ?: return BackupResult.Success(UiText.of(Res.string.recovery_nothing_to_move))
         val timestamp = (NSDate().timeIntervalSince1970 * 1000).toLong()
         val moved = mutableListOf<Pair<String, String>>()
         try {
@@ -102,12 +104,12 @@ internal class IosStartupRecovery(
         } catch (e: Exception) {
             moved.reversed().forEach { (from, to) -> move(to, from) }
             logger.e(TAG, "Moving the database aside failed", e)
-            return BackupResult.Failure("Couldn't move the data file. Nothing was changed.")
+            return BackupResult.Failure(UiText.of(Res.string.recovery_err_move))
         }
         val all = fileManager.contentsOfDirectoryAtPath(directory, null).orEmpty().filterIsInstance<String>()
         DatabaseFileNames.staleAsideNames(all, name, keep = 3).forEach { fileManager.removeItemAtPath("$directory/$it", null) }
         logger.i(TAG, "Moved ${moved.size} database file(s) aside")
-        return BackupResult.Success("The old data file was moved aside.")
+        return BackupResult.Success(UiText.of(Res.string.recovery_moved_aside))
     }
 
     private fun move(from: String, to: String): Boolean = memScoped {

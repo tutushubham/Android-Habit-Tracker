@@ -11,6 +11,7 @@ import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
+import com.habitsheet.resources.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,8 +29,8 @@ class ManageHabitsViewModel(
     private val scope: CoroutineScope = scope ?: backgroundScope()
     val state: StateFlow<com.habitsheet.domain.model.HabitSnapshot> = repository.snapshot
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _error = MutableStateFlow<UiText?>(null)
+    val error: StateFlow<UiText?> = _error.asStateFlow()
 
     fun clearError() {
         _error.value = null
@@ -44,7 +45,7 @@ class ManageHabitsViewModel(
                 repository.saveCategory(Category(id, trimmed, displayOrder, active, now))
             }.onFailure {
                 logger.e(TAG, "saveCategory failed", it)
-                _error.value = "Couldn't save category."
+                _error.value = UiText.of(Res.string.err_save_category)
             }
         }
     }
@@ -70,7 +71,7 @@ class ManageHabitsViewModel(
                 repository.deleteCategory(id)
             }.onFailure {
                 logger.e(TAG, "deleteCategory failed", it)
-                _error.value = "Couldn't delete category."
+                _error.value = UiText.of(Res.string.err_delete_category)
             }
         }
     }
@@ -79,7 +80,7 @@ class ManageHabitsViewModel(
         val trimmed = name.trim()
         if (trimmed.isEmpty() || monthlyGoal < 0) return
         if (state.value.dailyHabits.count { it.active } >= MAX_DAILY_HABITS) {
-            _error.value = "Maximum $MAX_DAILY_HABITS daily habits allowed."
+            _error.value = UiText.of(Res.string.err_max_daily_habits, MAX_DAILY_HABITS)
             return
         }
         val now = dateProvider.nowEpochMillis()
@@ -102,7 +103,7 @@ class ManageHabitsViewModel(
                 )
             }.onFailure {
                 logger.e(TAG, "addDailyHabit failed", it)
-                _error.value = "Couldn't create habit."
+                _error.value = UiText.of(Res.string.err_create_habit)
             }
         }
     }
@@ -114,7 +115,7 @@ class ManageHabitsViewModel(
                 repository.saveDailyHabit(habit.copy(updatedAtEpochMillis = dateProvider.nowEpochMillis()))
             }.onFailure {
                 logger.e(TAG, "updateDailyHabit failed", it)
-                _error.value = "Couldn't update habit."
+                _error.value = UiText.of(Res.string.err_update_habit)
             }
         }
     }
@@ -125,7 +126,7 @@ class ManageHabitsViewModel(
                 repository.archiveDailyHabit(id, dateProvider.today(), dateProvider.nowEpochMillis())
             }.onFailure {
                 logger.e(TAG, "archiveDailyHabit failed", it)
-                _error.value = "Couldn't archive habit."
+                _error.value = UiText.of(Res.string.err_archive_habit)
             }
         }
     }
@@ -136,7 +137,7 @@ class ManageHabitsViewModel(
                 repository.restoreDailyHabit(id, dateProvider.nowEpochMillis())
             }.onFailure {
                 logger.e(TAG, "restoreDailyHabit failed", it)
-                _error.value = "Couldn't restore habit."
+                _error.value = UiText.of(Res.string.err_restore_habit)
             }
         }
     }
@@ -147,7 +148,7 @@ class ManageHabitsViewModel(
                 repository.deleteDailyHabit(id)
             }.onFailure {
                 logger.e(TAG, "deleteDailyHabit failed", it)
-                _error.value = "Couldn't delete habit."
+                _error.value = UiText.of(Res.string.err_delete_habit)
             }
         }
     }
@@ -165,7 +166,7 @@ class ManageHabitsViewModel(
                 repository.updateDailyHabitOrders(newOrders, dateProvider.nowEpochMillis())
             }.onFailure {
                 logger.e(TAG, "moveDailyHabit failed", it)
-                _error.value = "Couldn't reorder habits."
+                _error.value = UiText.of(Res.string.err_reorder_habits)
             }
         }
     }
@@ -174,7 +175,7 @@ class ManageHabitsViewModel(
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         if (state.value.weeklyHabits.count { it.active } >= MAX_WEEKLY_HABITS) {
-            _error.value = "Maximum $MAX_WEEKLY_HABITS weekly habits allowed."
+            _error.value = UiText.of(Res.string.err_max_weekly_habits, MAX_WEEKLY_HABITS)
             return
         }
         val now = dateProvider.nowEpochMillis()
@@ -194,7 +195,7 @@ class ManageHabitsViewModel(
                 )
             }.onFailure {
                 logger.e(TAG, "addWeeklyHabit failed", it)
-                _error.value = "Couldn't create weekly habit."
+                _error.value = UiText.of(Res.string.err_create_weekly_habit)
             }
         }
     }
@@ -206,7 +207,7 @@ class ManageHabitsViewModel(
                 repository.saveWeeklyHabit(habit.copy(updatedAtEpochMillis = dateProvider.nowEpochMillis()))
             }.onFailure {
                 logger.e(TAG, "updateWeeklyHabit failed", it)
-                _error.value = "Couldn't update weekly habit."
+                _error.value = UiText.of(Res.string.err_update_weekly_habit)
             }
         }
     }
@@ -217,7 +218,7 @@ class ManageHabitsViewModel(
                 repository.archiveWeeklyHabit(id, dateProvider.today(), dateProvider.nowEpochMillis())
             }.onFailure {
                 logger.e(TAG, "archiveWeeklyHabit failed", it)
-                _error.value = "Couldn't archive weekly habit."
+                _error.value = UiText.of(Res.string.err_archive_weekly_habit)
             }
         }
     }
@@ -228,7 +229,7 @@ class ManageHabitsViewModel(
                 repository.restoreWeeklyHabit(id, dateProvider.nowEpochMillis())
             }.onFailure {
                 logger.e(TAG, "restoreWeeklyHabit failed", it)
-                _error.value = "Couldn't restore weekly habit."
+                _error.value = UiText.of(Res.string.err_restore_weekly_habit)
             }
         }
     }
@@ -239,7 +240,7 @@ class ManageHabitsViewModel(
                 repository.deleteWeeklyHabit(id)
             }.onFailure {
                 logger.e(TAG, "deleteWeeklyHabit failed", it)
-                _error.value = "Couldn't delete weekly habit."
+                _error.value = UiText.of(Res.string.err_delete_weekly_habit)
             }
         }
     }
@@ -257,7 +258,7 @@ class ManageHabitsViewModel(
                 repository.updateWeeklyHabitOrders(newOrders, dateProvider.nowEpochMillis())
             }.onFailure {
                 logger.e(TAG, "moveWeeklyHabit failed", it)
-                _error.value = "Couldn't reorder weekly habits."
+                _error.value = UiText.of(Res.string.err_reorder_weekly_habits)
             }
         }
     }

@@ -53,7 +53,7 @@ class ViewModelLifecycleTest {
         override val usesClipboard = false
         override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) = Unit
         override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
-        override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) = Unit
+        override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) = Unit
     }
     private var replaced = 0
     private val factory = viewModelFactory {

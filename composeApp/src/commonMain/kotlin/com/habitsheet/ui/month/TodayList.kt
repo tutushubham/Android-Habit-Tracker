@@ -39,12 +39,15 @@ import androidx.compose.ui.unit.sp
 import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.presentation.MonthUiState
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SectionLabel
 import com.habitsheet.ui.SubtleProgress
 import com.habitsheet.ui.monthName
 import com.habitsheet.ui.percentLabel
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TodayModeContent(
@@ -61,7 +64,7 @@ internal fun TodayModeContent(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (state.selectedDay == state.today) "TODAY" else "DAY PLAN",
+                        stringResource(if (state.selectedDay == state.today) Res.string.today_label else Res.string.day_plan_label),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -71,11 +74,11 @@ internal fun TodayModeContent(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
-                TextButton(onClick = onPlan, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text("Plan") }
+                TextButton(onClick = onPlan, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text(stringResource(Res.string.today_plan_button)) }
             }
             if (state.selectedDay != state.today) {
                 TextButton(onClick = onBackToToday, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
-                    Text("Back to today")
+                    Text(stringResource(Res.string.today_back))
                 }
             }
 
@@ -87,7 +90,7 @@ internal fun TodayModeContent(
             ) {
                 DonutProgress(summary.percentage, Modifier.size(52.dp))
                 Text(
-                    "${summary.completedCount} / ${summary.totalCount} completed • ${summary.percentage.percentLabel()}",
+                    stringResource(Res.string.today_completed, summary.completedCount, summary.totalCount, summary.percentage.percentLabel()),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -96,7 +99,7 @@ internal fun TodayModeContent(
 
             if (summary.totalCount == 0) {
                 Text(
-                    "Nothing planned for this day. Open Plan to add sessions, or enjoy the rest day.",
+                    stringResource(Res.string.today_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 40.dp),
@@ -121,10 +124,10 @@ internal fun TodayModeContent(
 
             val skipped = state.dayPlan.filter { it.skipped }
             if (skipped.isNotEmpty()) {
-                SectionLabel("REST / SKIPPED", Modifier.padding(top = 28.dp, bottom = 8.dp))
+                SectionLabel(stringResource(Res.string.today_rest_skipped), Modifier.padding(top = 28.dp, bottom = 8.dp))
                 skipped.forEach { item ->
                     Text(
-                        "${item.habit.name} · ${item.detail.orEmpty()}",
+                        stringResource(Res.string.session_with_detail, item.habit.name, item.detail.orEmpty()),
                         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -134,15 +137,19 @@ internal fun TodayModeContent(
             val nextDate = LocalDate.fromEpochDays(state.selectedDay.toEpochDays() + 1)
             val nextSessions = state.tomorrowPlan.filterNot { it.skipped }
             SectionLabel(
-                "${if (state.selectedDay == state.today) "TOMORROW" else "NEXT DAY"} · ${nextDate.day} ${MonthKey.from(nextDate).monthName()}",
+                stringResource(
+                    Res.string.today_next_header,
+                    stringResource(if (state.selectedDay == state.today) Res.string.today_tomorrow else Res.string.today_next_day),
+                    "${nextDate.day} ${MonthKey.from(nextDate).monthName()}",
+                ),
                 Modifier.padding(top = 32.dp, bottom = 8.dp),
             )
             if (nextSessions.isEmpty()) {
-                Text("Nothing scheduled", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(Res.string.today_nothing_scheduled), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 nextSessions.forEach { item ->
                     Text(
-                        "${item.habit.name}${item.detail?.let { " · $it" } ?: ""}",
+                        item.detail?.let { stringResource(Res.string.session_with_detail, item.habit.name, it) } ?: item.habit.name,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                     )
                 }
@@ -153,7 +160,7 @@ internal fun TodayModeContent(
                 state.weeklyHabits.filter { habit -> habit.isActiveOn(state.selectedDay) }
             }.orEmpty()
             if (currentWeekStart != null && weeklyHabits.isNotEmpty()) {
-                SectionLabel("THIS WEEK", Modifier.align(Alignment.Start).padding(top = 40.dp, bottom = 8.dp))
+                SectionLabel(stringResource(Res.string.today_this_week), Modifier.align(Alignment.Start).padding(top = 40.dp, bottom = 8.dp))
                 weeklyHabits.sortedBy { it.displayOrder }.forEach { habit ->
                     val completed = habit.id to currentWeekStart in state.weeklyCompletionKeys
                     TodayHabitRow(
@@ -168,11 +175,11 @@ internal fun TodayModeContent(
     }
 }
 
-internal enum class DaySection(val openLabel: String, val doneLabel: String) {
-    Workout("WORKOUTS", "DONE · WORKOUTS"),
-    Study("STUDY", "DONE · STUDY"),
-    Habit("HABITS", "DONE · HABITS"),
-    Avoid("AVOID TODAY · CHECK AT NIGHT", "KEPT TODAY"),
+internal enum class DaySection(val openLabel: StringResource, val doneLabel: StringResource) {
+    Workout(Res.string.section_workouts, Res.string.section_workouts_done),
+    Study(Res.string.section_study, Res.string.section_study_done),
+    Habit(Res.string.section_habits, Res.string.section_habits_done),
+    Avoid(Res.string.section_avoid, Res.string.section_avoid_done),
 }
 
 internal fun daySection(habit: com.habitsheet.domain.calculation.DailyShareHabit): DaySection {
@@ -202,13 +209,13 @@ private fun PlannedDayGroups(
         val items = habits.filter { daySection(it) == section }
         if (items.isEmpty()) return@forEach
         SectionLabel(
-            if (completed) section.doneLabel else section.openLabel,
+            stringResource(if (completed) section.doneLabel else section.openLabel),
             Modifier.padding(top = 28.dp, bottom = 8.dp),
         )
         items.forEach { habit ->
             val subtitle = when {
-                section == DaySection.Avoid && !completed -> "Mark kept if you avoided it all day"
-                section == DaySection.Avoid && completed -> "Avoidance commitment kept"
+                section == DaySection.Avoid && !completed -> stringResource(Res.string.avoid_open_hint)
+                section == DaySection.Avoid && completed -> stringResource(Res.string.avoid_done_hint)
                 else -> listOfNotNull(habit.categoryName, details[habit.id]?.detail).joinToString(" · ")
             }
             TodayHabitRow(habit.name, completed = completed, onClick = { onToggle(habit.id) }, subtitle = subtitle)
@@ -219,6 +226,8 @@ private fun PlannedDayGroups(
 @Composable
 private fun TodayHabitRow(name: String, completed: Boolean, onClick: () -> Unit, subtitle: String = "") {
     val haptic = LocalHapticFeedback.current
+    val state = stringResource(if (completed) Res.string.status_completed else Res.string.status_incomplete)
+    val clickLabel = stringResource(if (completed) Res.string.mark_incomplete else Res.string.mark_complete)
     Row(
         Modifier
             .fillMaxWidth()
@@ -226,9 +235,9 @@ private fun TodayHabitRow(name: String, completed: Boolean, onClick: () -> Unit,
             .semantics {
                 role = Role.Checkbox
                 contentDescription = listOf(name, subtitle).filter { it.isNotBlank() }.joinToString(", ")
-                stateDescription = if (completed) "Completed" else "Incomplete"
+                stateDescription = state
             }
-            .clickable(onClickLabel = if (completed) "Mark incomplete" else "Mark complete") {
+            .clickable(onClickLabel = clickLabel) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
             }

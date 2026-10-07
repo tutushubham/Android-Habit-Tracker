@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.ThemeMode
+import com.habitsheet.presentation.asString
+import com.habitsheet.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScreen(
@@ -49,56 +52,63 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
             ) {
-                SettingsSection("Plan sync") {
+                SettingsSection(stringResource(Res.string.settings_plan_sync)) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
                         OutlinedTextField(
                             value = sheetDraft,
                             onValueChange = { sheetDraft = it },
-                            label = { Text("Spreadsheet link") },
-                            placeholder = { Text("https://docs.google.com/spreadsheets/d/…") },
+                            label = { Text(stringResource(Res.string.settings_sheet_link)) },
+                            placeholder = { Text(stringResource(Res.string.settings_sheet_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
                             maxLines = 2,
                         )
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(onClick = { viewModel.saveSheetUrl(sheetDraft) }) { Text("Save link") }
+                            OutlinedButton(onClick = { viewModel.saveSheetUrl(sheetDraft) }) { Text(stringResource(Res.string.settings_save_link)) }
                             if (sheetUrl.isNotBlank()) {
-                                OutlinedButton(onClick = viewModel::disconnect, enabled = !syncState.busy) { Text("Disconnect") }
+                                OutlinedButton(
+                                    onClick = viewModel::disconnect,
+                                    enabled = !syncState.busy,
+                                ) { Text(stringResource(Res.string.settings_disconnect)) }
                             }
                             Button(onClick = viewModel::syncNow, enabled = sheetUrl.isNotBlank() && !syncState.busy) {
-                                Text(if (syncState.busy) "Syncing…" else "Connect & sync")
+                                Text(stringResource(if (syncState.busy) Res.string.settings_syncing else Res.string.settings_connect_sync))
                             }
                         }
-                        sheetMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        sheetMessage?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall) }
                         Text(
-                            syncStatus.text,
+                            syncStatus.text.asString(),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (syncStatus.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            "The Sheet controls dated sessions. Checks for Plan rows work offline and upload when you reconnect. Other tabs are unchanged.",
+                            stringResource(Res.string.settings_sheet_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
 
-                SettingsSection("Appearance") {
-                    ThemeOption("System Default", ThemeMode.System, themeMode) { viewModel.setThemeMode(it) }
-                    ThemeOption("Light", ThemeMode.Light, themeMode) { viewModel.setThemeMode(it) }
-                    ThemeOption("Dark", ThemeMode.Dark, themeMode) { viewModel.setThemeMode(it) }
+                SettingsSection(stringResource(Res.string.settings_appearance)) {
+                    ThemeOption(stringResource(Res.string.theme_system), ThemeMode.System, themeMode) { viewModel.setThemeMode(it) }
+                    ThemeOption(stringResource(Res.string.theme_light), ThemeMode.Light, themeMode) { viewModel.setThemeMode(it) }
+                    ThemeOption(stringResource(Res.string.theme_dark), ThemeMode.Dark, themeMode) { viewModel.setThemeMode(it) }
                 }
 
-                SettingsSection("Management") {
-                    SettingsActionItem("Manage Categories", "Add, edit, or remove habit categories", onManageCategories)
+                SettingsSection(stringResource(Res.string.settings_management)) {
+                    SettingsActionItem(
+                        stringResource(Res.string.settings_manage_categories),
+                        stringResource(Res.string.settings_manage_categories_desc),
+                        onManageCategories,
+                    )
                 }
 
-                SettingsSection("Data") {
-                    SettingsActionItem("Data & Backup", "Export or import your habit history", onBackup)
+                SettingsSection(stringResource(Res.string.settings_data)) {
+                    SettingsActionItem(stringResource(Res.string.settings_data_backup), stringResource(Res.string.settings_data_backup_desc), onBackup)
                 }
 
-                SettingsSection("About") {
-                    SettingsActionItem("About Habit Sheet", "App information and privacy", onAbout)
+                SettingsSection(stringResource(Res.string.settings_about)) {
+                    SettingsActionItem(stringResource(Res.string.settings_about_app), stringResource(Res.string.settings_about_desc), onAbout)
                 }
 
                 Spacer(Modifier.height(48.dp))
@@ -117,12 +127,13 @@ private fun SettingsSection(title: String, content: @Composable ColumnScope.() -
 
 @Composable
 private fun ThemeOption(label: String, mode: ThemeMode, current: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val selectLabel = stringResource(Res.string.settings_select_theme, label)
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(
                 onClick = { onSelect(mode) },
-                onClickLabel = "Select $label theme",
+                onClickLabel = selectLabel,
             )
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -138,6 +149,7 @@ private fun ThemeOption(label: String, mode: ThemeMode, current: ThemeMode, onSe
 
 @Composable
 private fun SettingsActionItem(title: String, description: String, onClick: () -> Unit) {
+    val navigateLabel = stringResource(Res.string.settings_navigate)
     Row(
         Modifier
             .fillMaxWidth()
@@ -156,7 +168,7 @@ private fun SettingsActionItem(title: String, description: String, onClick: () -
             "›",
             fontSize = 24.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.semantics { contentDescription = "Navigate" },
+            modifier = Modifier.semantics { contentDescription = navigateLabel },
         )
     }
 }
@@ -164,11 +176,12 @@ private fun SettingsActionItem(title: String, description: String, onClick: () -
 @Composable
 internal fun SettingsTopBar(
     onBack: () -> Unit,
-    title: String = "Settings",
+    title: String = stringResource(Res.string.nav_settings),
     showBack: Boolean = true,
     insetTop: Boolean = showBack,
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val backLabel = stringResource(Res.string.action_back)
     Row(
         Modifier
             .fillMaxWidth()
@@ -186,7 +199,7 @@ internal fun SettingsTopBar(
                     "‹",
                     fontSize = 32.sp,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.semantics { contentDescription = "Back" },
+                    modifier = Modifier.semantics { contentDescription = backLabel },
                 )
             }
         }

@@ -15,6 +15,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.DestructiveAction
+import com.habitsheet.presentation.UiText
+import com.habitsheet.presentation.asString
+import com.habitsheet.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun DataBackupScreen(
@@ -23,8 +27,8 @@ fun DataBackupScreen(
     showBack: Boolean = true,
 ) {
     var showImportConfirmation by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var successMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<UiText?>(null) }
+    var successMessage by remember { mutableStateOf<UiText?>(null) }
     fun showResult(result: BackupResult) {
         when (result) {
             is BackupResult.Success -> {
@@ -43,7 +47,7 @@ fun DataBackupScreen(
 
     Scaffold(
         topBar = {
-            SettingsTopBar(onBack, "Data & Backup", showBack = true, insetTop = showBack)
+            SettingsTopBar(onBack, stringResource(Res.string.settings_data_backup), showBack = true, insetTop = showBack)
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
@@ -55,37 +59,37 @@ fun DataBackupScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SectionLabel("Data & Backup", Modifier.align(Alignment.Start).padding(bottom = 16.dp))
+            SectionLabel(stringResource(Res.string.settings_data_backup), Modifier.align(Alignment.Start).padding(bottom = 16.dp))
 
             Text(
-                if (viewModel.usesClipboard) "Copy a JSON backup and save it in Files, Notes, or another safe place. Copy it again before importing." else "Keep your habit tracking data safe. You can export all your history to a JSON file and restore it later or on another device.",
+                stringResource(if (viewModel.usesClipboard) Res.string.backup_intro_clipboard else Res.string.backup_intro_file),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 32.dp),
             )
 
             BackupActionCard(
-                title = "Export Backup",
-                description = if (viewModel.usesClipboard) "Copy all habits, plans, and history as JSON." else "Save your categories, habits, plans, and entire completion history to a local file.",
-                buttonText = if (viewModel.usesClipboard) "Copy JSON backup" else "Export JSON",
+                title = stringResource(Res.string.backup_export_title),
+                description = stringResource(if (viewModel.usesClipboard) Res.string.backup_export_desc_clipboard else Res.string.backup_export_desc_file),
+                buttonText = stringResource(if (viewModel.usesClipboard) Res.string.backup_export_button_clipboard else Res.string.backup_export_button_file),
                 onClick = { viewModel.exportBackup(onResult = ::showResult) },
             )
 
             Spacer(Modifier.height(24.dp))
 
             BackupActionCard(
-                title = "Export CSV",
-                description = if (viewModel.usesClipboard) "Copy your habit history as CSV." else "Export your daily and weekly habit history for use in Excel or Google Sheets.",
-                buttonText = if (viewModel.usesClipboard) "Copy CSV" else "Export CSV",
+                title = stringResource(Res.string.backup_csv_title),
+                description = stringResource(if (viewModel.usesClipboard) Res.string.backup_csv_desc_clipboard else Res.string.backup_csv_desc_file),
+                buttonText = stringResource(if (viewModel.usesClipboard) Res.string.backup_csv_button_clipboard else Res.string.backup_csv_button_file),
                 onClick = { viewModel.exportCsv(::showResult) },
             )
 
             Spacer(Modifier.height(24.dp))
 
             BackupActionCard(
-                title = "Import Backup",
-                description = if (viewModel.usesClipboard) "Restore JSON currently copied to the clipboard." else "Restore your data from a previously exported JSON backup file.",
-                buttonText = if (viewModel.usesClipboard) "Import copied JSON" else "Import JSON",
+                title = stringResource(Res.string.backup_import_title),
+                description = stringResource(if (viewModel.usesClipboard) Res.string.backup_import_desc_clipboard else Res.string.backup_import_desc_file),
+                buttonText = stringResource(if (viewModel.usesClipboard) Res.string.backup_import_button_clipboard else Res.string.backup_import_button_file),
                 onClick = { showImportConfirmation = true },
                 isDestructive = true,
             )
@@ -95,9 +99,9 @@ fun DataBackupScreen(
             var showResetConfirmation by remember { mutableStateOf(false) }
 
             BackupActionCard(
-                title = "Reset all data",
-                description = "Permanently remove all habits, history, and categories from this device and disconnect the sheet link. Your Google Sheet is untouched. This cannot be undone.",
-                buttonText = "Reset everything",
+                title = stringResource(Res.string.backup_reset_title),
+                description = stringResource(Res.string.backup_reset_desc),
+                buttonText = stringResource(Res.string.backup_reset_button),
                 onClick = { showResetConfirmation = true },
                 isDestructive = true,
             )
@@ -108,7 +112,7 @@ fun DataBackupScreen(
                     onConfirm = {
                         showResetConfirmation = false
                         viewModel.clearAllData()
-                        successMessage = "All data on this device has been reset"
+                        successMessage = UiText.of(Res.string.backup_reset_done)
                         errorMessage = null
                     },
                     onDismiss = { showResetConfirmation = false },
@@ -117,7 +121,7 @@ fun DataBackupScreen(
 
             errorMessage?.let { msg ->
                 Text(
-                    msg,
+                    msg.asString(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 24.dp),
@@ -126,7 +130,7 @@ fun DataBackupScreen(
 
             successMessage?.let { msg ->
                 Text(
-                    msg,
+                    msg.asString(),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 24.dp),
@@ -142,7 +146,7 @@ fun DataBackupScreen(
                 showImportConfirmation = false
                 viewModel.importBackup(
                     onSuccess = {
-                        successMessage = "Data restored successfully"
+                        successMessage = UiText.of(Res.string.backup_restored)
                         errorMessage = null
                     },
                     onError = {

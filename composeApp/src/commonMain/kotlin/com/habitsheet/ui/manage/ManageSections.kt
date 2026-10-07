@@ -46,12 +46,14 @@ import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyHabit
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitIcon
 import com.habitsheet.ui.HabitIconGlyph
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SectionLabel
 import com.habitsheet.ui.categoryColor
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun ManageTopBar(wide: Boolean) {
@@ -67,17 +69,22 @@ internal fun ManageTopBar(wide: Boolean) {
             .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        Text(
+            stringResource(Res.string.nav_habits),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
 private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: () -> Unit, onEdit: (DailyHabit) -> Unit, onMove: (Int, Int) -> Unit = { _, _ -> }) {
-    SectionLabel(if (archived) "Archived daily habits" else "Daily habits", Modifier.padding(bottom = 16.dp))
+    SectionLabel(stringResource(if (archived) Res.string.manage_daily_archived else Res.string.manage_daily), Modifier.padding(bottom = 16.dp))
     val habits = state.dailyHabits.filter { it.active == !archived }.sortedBy { it.displayOrder }
     if (habits.isEmpty()) {
         Text(
-            if (archived) "No archived daily habits." else "No daily habits yet.",
+            stringResource(if (archived) Res.string.manage_daily_none_archived else Res.string.manage_daily_none),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -89,7 +96,7 @@ private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: (
                     name = habit.name,
                     category = state.categories.firstOrNull { it.id == habit.categoryId },
                     categories = state.categories,
-                    goal = "${habit.monthlyGoal}/month",
+                    goal = stringResource(Res.string.manage_goal_month, habit.monthlyGoal),
                     onEdit = { onEdit(habit) },
                     onMoveUp = if (!archived && index > 0) {
                         { onMove(index, index - 1) }
@@ -106,7 +113,7 @@ private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: (
         }
     }
     if (!archived) {
-        AddButton("Add Daily Habit", onAdd)
+        AddButton(stringResource(Res.string.manage_add_daily), onAdd)
     } else {
         Spacer(Modifier.height(16.dp))
     }
@@ -114,11 +121,11 @@ private fun ManageDailySection(state: HabitSnapshot, archived: Boolean, onAdd: (
 
 @Composable
 private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: () -> Unit, onEdit: (WeeklyHabit) -> Unit, onMove: (Int, Int) -> Unit = { _, _ -> }) {
-    SectionLabel(if (archived) "Archived weekly habits" else "Weekly habits", Modifier.padding(top = 32.dp, bottom = 16.dp))
+    SectionLabel(stringResource(if (archived) Res.string.manage_weekly_archived else Res.string.manage_weekly), Modifier.padding(top = 32.dp, bottom = 16.dp))
     val habits = state.weeklyHabits.filter { it.active == !archived }.sortedBy { it.displayOrder }
     if (habits.isEmpty()) {
         Text(
-            if (archived) "No archived weekly habits." else "No weekly habits yet.",
+            stringResource(if (archived) Res.string.manage_weekly_none_archived else Res.string.manage_weekly_none),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -130,7 +137,7 @@ private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: 
                     name = habit.name,
                     category = state.categories.firstOrNull { it.id == habit.categoryId },
                     categories = state.categories,
-                    goal = "1/week",
+                    goal = stringResource(Res.string.manage_goal_week),
                     onEdit = { onEdit(habit) },
                     onMoveUp = if (!archived && index > 0) {
                         { onMove(index, index - 1) }
@@ -147,7 +154,7 @@ private fun ManageWeeklySection(state: HabitSnapshot, archived: Boolean, onAdd: 
         }
     }
     if (!archived) {
-        AddButton("Add Weekly Habit", onAdd)
+        AddButton(stringResource(Res.string.manage_add_weekly), onAdd)
     } else {
         Spacer(Modifier.height(16.dp))
     }
@@ -173,10 +180,15 @@ private fun DefinitionRow(
             Column(rowModifier.padding(vertical = 8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     HabitRowIdentity(name, category, categories, Modifier.weight(1f))
-                    TextButton(onClick = onEdit, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text("Edit") }
+                    TextButton(onClick = onEdit, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text(stringResource(Res.string.action_edit)) }
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Goal $goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(Res.string.manage_goal, goal),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
                     if (onMoveUp != null || onMoveDown != null) {
                         HabitMoveButton(name, true, onMoveUp)
                         HabitMoveButton(name, false, onMoveDown)
@@ -193,8 +205,14 @@ private fun DefinitionRow(
                     Spacer(Modifier.width(8.dp))
                 }
                 HabitRowIdentity(name, category, categories, Modifier.weight(1f))
-                Text("Goal $goal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 8.dp), maxLines = 1)
-                TextButton(onClick = onEdit, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text("Edit") }
+                Text(
+                    stringResource(Res.string.manage_goal, goal),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    maxLines = 1,
+                )
+                TextButton(onClick = onEdit, modifier = Modifier.sizeIn(minHeight = 48.dp)) { Text(stringResource(Res.string.action_edit)) }
             }
         }
     }
@@ -207,7 +225,7 @@ private fun HabitRowIdentity(name: String, category: Category?, categories: List
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
             Box(Modifier.size(8.dp).background(categoryColor(category, categories), CircleShape))
             Text(
-                category?.name?.uppercase() ?: "GENERAL",
+                category?.name?.uppercase() ?: stringResource(Res.string.category_general),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -220,10 +238,11 @@ private fun HabitRowIdentity(name: String, category: Category?, categories: List
 
 @Composable
 private fun HabitMoveButton(name: String, up: Boolean, onClick: (() -> Unit)?) {
+    val moveLabel = stringResource(if (up) Res.string.manage_move_up else Res.string.manage_move_down, name)
     IconButton(
         onClick = { onClick?.invoke() },
         enabled = onClick != null,
-        modifier = Modifier.size(44.dp).semantics { contentDescription = "Move $name ${if (up) "up" else "down"}" },
+        modifier = Modifier.size(44.dp).semantics { contentDescription = moveLabel },
     ) {
         HabitIcon(if (up) HabitIconGlyph.Up else HabitIconGlyph.Down, Modifier.size(20.dp), MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -232,18 +251,18 @@ private fun HabitMoveButton(name: String, up: Boolean, onClick: (() -> Unit)?) {
 @Composable
 private fun AddButton(label: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.padding(top = 8.dp)) {
-        Text("＋  $label", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(Res.string.manage_add_button, label), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ManageCategorySection(categories: List<Category>, onManage: () -> Unit) {
-    SectionLabel("Categories", Modifier.padding(top = 28.dp, bottom = 14.dp))
+    SectionLabel(stringResource(Res.string.summary_categories), Modifier.padding(top = 28.dp, bottom = 14.dp))
     val activeCategories = categories.filter { it.active }
     if (activeCategories.isEmpty()) {
         Text(
-            "No categories created yet.",
+            stringResource(Res.string.manage_categories_none),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -262,7 +281,7 @@ private fun ManageCategorySection(categories: List<Category>, onManage: () -> Un
         }
     }
     TextButton(onClick = onManage, modifier = Modifier.padding(top = 10.dp)) {
-        Text("Edit categories", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(Res.string.manage_edit_categories), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -290,8 +309,8 @@ internal fun ManageHabitLists(
             Modifier.fillMaxWidth().padding(bottom = tabsBottomPadding),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ArchiveTab("Active", isSelected = !showArchived, onClick = { onShowArchivedChange(false) })
-            ArchiveTab("Archived", isSelected = showArchived, onClick = { onShowArchivedChange(true) })
+            ArchiveTab(stringResource(Res.string.manage_tab_active), isSelected = !showArchived, onClick = { onShowArchivedChange(false) })
+            ArchiveTab(stringResource(Res.string.manage_tab_archived), isSelected = showArchived, onClick = { onShowArchivedChange(true) })
         }
 
         if (!showArchived) {

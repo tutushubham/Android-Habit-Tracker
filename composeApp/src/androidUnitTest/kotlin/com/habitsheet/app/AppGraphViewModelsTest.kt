@@ -9,6 +9,7 @@ import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
+import com.habitsheet.presentation.UiText
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
@@ -26,7 +27,7 @@ class AppGraphViewModelsTest {
         override val usesClipboard = false
         override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) = Unit
         override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
-        override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) = Unit
+        override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) = Unit
     }
     private val graph = AppGraph(
         DriverFactory { JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { HabitsDatabase.Schema.create(it) } },

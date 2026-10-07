@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.habitsheet.presentation.VersionProvider
+import com.habitsheet.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AboutScreen(
@@ -19,7 +21,7 @@ fun AboutScreen(
 ) {
     Scaffold(
         topBar = {
-            SettingsTopBar(onBack, "About", showBack = true, insetTop = showBack)
+            SettingsTopBar(onBack, stringResource(Res.string.settings_about), showBack = true, insetTop = showBack)
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
@@ -32,48 +34,48 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "Habit Tracker",
+                stringResource(Res.string.about_title),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 32.dp),
             )
 
             Text(
-                "Version ${versionProvider.versionName}",
+                stringResource(Res.string.about_version, versionProvider.versionName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
             )
 
             Text(
-                "Simple, offline-first habit tracking.",
+                stringResource(Res.string.about_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 48.dp),
             )
 
             Text(
-                "Your habit data is stored locally on your device.",
+                stringResource(Res.string.about_local),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 16.dp),
             )
 
             Text(
-                "Your data",
+                stringResource(Res.string.about_data_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 48.dp).align(Alignment.Start),
             )
 
             Text(
-                "Your habits and completion history are stored locally on your device. The app does not require an account or an internet connection to track your habits.",
+                stringResource(Res.string.about_data_text),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 16.dp).align(Alignment.Start),
             )
 
             Text(
-                "Your habit data stays on your device.",
+                stringResource(Res.string.about_stays),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,

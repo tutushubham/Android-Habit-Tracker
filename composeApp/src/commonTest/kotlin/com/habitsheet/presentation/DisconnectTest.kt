@@ -9,12 +9,14 @@ import com.habitsheet.sync.FakeSheetsServer
 import com.habitsheet.sync.RetryPolicy
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
+import com.habitsheet.testing.English
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -65,9 +67,9 @@ class DisconnectTest {
         assertEquals(1, snapshot.dailyCompletions.size)
         assertEquals(false, snapshot.dailyCompletions.single().completed)
         // The status line forgets the old sync.
-        assertEquals("Not synced yet", viewModel.sheetSyncState.value.message)
+        assertEquals("Not synced yet", English.render(viewModel.sheetSyncState.value.message))
         assertNull(viewModel.sheetSyncState.value.error)
-        assertEquals("Disconnected. Your habits and check-offs stay on this device.", viewModel.sheetMessage.value)
+        assertEquals("Disconnected. Your habits and check-offs stay on this device.", English.render(assertNotNull(viewModel.sheetMessage.value)))
     }
 
     @Test

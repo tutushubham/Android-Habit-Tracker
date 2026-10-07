@@ -47,12 +47,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitsheet.presentation.MonthUiState
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SubtleProgress
 import com.habitsheet.ui.categoryColor
 import com.habitsheet.ui.percentLabel
 import com.habitsheet.ui.weekdayLabel
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun EmptyHabits(onManage: () -> Unit) {
@@ -64,9 +67,9 @@ internal fun EmptyHabits(onManage: () -> Unit) {
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("No daily habits yet", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(stringResource(Res.string.empty_daily_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         Text(
-            "Add your first daily habit from Manage.",
+            stringResource(Res.string.empty_daily_text),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp),
@@ -78,7 +81,7 @@ internal fun EmptyHabits(onManage: () -> Unit) {
             shape = RoundedCornerShape(12.dp),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         ) {
-            Text("Manage Habits")
+            Text(stringResource(Res.string.empty_daily_button))
         }
     }
 }
@@ -127,7 +130,7 @@ internal fun DailyHabitGrid(
                 },
         ) {
             Box(Modifier.fillMaxWidth().height(headerHeight).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
-                Text("ACTIVITY", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(Res.string.grid_activity), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             gridHabits.forEach { summary ->
                 val category = state.categories.firstOrNull { it.id == summary.habit.categoryId }
@@ -150,7 +153,7 @@ internal fun DailyHabitGrid(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                         Text(
-                            category?.name?.uppercase() ?: "GENERAL",
+                            category?.name?.uppercase() ?: stringResource(Res.string.category_general),
                             style = MaterialTheme.typography.labelSmall,
                             color = categoryColor(category, state.categories).copy(alpha = 0.8f),
                             maxLines = 1,
@@ -166,8 +169,8 @@ internal fun DailyHabitGrid(
                     SubtleProgress(summary.percentage, Modifier.fillMaxWidth().padding(top = 4.dp))
                 }
             }
-            SummaryLabel("DONE", summaryHeight)
-            SummaryLabel("MISS", summaryHeight)
+            SummaryLabel(stringResource(Res.string.grid_done), summaryHeight)
+            SummaryLabel(stringResource(Res.string.grid_miss), summaryHeight)
             SummaryLabel("%", summaryHeight)
         }
         Column(Modifier.weight(1f).horizontalScroll(scrollState)) {
@@ -196,18 +199,32 @@ internal fun DailyHabitGrid(
                             1 -> CompletionCell(
                                 completed = completedCount == 1,
                                 currentDay = date == state.today,
-                                description = "${summary.habit.name}, $date: planned, ${if (completedCount == 1) "complete" else "incomplete"}",
+                                description = stringResource(
+                                    if (completedCount == 1) Res.string.cell_planned_complete else Res.string.cell_planned_incomplete,
+                                    summary.habit.name,
+                                    date.toString(),
+                                ),
                                 width = cellWidth,
                                 height = rowHeight,
                                 onClick = { onTogglePlanned(planned.single().id, date) },
                             )
 
-                            else -> Box(
-                                Modifier.width(cellWidth).height(rowHeight)
-                                    .clickable(onClickLabel = "Open ${planned.size} planned sessions") { onOpenDay(date) }
-                                    .semantics { contentDescription = "${summary.habit.name}, $date: $completedCount of ${planned.size} complete" },
-                                contentAlignment = Alignment.Center,
-                            ) { Text("$completedCount/${planned.size}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
+                            else -> {
+                                val openLabel = pluralStringResource(Res.plurals.cell_open_sessions, planned.size, planned.size)
+                                val progressDescription = stringResource(
+                                    Res.string.cell_sessions_progress,
+                                    summary.habit.name,
+                                    date.toString(),
+                                    completedCount,
+                                    planned.size,
+                                )
+                                Box(
+                                    Modifier.width(cellWidth).height(rowHeight)
+                                        .clickable(onClickLabel = openLabel) { onOpenDay(date) }
+                                        .semantics { contentDescription = progressDescription },
+                                    contentAlignment = Alignment.Center,
+                                ) { Text("$completedCount/${planned.size}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
+                            }
                         }
                     }
                 }
@@ -239,12 +256,13 @@ internal fun monthGridLayout(maxWidth: Dp): MonthGridLayout {
 
 @Composable
 private fun NotPlannedCell(name: String, date: LocalDate, width: Dp, height: Dp) {
+    val description = stringResource(Res.string.cell_not_planned, name, date.toString())
     Box(
         Modifier
             .width(width)
             .height(height)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f))
-            .semantics { contentDescription = "$name, $date: not planned" },
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -258,13 +276,18 @@ private fun NotPlannedCell(name: String, date: LocalDate, width: Dp, height: Dp)
 @Composable
 private fun DateHeader(date: LocalDate, current: Boolean, width: Dp, onClick: () -> Unit) {
     val indicatorColor = MaterialTheme.colorScheme.primary
-    val dateDescription = if (current) "Today, ${date.dayOfWeek.name} ${date.day}" else "${date.dayOfWeek.name} ${date.day}"
+    val dateDescription = if (current) {
+        stringResource(Res.string.date_header_today, date.dayOfWeek.name, date.day)
+    } else {
+        stringResource(Res.string.date_header, date.dayOfWeek.name, date.day)
+    }
+    val openPlanLabel = stringResource(Res.string.date_open_plan, date.toString())
 
     Column(
         Modifier
             .width(width)
             .fillMaxHeight()
-            .clickable(onClickLabel = "Open plan for $date", onClick = onClick)
+            .clickable(onClickLabel = openPlanLabel, onClick = onClick)
             .background(if (current) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else Color.Transparent)
             .drawBehind {
                 if (current) {
@@ -307,7 +330,7 @@ private fun DateHeader(date: LocalDate, current: Boolean, width: Dp, onClick: ()
 @Composable
 internal fun MonthGridLegend(modifier: Modifier = Modifier) {
     Text(
-        "□ planned incomplete · ✓ complete · · not planned · 1/2 multiple (tap day)",
+        stringResource(Res.string.grid_legend),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -325,11 +348,14 @@ internal fun CompletionCell(
     onClick: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-    val statusDescription = when {
-        !enabled -> "Not planned"
-        completed -> "Completed"
-        else -> "Incomplete"
-    }
+    val statusDescription = stringResource(
+        when {
+            !enabled -> Res.string.status_not_planned
+            completed -> Res.string.status_completed
+            else -> Res.string.status_incomplete
+        },
+    )
+    val clickLabel = stringResource(if (completed) Res.string.mark_incomplete else Res.string.mark_complete)
 
     Box(
         Modifier
@@ -349,7 +375,7 @@ internal fun CompletionCell(
             }
             .clickable(
                 enabled = enabled,
-                onClickLabel = if (completed) "Mark incomplete" else "Mark complete",
+                onClickLabel = clickLabel,
             ) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
@@ -438,8 +464,22 @@ private fun GridCellsPreview() {
     HabitSheetTheme(darkTheme = false) {
         Surface {
             Row {
-                CompletionCell(completed = true, currentDay = false, description = "done", width = 44.dp, height = 56.dp, onClick = {})
-                CompletionCell(completed = false, currentDay = true, description = "open", width = 44.dp, height = 56.dp, onClick = {})
+                CompletionCell(
+                    completed = true,
+                    currentDay = false,
+                    description = stringResource(Res.string.status_completed),
+                    width = 44.dp,
+                    height = 56.dp,
+                    onClick = {},
+                )
+                CompletionCell(
+                    completed = false,
+                    currentDay = true,
+                    description = stringResource(Res.string.status_incomplete),
+                    width = 44.dp,
+                    height = 56.dp,
+                    onClick = {},
+                )
                 NotPlannedCell("Read", LocalDate(2026, 10, 5), width = 44.dp, height = 56.dp)
                 DateHeader(LocalDate(2026, 10, 5), current = true, width = 44.dp, onClick = {})
             }

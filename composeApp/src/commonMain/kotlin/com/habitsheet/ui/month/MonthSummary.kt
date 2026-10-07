@@ -28,10 +28,12 @@ import com.habitsheet.domain.calculation.CategorySummary
 import com.habitsheet.domain.calculation.ProgressSummary
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.presentation.MonthUiState
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SectionLabel
 import com.habitsheet.ui.SubtleProgress
 import com.habitsheet.ui.percentLabel
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun MonthSummaryStrip(
@@ -45,12 +47,12 @@ internal fun MonthSummaryStrip(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        SummaryItem("Daily", state.monthlyProgress.percentage.percentLabel())
-        SummaryItem("Weekly", state.weeklyProgress.percentage.percentLabel())
+        SummaryItem(stringResource(Res.string.summary_daily), state.monthlyProgress.percentage.percentLabel())
+        SummaryItem(stringResource(Res.string.summary_weekly), state.weeklyProgress.percentage.percentLabel())
         Spacer(Modifier.weight(1f))
         if (onCurrentMonth != null && state.selectedMonth != MonthKey.from(state.today)) {
             TextButton(onClick = onCurrentMonth) {
-                Text("Current month", color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(Res.string.summary_current_month), color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -67,13 +69,13 @@ private fun SummaryItem(label: String, value: String) {
 @Composable
 internal fun OverviewStrip(state: MonthUiState, modifier: Modifier = Modifier) {
     Column(modifier.padding(horizontal = 16.dp, vertical = 32.dp)) {
-        SectionLabel("Summary", Modifier.padding(bottom = 16.dp))
+        SectionLabel(stringResource(Res.string.summary_title), Modifier.padding(bottom = 16.dp))
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            MetricPanel("Monthly daily", state.monthlyProgress, Modifier.weight(1f))
-            MetricPanel("Weekly habits", state.weeklyProgress, Modifier.weight(1f))
+            MetricPanel(stringResource(Res.string.summary_monthly_daily), state.monthlyProgress, Modifier.weight(1f))
+            MetricPanel(stringResource(Res.string.summary_weekly_habits), state.weeklyProgress, Modifier.weight(1f))
         }
     }
 }
@@ -111,7 +113,7 @@ internal fun DailyWeeksSection(
 ) {
     if (weeks.isEmpty()) return
     Column(modifier.padding(top = 8.dp)) {
-        SectionLabel("Daily week totals", Modifier.padding(bottom = 12.dp))
+        SectionLabel(stringResource(Res.string.summary_daily_week_totals), Modifier.padding(bottom = 12.dp))
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -127,7 +129,7 @@ internal fun DailyWeeksSection(
                 ) {
                     DonutProgress(week.percentage, Modifier.size(24.dp))
                     Column {
-                        Text("W${week.index + 1}", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(Res.string.week_short, week.index + 1), style = MaterialTheme.typography.labelSmall)
                         Text(
                             "${week.completed}/${week.goal}",
                             style = MaterialTheme.typography.bodySmall,
@@ -144,9 +146,9 @@ internal fun DailyWeeksSection(
 internal fun CategorySection(categories: List<CategorySummary>) {
     if (categories.isEmpty()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 24.dp)) {
-            SectionLabel("Categories", Modifier.padding(bottom = 12.dp))
+            SectionLabel(stringResource(Res.string.summary_categories), Modifier.padding(bottom = 12.dp))
             Text(
-                "Assign habits to categories to see progress.",
+                stringResource(Res.string.summary_categories_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -154,13 +156,13 @@ internal fun CategorySection(categories: List<CategorySummary>) {
         return
     }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        SectionLabel("Categories", Modifier.padding(bottom = 12.dp))
+        SectionLabel(stringResource(Res.string.summary_categories), Modifier.padding(bottom = 12.dp))
         categories.forEach { summary ->
             Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(summary.category.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     Text(
-                        "${summary.completed}/${summary.goal} · ${summary.remaining} left · ${summary.percentage.percentLabel()}",
+                        stringResource(Res.string.category_progress, summary.completed, summary.goal, summary.remaining, summary.percentage.percentLabel()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

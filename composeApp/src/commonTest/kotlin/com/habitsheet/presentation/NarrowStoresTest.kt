@@ -12,6 +12,7 @@ import com.habitsheet.domain.repository.HabitStore
 import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
+import com.habitsheet.testing.English
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import io.ktor.client.HttpClient
@@ -90,7 +91,7 @@ class NarrowStoresTest {
                 exported = json
             }
             override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) = Unit
-            override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) = Unit
+            override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) = Unit
         }
         val viewModel = BackupViewModel(
             OnlyBackups(repository),
@@ -120,6 +121,6 @@ class NarrowStoresTest {
 
         sync.sync(interactive = true)
 
-        assertEquals("Add a spreadsheet link first.", sync.state.value.message)
+        assertEquals("Add a spreadsheet link first.", English.render(sync.state.value.message))
     }
 }

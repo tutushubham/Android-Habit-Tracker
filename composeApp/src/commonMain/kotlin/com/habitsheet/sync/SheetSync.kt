@@ -13,6 +13,8 @@ import com.habitsheet.platform.i
 import com.habitsheet.platform.w
 import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.SystemDateProvider
+import com.habitsheet.presentation.UiText
+import com.habitsheet.resources.*
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +43,7 @@ interface SheetTokenProvider {
 /** [error] is set when the last attempt failed; [message] then holds its [userMessage]. */
 data class SheetSyncState(
     val busy: Boolean = false,
-    val message: String = "Not synced yet",
+    val message: UiText = UiText.of(Res.string.sync_not_synced),
     val lastSync: Long = 0,
     val error: SyncError? = null,
 )
@@ -68,14 +70,14 @@ class SheetSync(
         try {
             val id = SheetLink.spreadsheetId(settings.getSheetUrl())
             if (id == null) {
-                if (interactive) mutableState.value = SheetSyncState(message = "Add a spreadsheet link first.")
+                if (interactive) mutableState.value = SheetSyncState(message = UiText.of(Res.string.sync_add_link_first))
                 return
             }
-            mutableState.value = mutableState.value.copy(busy = true, message = "Syncing…", error = null)
+            mutableState.value = mutableState.value.copy(busy = true, message = UiText.of(Res.string.sync_syncing), error = null)
             val token = token(interactive)
             if (token == null) {
                 mutableState.value = if (interactive) {
-                    mutableState.value.copy(busy = false, error = null, message = "Google sign-in was cancelled or failed. If you did choose an account, the app's Google OAuth client may not match this build's signing key (see SHEET_SYNC.md).")
+                    mutableState.value.copy(busy = false, error = null, message = UiText.of(Res.string.sync_sign_in_cancelled))
                 } else {
                     // Nobody is looking at a sign-in sheet: access was revoked, expired or never granted.
                     SyncError.AuthExpired().let { mutableState.value.copy(busy = false, error = it, message = it.userMessage()) }
@@ -140,14 +142,15 @@ class SheetSync(
         }
         val now = Clock.System.now().toEpochMilliseconds()
         settings.applySheetSync(SheetSyncChanges(managedHabitIds = upload.managedHabitIds, completionsToAcknowledge = upload.acknowledged), upload.syncedKeys, now)
-        mutableState.value = SheetSyncState(message = "Plan tab created · ${upload.rows.size} sessions uploaded", lastSync = now)
+        mutableState.value = SheetSyncState(message = UiText.plural(Res.plurals.sync_plan_created, upload.rows.size), lastSync = now)
     }
 
-    private fun summary(result: ReconcileResult): String = buildString {
-        append("Synced ${result.sessionCount} sessions")
-        if (result.doneUploads.isNotEmpty()) append(" · ${result.doneUploads.size} checks uploaded")
-        if (result.renames.isNotEmpty()) append(" · ${result.renames.size} renamed from sheet")
-        result.warnings.forEach { append(" · ").append(it.describe()) }
+    private fun summary(result: ReconcileResult): UiText {
+        val parts = mutableListOf<UiText>(UiText.plural(Res.plurals.sync_synced_sessions, result.sessionCount))
+        if (result.doneUploads.isNotEmpty()) parts += UiText.plural(Res.plurals.sync_checks_uploaded, result.doneUploads.size)
+        if (result.renames.isNotEmpty()) parts += UiText.plural(Res.plurals.sync_renamed_from_sheet, result.renames.size)
+        result.warnings.forEach { parts += it.describe() }
+        return UiText.Joined(parts)
     }
 
     private suspend fun token(interactive: Boolean): String? = suspendCancellableCoroutine { continuation ->

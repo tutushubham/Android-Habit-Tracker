@@ -39,11 +39,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.habitsheet.presentation.MonthUiState
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitIcon
 import com.habitsheet.ui.HabitIconGlyph
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.monthName
 import com.habitsheet.ui.tutorialTarget
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun MonthTopBar(
@@ -72,11 +74,12 @@ internal fun MonthTopBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (compact) {
+                val settingsLabel = stringResource(Res.string.nav_settings)
                 IconButton(
                     onClick = onSettings,
                     modifier = Modifier
                         .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .semantics { contentDescription = "Settings" },
+                        .semantics { contentDescription = settingsLabel },
                 ) {
                     HabitIcon(
                         HabitIconGlyph.Settings,
@@ -85,6 +88,7 @@ internal fun MonthTopBar(
                     )
                 }
             }
+            val pickerDescription = stringResource(Res.string.month_picker_description, state.selectedMonth.monthName(), state.selectedMonth.year)
             Column(
                 Modifier
                     .weight(1f)
@@ -96,14 +100,18 @@ internal fun MonthTopBar(
                                 .clickable(onClick = onShowPicker)
                                 .semantics(mergeDescendants = true) {
                                     role = Role.Button
-                                    contentDescription = "Select month and year. Currently ${state.selectedMonth.monthName()} ${state.selectedMonth.year}"
+                                    contentDescription = pickerDescription
                                 }
                         },
                     ),
                 horizontalAlignment = Alignment.Start,
             ) {
                 Text(
-                    text = if (state.todayMode) "Day plan" else "${state.selectedMonth.monthName()} ${state.selectedMonth.year} ▾",
+                    text = if (state.todayMode) {
+                        stringResource(Res.string.title_day_plan)
+                    } else {
+                        stringResource(Res.string.month_title, state.selectedMonth.monthName(), state.selectedMonth.year)
+                    },
                     style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -117,7 +125,7 @@ internal fun MonthTopBar(
                         .sizeIn(minWidth = 56.dp, minHeight = 48.dp)
                         .tutorialTarget("share", onPosition),
                 ) {
-                    Text("Share day", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(Res.string.share_day), color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -145,19 +153,26 @@ internal fun MonthTopBar(
 
 @Composable
 private fun DateNavigationButton(previous: Boolean, dayMode: Boolean, compact: Boolean, onClick: () -> Unit) {
-    val direction = if (previous) "Previous" else "Next"
-    val unit = if (dayMode) "day" else "month"
+    val description = stringResource(
+        when {
+            previous && dayMode -> Res.string.date_prev_day
+            previous -> Res.string.date_prev_month
+            dayMode -> Res.string.date_next_day
+            else -> Res.string.date_next_month
+        },
+    )
+    val unit = stringResource(if (dayMode) Res.string.unit_day else Res.string.unit_month)
     TextButton(
         onClick = onClick,
         modifier = Modifier
             .sizeIn(minHeight = 48.dp)
-            .semantics { contentDescription = "$direction $unit" },
+            .semantics { contentDescription = description },
     ) {
         Text(
             if (compact) {
                 if (previous) "‹ $unit" else "$unit ›"
             } else {
-                if (previous) "‹ $direction $unit" else "$direction $unit ›"
+                if (previous) "‹ $description" else "$description ›"
             },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -180,13 +195,13 @@ private fun ModeSwitcher(
             .padding(3.dp),
     ) {
         ModeSwitcherItem(
-            label = "Day",
+            label = stringResource(Res.string.mode_day),
             selected = todayMode,
             onClick = { onModeChange(true) },
             modifier = Modifier.weight(1f),
         )
         ModeSwitcherItem(
-            label = "Month",
+            label = stringResource(Res.string.mode_month),
             selected = !todayMode,
             onClick = { onModeChange(false) },
             modifier = Modifier.weight(1f),

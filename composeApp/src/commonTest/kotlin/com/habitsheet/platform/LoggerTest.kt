@@ -14,6 +14,7 @@ import com.habitsheet.sync.FaultAction
 import com.habitsheet.sync.RetryPolicy
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
+import com.habitsheet.testing.English
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
@@ -23,6 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class RecordingLogger : Logger {
@@ -71,7 +73,7 @@ class LoggerTest {
         yield()
         testScheduler.advanceUntilIdle()
 
-        assertEquals("Couldn't save category.", viewModel.error.value, "entries=${logger.entries}")
+        assertEquals("Couldn't save category.", English.render(assertNotNull(viewModel.error.value)), "entries=${logger.entries}")
         val entry = logger.entries.single()
         assertEquals(LogLevel.ERROR, entry.level)
         assertFalse("Private Category Name" in logger.printed())

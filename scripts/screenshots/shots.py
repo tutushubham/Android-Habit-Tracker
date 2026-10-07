@@ -1,11 +1,10 @@
 """Installs an APK on the running emulator, loads the seeded DB and screenshots every screen.
-Usage: shots.py <apk> <outdir> [phone|tablet] [--dark | --fresh] [--back-test]   (see README.md)"""
+Usage: shots.py <apk> <outdir> [phone|tablet] [--back-test]"""
 import os, re, subprocess, sys, time, xml.etree.ElementTree as ET
 
 ADB = os.path.expanduser("~/Library/Android/sdk/platform-tools/adb")
 PKG = "com.habitsheet.app"
 S = os.path.dirname(os.path.abspath(__file__))
-SEEDED_DB = os.environ.get("SEEDED_DB", os.path.join(S, "seeded.db"))
 apk, out = sys.argv[1], sys.argv[2]
 layout = sys.argv[3] if len(sys.argv) > 3 else "phone"
 back_test = "--back-test" in sys.argv
@@ -16,7 +15,14 @@ os.makedirs(out, exist_ok=True)
 
 
 def adb(*args, check=True, **kw):
-    return subprocess.run([ADB, *args], check=check, capture_output=True, text=kw.pop("text", True), **kw)
+    # A loaded emulator drops an adb call now and then: retry a few times before giving up.
+    for attempt in range(4):
+        result = subprocess.run([ADB, *args], capture_output=True, text=kw.get("text", True))
+        if result.returncode == 0 or not check or attempt == 3:
+            if check and result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+            return result
+        time.sleep(3)
 
 
 def sh(cmd):
@@ -38,7 +44,7 @@ def setup():
     sh(f"am force-stop {PKG}")
     sh(f"run-as {PKG} sh -c 'mkdir -p databases && rm -f databases/*'")
     if not fresh:
-        with open(SEEDED_DB, "rb") as f:
+        with open(os.path.join(S, "seeded.db"), "rb") as f:
             subprocess.run([ADB, "exec-in", "run-as", PKG, "sh", "-c", "cat > databases/habit-sheet.db"], stdin=f, check=True)
     sh(f"am start -W -n {PKG}/.MainActivity")
     time.sleep(4)
@@ -52,6 +58,16 @@ def dump():
 
 def find(label):
     root = dump()
+    # A busy emulator shows "<system app> isn't responding": keep waiting instead of tapping through it.
+    for node in root.iter("node"):
+        if "isn't responding" in (node.get("text") or ""):
+            for n2 in root.iter("node"):
+                if n2.get("text") == "Wait":
+                    x1, y1, x2, y2 = map(int, re.findall(r"\d+", n2.get("bounds")))
+                    sh(f"input tap {(x1 + x2) // 2} {(y1 + y2) // 2}")
+            time.sleep(2)
+            root = dump()
+            break
     for node in root.iter("node"):
         if label in (node.get("text"), node.get("content-desc")):
             x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))

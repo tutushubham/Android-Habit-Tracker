@@ -3,6 +3,8 @@ package com.habitsheet.ui.month
 import androidx.compose.ui.unit.dp
 import com.habitsheet.domain.calculation.DailyShareHabit
 import com.habitsheet.domain.model.HabitKind
+import com.habitsheet.presentation.UiText
+import com.habitsheet.testing.English
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -42,9 +44,9 @@ class MonthLayoutRulesTest {
         assertEquals(DaySection.Habit, daySection(habit("Floss", null)))
         assertEquals(
             listOf("WORKOUTS", "STUDY", "HABITS", "AVOID TODAY · CHECK AT NIGHT"),
-            DaySection.entries.map { it.openLabel },
+            DaySection.entries.map { English.render(UiText.of(it.openLabel)) },
             "section order on screen",
         )
-        assertEquals(listOf("DONE · WORKOUTS", "DONE · STUDY", "DONE · HABITS", "KEPT TODAY"), DaySection.entries.map { it.doneLabel })
+        assertEquals(listOf("DONE · WORKOUTS", "DONE · STUDY", "DONE · HABITS", "KEPT TODAY"), DaySection.entries.map { English.render(UiText.of(it.doneLabel)) })
     }
 }

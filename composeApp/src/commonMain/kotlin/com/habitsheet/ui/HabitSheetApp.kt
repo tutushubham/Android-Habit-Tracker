@@ -45,10 +45,12 @@ import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.ThemeMode
 import com.habitsheet.presentation.VersionProvider
+import com.habitsheet.resources.*
 import com.habitsheet.ui.manage.ManageHabitsScreen
 import com.habitsheet.ui.month.MonthScreen
 import com.habitsheet.ui.navigation.AppBackStack
 import com.habitsheet.ui.navigation.Destination
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -190,13 +192,17 @@ private fun AppSidebar(destination: Destination, navigate: (Destination) -> Unit
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             HabitIcon(HabitIconGlyph.Tracker, Modifier.size(24.dp), MaterialTheme.colorScheme.primary)
-            Text("Habit Sheet", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(28.dp))
-        SidebarDestination("Tracker", HabitIconGlyph.Tracker, selected == Destination.Tracker) { navigate(Destination.Tracker) }
-        SidebarDestination("Plan", HabitIconGlyph.Plan, selected == Destination.Plan) { navigate(Destination.Plan) }
-        SidebarDestination("Habits", HabitIconGlyph.Manage, selected == Destination.Manage) { navigate(Destination.Manage) }
-        SidebarDestination("Settings", HabitIconGlyph.Settings, selected == Destination.Settings) { navigate(Destination.Settings) }
+        SidebarDestination(stringResource(Res.string.nav_tracker), HabitIconGlyph.Tracker, selected == Destination.Tracker) { navigate(Destination.Tracker) }
+        SidebarDestination(stringResource(Res.string.nav_plan), HabitIconGlyph.Plan, selected == Destination.Plan) { navigate(Destination.Plan) }
+        SidebarDestination(stringResource(Res.string.nav_habits), HabitIconGlyph.Manage, selected == Destination.Manage) { navigate(Destination.Manage) }
+        SidebarDestination(
+            stringResource(Res.string.nav_settings),
+            HabitIconGlyph.Settings,
+            selected == Destination.Settings,
+        ) { navigate(Destination.Settings) }
     }
 }
 
