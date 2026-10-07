@@ -1,7 +1,7 @@
 # P1-2 step 11: dependency review (2026-10-05)
 
 Checked against Maven Central / Google Maven / the Gradle plugin portal on 2026-10-05. **Nothing was upgraded in
-P1-2** (the plan asks to report, not apply); each upgrade below is its own change with the full `./gradlew check`, the
+P1-2** (the plan asks to report, not apply); on 2026-10-07 Dependabot's PRs for Gradle (#6), kotlinx-serialization (#5) and SQLDelight (#4) were tested and merged (see "Result of the Dependabot PRs" at the end). Each remaining upgrade below is its own change with the full `./gradlew check`, the
 iOS compile and the screenshot comparison from step 7 (`scripts/screenshots/`).
 
 | Dependency | In use | Latest stable | Recommendation |
@@ -18,7 +18,7 @@ iOS compile and the screenshot comparison from step 7 (`scripts/screenshots/`).
 | JetBrains lifecycle (KMP) | 2.9.6 | 2.11.0 | Upgrade with Compose Multiplatform (they are released together). |
 | androidx.activity:activity-compose | 1.10.1 | 1.13.0 | Upgrade with the above; 1.12+ routes back through `navigationevent`, which would allow the non-deprecated `NavigationEventHandler`. |
 | play-services-auth | 21.5.1 | 22.0.0 | Major: read the release notes; sign-in is only testable on a device (plan B2). |
-| Gradle | 9.5.0 | 9.8.0 | Optional. |
+| Gradle | 9.8.0 | 9.8.0 | **Done** (PR #6). |
 | Spotless / ktlint / detekt | 8.10.3 / 1.8.0 / 1.23.8 | same | detekt 2.0 is still alpha (2.0.0-alpha.6); when it is stable it removes the Kotlin 2.0.21 pin. |
 
 ## Confirmed in this review
@@ -47,3 +47,21 @@ an `androidApp` module holding `MainActivity`, the manifest, resources and the w
 library. That changes paths that tests rely on (`DestructiveCallSitesTest`, `UiStructureTest`, `NavigationWiringTest`,
 `SchemaMigrationTest` locate sources and `.db` snapshots relative to the module) and the Xcode project's Gradle call;
 the plan lists multi-module as out of scope unless chosen, so it is left as a separate task.
+
+## Result of the Dependabot PRs (tested 2026-10-07)
+
+Each PR was merged into current `master` in a throwaway worktree and run through `./gradlew check`, `assembleDebug` and the iOS
+compile; the combination was also built (debug and release/R8) and exercised on an emulator.
+
+| PR | Change | Result |
+|---|---|---|
+| #6 | Gradle 9.5.0 → 9.8.0 | passed, merged (wrapper jar checked against Gradle's published SHA-256) |
+| #5 | kotlinx-serialization 1.8.0 → 1.11.0 | passed, merged (frozen backup fixtures still parse) |
+| #4 | SQLDelight 2.3.2 → 2.4.0 | passed, merged after a one-line conflict with #5 was resolved |
+| #3 | Ktor 3.3.3 → 3.6.0 | **does not build**: Ktor 3.6.0 brings OkHttp 5.5.0, which needs compileSdk 37 (app: 35). Ktor 3.5.2 (OkHttp 5.3.2) and 3.4.3 pass everything. |
+| #2 | Kotlin 2.4.20, Compose 1.12.1, lifecycle 2.11.0, AGP 9.4.1 | **does not build**: AGP 9.4.1 needs Gradle ≥ 9.6 (now satisfied) and Compose 1.12.1 needs compileSdk 37 (SDK 37 is not installed; moving `compileSdk` is its own decision). Not tested beyond that failure, so the Kotlin 2.4 step itself is unverified. |
+
+Next dependency work, in order: (1) Ktor 3.5.2 (a version edit, tested); (2) decide on compileSdk 37 (install the platform, raise
+`compileSdk` only, keep `targetSdk` at 35, run `check`, lint and the screenshot comparison), then retry #2 and #3 (Ktor 3.6.0);
+(3) when Kotlin moves, re-check detekt's pinned Kotlin and the deprecated `BackHandler`. Real Google Sheets sync over the network
+is covered only by mock-server tests: try Connect & sync on a device after any Ktor change.
