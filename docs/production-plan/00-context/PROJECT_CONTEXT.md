@@ -21,7 +21,7 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **P1-2 done** (device/iPad checks owed, see `PROGRESS.md`): narrow stores and a split repository with a fast snapshot, hierarchical back stack with system back, screens split into leaf composables with previews, typed UI state, crash-safe widget, Spotless/ktlint + detekt + warnings as errors, `./gradlew check` green, ADRs in `docs/adr/`.
 - Still open: P0-4 OAuth readiness, P0-6 CI, P0-7 privacy/store assets, P1-3, P2.
 - Verification state (2026-10-05, on a Mac): **`./gradlew check` green** = 359 JVM tests, migration verification, Android lint, Spotless, detekt, and **281 common tests on the iOS simulator**; `assembleDebug` and the iOS klib compiles OK; P1-2 refactors compared on an Android emulator (40 screenshots pixel-identical, back navigation and process death checked, widget toggles and a damaged database checked). The iOS app itself builds with Xcode for the simulator and runs (navigation and edge swipe checked). `assembleRelease`/`bundleRelease` last verified in P0-C. Device checks owed (see `PROGRESS.md`).
-- Branching: **single-branch policy — everything lives on `master`, no branches are created.** P0 and P1-1 are on `master`; P1-2 and later commit directly to `master`, one commit per step, with the full test run before each commit.
+- Branching: **single-branch policy — everything lives on `master`, no branches are created.** P0 and P1-1 are on `master`; P1-2 is on `master` too (pushed 2026-10-05, audit 2026-10-07); `main`/`origin/main` were deleted. P1-3 and later commit directly to `master`, one commit per step, with the full test run before each commit.
 
 ## Tech snapshot (verified in repo)
 
