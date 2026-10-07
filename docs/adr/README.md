@@ -9,3 +9,4 @@ numbered in order; a superseded record stays and points to its replacement.
 | [0002](0002-lifecycle-viewmodels.md) | Multiplatform `androidx.lifecycle.ViewModel`s owned by `AppGraph` | accepted |
 | [0003](0003-navigation-back-stack.md) | A small hierarchical back stack instead of Navigation Compose | accepted |
 | [0004](0004-no-di-framework.md) | Hand-written composition root (`AppGraph`), no DI framework | accepted |
+| [0005](0005-strings-in-resources-and-uitext.md) | Copy in Compose resources; presentation emits `UiText` | accepted |

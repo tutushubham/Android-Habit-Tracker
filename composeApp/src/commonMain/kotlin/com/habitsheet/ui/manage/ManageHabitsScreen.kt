@@ -32,8 +32,11 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.presentation.DestructiveAction
 import com.habitsheet.presentation.ManageHabitsViewModel
+import com.habitsheet.presentation.asString
+import com.habitsheet.resources.*
 import com.habitsheet.ui.BottomNavigation
 import com.habitsheet.ui.DestructiveConfirmDialog
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ManageHabitsScreen(
@@ -199,11 +202,11 @@ fun ManageHabitsScreen(
             modifier = Modifier.padding(16.dp),
             action = {
                 TextButton(onClick = viewModel::clearError) {
-                    Text("OK", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(Res.string.action_ok), color = MaterialTheme.colorScheme.primary)
                 }
             },
         ) {
-            Text(msg)
+            Text(msg.asString())
         }
     }
 }

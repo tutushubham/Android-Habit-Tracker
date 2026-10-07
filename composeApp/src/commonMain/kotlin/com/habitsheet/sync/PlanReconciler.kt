@@ -9,6 +9,8 @@ import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetSyncChanges
+import com.habitsheet.presentation.UiText
+import com.habitsheet.resources.*
 
 /**
  * A Done checkbox to write back to the sheet: [column] is `E` (6-column layout) or `F` (8-column layout).
@@ -35,9 +37,9 @@ internal sealed interface SyncWarning {
     /** The Plan tab has no sessions although a previous sync imported some; local sessions were kept. */
     data object PlanTabEmpty : SyncWarning
 
-    fun describe(): String = when (this) {
-        is AmbiguousHabitName -> "$rows row${if (rows == 1) "" else "s"} skipped: \"$name\" matches more than one habit, rename one"
-        PlanTabEmpty -> "Plan tab has no sessions; kept local sessions"
+    fun describe(): UiText = when (this) {
+        is AmbiguousHabitName -> UiText.plural(Res.plurals.sync_warning_ambiguous, rows, rows, name)
+        PlanTabEmpty -> UiText.of(Res.string.sync_warning_plan_empty)
     }
 }
 

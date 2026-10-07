@@ -73,6 +73,16 @@ Read this at the start of every plan session. It is the shared memory for all pl
   `.git-blame-ignore-revs`. The release-signing check only guards the tasks that produce signed artifacts.
 - **Visual verification:** `scripts/screenshots/` (emulator, seeded data, 40 screens, pixel comparison).
 
+## Facts from P1-3 step 1 (strings) that later plans must respect
+
+- **Copy is in `composeResources/values/strings.xml`.** Add text there, never as a literal in `ui/` (`NoHardCodedTextTest` fails). Escape `'` as `\'` and `&` as `&amp;`; keep leading/trailing spaces out of values (use format arguments); percent signs and plural handling follow `%1$d` / `%1$s` (pass an already-formatted string for a literal `%`).
+- **Presentation returns `UiText`, not `String`:** `MonthUiState.error`, `ManageHabitsViewModel.error`, `SettingsViewModel.sheetMessage`, `SyncStatus.text`, `SheetSyncState.message`, `ConfirmationText.*`, `BackupResult.message`, `BackupService.importBackup(onFailure: (UiText) -> Unit)`. Data stays `Raw`. `SyncError.userMessage()` and `SyncWarning.describe()` return `UiText`; `SyncError.MalformedPlanTab.problem` (`PlanTabProblem`) carries both the user text and the English `logText` (kept in logs and in `reason`).
+- **Tests:** compare `UiText` values for behaviour; use `English.render(...)` when the wording matters. `DestructiveCallSitesTest`, `UiStructureTest`, `NoHardCodedTextTest` all scan `ui/**` and will fail on structure or literals.
+- **Still English in code (P1-3 step 2):** `UiFormatting.monthNames`, `DailyShare.monthNames`, weekday names from `DayOfWeek.name`, first day of week, date/number formats. **Not translated by design:** logs, the CSV header, `BackupValidator` diagnostics, token-provider technical messages.
+- **Wording quirks kept from the old code** (fix in a copy pass): "Synced 1 sessions", "1 checks uploaded", "Plan tab created · 1 sessions uploaded".
+- **Platform:** iOS builds the shared text from the catalog (`getString`); Android's share-sheet title is an Android string. The widget keeps `widget_strings.xml`.
+- **Copy-change policy:** moving text must not change it. `verbatim` check used in P1-3 step 1: compare each catalog string with the literals of the previous commit (see ADR 0005).
+
 ## Audit findings (the source for every plan)
 
 Legend: **V** = verified by reading code/config; **I** = inferred.

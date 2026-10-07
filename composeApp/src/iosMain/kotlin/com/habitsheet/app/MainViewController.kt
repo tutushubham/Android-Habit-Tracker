@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.uikit.LocalUIViewController
 import androidx.compose.ui.window.ComposeUIViewController
@@ -16,11 +17,16 @@ import com.habitsheet.AppStartup
 import com.habitsheet.StartupState
 import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.platform.IosLogger
+import com.habitsheet.resources.Res
+import com.habitsheet.resources.share_text_progress
+import com.habitsheet.resources.share_text_title
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.ShareService
 import com.habitsheet.ui.StartupFailureScreen
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import platform.Foundation.NSCalendarDayChangedNotification
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
@@ -53,24 +59,34 @@ fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewControl
 @Composable
 private fun ReadyApp(graph: AppGraph, hostController: UIViewController) {
     LaunchedEffect(graph) { graph.syncOnForeground() }
-    val shareService = remember(hostController) {
+    val scope = rememberCoroutineScope()
+    val shareService = remember(hostController, scope) {
         object : ShareService {
             override fun shareDailySummary(summary: DailyShareSummary) {
-                val text = buildString {
-                    append("Habit Sheet — ${summary.date}\n")
-                    append("${summary.completedCount}/${summary.totalCount} completed (${(summary.percentage * 100).toInt()}%)\n")
-                    summary.doneHabits.forEach { append("✓ ${it.name}\n") }
-                    summary.leftHabits.forEach { append("○ ${it.name}\n") }
-                }
-                val presenter = topViewController(hostController)
-                if (presenter != null) {
-                    val activity = UIActivityViewController(listOf(text), null)
-                    activity.popoverPresentationController?.apply {
-                        sourceView = presenter.view
-                        sourceRect = presenter.view.bounds
-                        permittedArrowDirections = 0uL
+                scope.launch {
+                    val text = buildString {
+                        append(getString(Res.string.share_text_title, summary.date.toString())).append("\n")
+                        append(
+                            getString(
+                                Res.string.share_text_progress,
+                                summary.completedCount,
+                                summary.totalCount,
+                                "${(summary.percentage * 100).toInt()}%",
+                            ),
+                        ).append("\n")
+                        summary.doneHabits.forEach { append("✓ ${it.name}\n") }
+                        summary.leftHabits.forEach { append("○ ${it.name}\n") }
                     }
-                    presenter.presentViewController(activity, true, null)
+                    val presenter = topViewController(hostController)
+                    if (presenter != null) {
+                        val activity = UIActivityViewController(listOf(text), null)
+                        activity.popoverPresentationController?.apply {
+                            sourceView = presenter.view
+                            sourceRect = presenter.view.bounds
+                            permittedArrowDirections = 0uL
+                        }
+                        presenter.presentViewController(activity, true, null)
+                    }
                 }
             }
         }

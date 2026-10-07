@@ -9,8 +9,12 @@ import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.i
+import com.habitsheet.presentation.UiText
+import com.habitsheet.presentation.resolve
+import com.habitsheet.resources.*
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.StartupRecovery
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -34,7 +38,7 @@ internal class AndroidStartupRecovery(
 
     override fun exportRawDatabase(onResult: (BackupResult) -> Unit) {
         if (files.existing().isEmpty()) {
-            onResult(BackupResult.Failure("There is no data file on this device to save."))
+            onResult(BackupResult.Failure(UiText.of(Res.string.recovery_no_file_to_save)))
             return
         }
         val pending = pendingFile()
@@ -44,7 +48,7 @@ internal class AndroidStartupRecovery(
         } catch (e: Exception) {
             logger.e(TAG, "Preparing the data file copy failed", e)
             pending.delete()
-            onResult(BackupResult.Failure("Couldn't prepare the copy. Is the storage full?"))
+            onResult(BackupResult.Failure(UiText.of(Res.string.recovery_err_prepare)))
             return
         }
         exportCallback = onResult
@@ -54,7 +58,7 @@ internal class AndroidStartupRecovery(
             logger.e(TAG, "Launching the file picker failed", e)
             pending.delete()
             exportCallback = null
-            onResult(BackupResult.Failure("No app on this device can save files here."))
+            onResult(BackupResult.Failure(UiText.of(Res.string.file_err_no_save_app)))
         }
     }
 
@@ -65,9 +69,9 @@ internal class AndroidStartupRecovery(
             BackupResult.Cancelled
         } else {
             try {
-                val bytes = pending.takeIf { it.exists() }?.readBytes() ?: throw BackupIoException("The copy was lost. Please try again.")
+                val bytes = pending.takeIf { it.exists() }?.readBytes() ?: throw BackupIoException(UiText.of(Res.string.recovery_err_copy_lost))
                 BackupStreams.writeBytes({ activity.contentResolver.openOutputStream(uri, "wt") }, bytes)
-                BackupResult.Success("Saved. Keep this file safe; it contains your habits and history.")
+                BackupResult.Success(UiText.of(Res.string.recovery_saved_file))
             } catch (e: BackupIoException) {
                 logger.e(TAG, "Writing the data file copy failed", e.cause ?: e)
                 runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
@@ -75,24 +79,24 @@ internal class AndroidStartupRecovery(
             } catch (e: Exception) {
                 logger.e(TAG, "Writing the data file copy failed", e)
                 runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
-                BackupResult.Failure("Couldn't save the file.")
+                BackupResult.Failure(UiText.of(Res.string.file_err_save))
             }
         }
         pending.delete()
         if (callback != null) {
             callback(result)
         } else if (result is BackupResult.Success) {
-            Toast.makeText(activity, result.message, Toast.LENGTH_LONG).show()
+            Toast.makeText(activity, runBlocking { result.message.resolve() }, Toast.LENGTH_LONG).show()
         }
     }
 
     override fun setAsideDatabase(): BackupResult = try {
         val moved = files.setAside(now())
         logger.i(TAG, "Moved $moved database file(s) aside")
-        BackupResult.Success(if (moved == 0) "There was no data file to move." else "The old data file was moved aside.")
+        BackupResult.Success(UiText.of(if (moved == 0) Res.string.recovery_nothing_to_move else Res.string.recovery_moved_aside))
     } catch (e: Exception) {
         logger.e(TAG, "Moving the database aside failed", e)
-        BackupResult.Failure("Couldn't move the data file. Nothing was changed.")
+        BackupResult.Failure(UiText.of(Res.string.recovery_err_move))
     }
 
     private companion object {

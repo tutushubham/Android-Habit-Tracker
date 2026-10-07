@@ -32,12 +32,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habitsheet.presentation.MonthUiState
 import com.habitsheet.presentation.MonthViewModel
+import com.habitsheet.presentation.asString
+import com.habitsheet.resources.*
 import com.habitsheet.ui.BottomNavigation
 import com.habitsheet.ui.SharePreviewScreen
 import com.habitsheet.ui.ShareService
 import com.habitsheet.ui.TutorialOverlay
 import com.habitsheet.ui.TutorialStep
 import com.habitsheet.ui.tutorialTarget
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MonthScreen(
@@ -74,9 +77,14 @@ fun MonthScreen(
             if (state.onboardingVisible) {
                 TutorialOverlay(
                     steps = listOf(
-                        TutorialStep("Add your habits", "Open Habits to add daily and weekly habits and choose a category.", "manage"),
-                        TutorialStep("Plan and track your day", "Open Plan to schedule sessions, then tap a habit to check it off. To plan from a laptop, link a Google Sheet in Settings.", "today"),
-                        TutorialStep("Share your day", "Create a clean summary of what you completed and what is left today.", "share", "Get Started"),
+                        TutorialStep(stringResource(Res.string.tutorial_manage_title), stringResource(Res.string.tutorial_manage_text), "manage"),
+                        TutorialStep(stringResource(Res.string.tutorial_plan_title), stringResource(Res.string.tutorial_plan_text), "today"),
+                        TutorialStep(
+                            stringResource(Res.string.tutorial_share_title),
+                            stringResource(Res.string.tutorial_share_text),
+                            "share",
+                            stringResource(Res.string.tutorial_get_started),
+                        ),
                     ),
                     targetPositions = targetPositions,
                     onComplete = viewModel::completeOnboarding,
@@ -100,11 +108,11 @@ fun MonthScreen(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
                     action = {
                         TextButton(onClick = viewModel::clearError) {
-                            Text("OK", color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(Res.string.action_ok), color = MaterialTheme.colorScheme.primary)
                         }
                     },
                 ) {
-                    Text(msg)
+                    Text(msg.asString())
                 }
             }
         }

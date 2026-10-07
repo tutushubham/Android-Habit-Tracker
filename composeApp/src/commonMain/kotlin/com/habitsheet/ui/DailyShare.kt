@@ -17,7 +17,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitsheet.domain.calculation.DailyShareSummary
+import com.habitsheet.resources.*
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 
 interface ShareService {
     fun shareDailySummary(summary: DailyShareSummary)
@@ -35,7 +37,7 @@ fun ShareImageContent(
             .padding(32.dp),
     ) {
         Text(
-            "Habit Tracker",
+            stringResource(Res.string.about_title),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             letterSpacing = 2.sp,
@@ -51,7 +53,7 @@ fun ShareImageContent(
         Spacer(Modifier.height(40.dp))
 
         Text(
-            "TODAY",
+            stringResource(Res.string.today_label),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -67,7 +69,7 @@ fun ShareImageContent(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                " COMPLETED",
+                " " + stringResource(Res.string.share_completed),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp, bottom = 6.dp),
@@ -80,7 +82,7 @@ fun ShareImageContent(
         )
 
         Text(
-            text = summary.percentage.percentLabel() + " complete",
+            text = stringResource(Res.string.share_percent_complete, summary.percentage.percentLabel()),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 8.dp),
@@ -88,17 +90,17 @@ fun ShareImageContent(
 
         Spacer(Modifier.height(48.dp))
 
-        SectionTitle("DONE")
+        SectionTitle(stringResource(Res.string.grid_done))
         if (summary.doneHabits.isEmpty()) {
             Text(
-                "Nothing completed yet",
+                stringResource(Res.string.share_nothing_done),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 12.dp),
             )
         } else if (summary.doneHabits.size == summary.totalCount) {
             Text(
-                "All habits completed ✓",
+                stringResource(Res.string.share_all_done),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 12.dp),
@@ -112,7 +114,7 @@ fun ShareImageContent(
 
         if (summary.leftHabits.isNotEmpty()) {
             Spacer(Modifier.height(40.dp))
-            SectionTitle("LEFT")
+            SectionTitle(stringResource(Res.string.grid_left))
             summary.leftHabits.forEach { habit ->
                 ShareHabitRow(habit.name, habit.categoryName, false)
             }
@@ -169,6 +171,7 @@ fun SharePreviewScreen(
     onShare: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val closePreviewLabel = stringResource(Res.string.share_close_preview)
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -184,14 +187,14 @@ fun SharePreviewScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Share Today",
+                    stringResource(Res.string.share_title),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 IconButton(onClick = onClose) {
                     Text(
                         "✕",
                         fontSize = 20.sp,
-                        modifier = Modifier.semantics { contentDescription = "Close preview" },
+                        modifier = Modifier.semantics { contentDescription = closePreviewLabel },
                     )
                 }
             }
@@ -223,14 +226,14 @@ fun SharePreviewScreen(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.action_cancel))
                 }
                 Button(
                     onClick = onShare,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text("Share")
+                    Text(stringResource(Res.string.action_share))
                 }
             }
         }

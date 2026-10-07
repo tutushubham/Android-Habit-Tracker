@@ -9,8 +9,12 @@ import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.w
+import com.habitsheet.presentation.UiText
+import com.habitsheet.presentation.resolve
+import com.habitsheet.resources.*
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -34,7 +38,7 @@ class AndroidBackupService(
 
     private var exportCallback: ((BackupResult) -> Unit)? = null
     private var importCallback: ((String) -> Unit)? = null
-    private var importFailure: ((String) -> Unit)? = null
+    private var importFailure: ((UiText) -> Unit)? = null
 
     private val createJsonLauncher = activity.registerForActivityResult(
         ActivityResultContracts.CreateDocument(Kind.Json.mime),
@@ -64,7 +68,7 @@ class AndroidBackupService(
         } catch (e: Exception) {
             logger.e(TAG, "Preparing the export file failed", e)
             file.delete()
-            onResult(BackupResult.Failure("Couldn't prepare the backup. Is the storage full?"))
+            onResult(BackupResult.Failure(UiText.of(Res.string.file_err_prepare_backup)))
             return
         }
         exportCallback = onResult
@@ -77,7 +81,7 @@ class AndroidBackupService(
             logger.e(TAG, "Launching the file picker failed", e)
             file.delete()
             exportCallback = null
-            onResult(BackupResult.Failure("No app on this device can save files here."))
+            onResult(BackupResult.Failure(UiText.of(Res.string.file_err_no_save_app)))
         }
     }
 
@@ -89,9 +93,9 @@ class AndroidBackupService(
 
             else -> try {
                 val bytes = file.takeIf { it.exists() }?.readBytes()
-                    ?: throw BackupIoException("The backup to save was lost. Please export again.")
+                    ?: throw BackupIoException(UiText.of(Res.string.file_err_backup_lost))
                 BackupStreams.writeBytes({ activity.contentResolver.openOutputStream(uri, "wt") }, bytes)
-                BackupResult.Success(if (kind == Kind.Json) "Backup saved." else "CSV saved.")
+                BackupResult.Success(UiText.of(if (kind == Kind.Json) Res.string.backup_saved else Res.string.csv_saved))
             } catch (e: BackupIoException) {
                 logger.e(TAG, "Writing the export failed", e.cause ?: e)
                 // A half-written document is worse than none.
@@ -100,7 +104,7 @@ class AndroidBackupService(
             } catch (e: Exception) {
                 logger.e(TAG, "Writing the export failed", e)
                 runCatching { DocumentsContract.deleteDocument(activity.contentResolver, uri) }
-                BackupResult.Failure("Couldn't save the file.")
+                BackupResult.Failure(UiText.of(Res.string.file_err_save))
             }
         }
         file.delete()
@@ -112,13 +116,13 @@ class AndroidBackupService(
             val text = when (result) {
                 is BackupResult.Success -> result.message
                 is BackupResult.Failure -> result.message
-                BackupResult.Cancelled -> ""
+                BackupResult.Cancelled -> UiText.Raw("")
             }
-            Toast.makeText(activity, text, Toast.LENGTH_LONG).show()
+            Toast.makeText(activity, runBlocking { text.resolve() }, Toast.LENGTH_LONG).show()
         }
     }
 
-    override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {
+    override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) {
         importCallback = onImport
         importFailure = onFailure
         try {
@@ -127,7 +131,7 @@ class AndroidBackupService(
             logger.e(TAG, "Launching the file picker failed", e)
             importCallback = null
             importFailure = null
-            onFailure("No app on this device can open files here.")
+            onFailure(UiText.of(Res.string.file_err_no_open_app))
         }
     }
 

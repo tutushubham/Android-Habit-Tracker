@@ -47,7 +47,9 @@ Reminders/notifications and an iOS widget are **not implemented** and **not part
 
 ## 2. Steps
 
-1. **String externalisation.** Add `composeResources/values/strings.xml` (English) using Compose Multiplatform resources (`Res.string.*`, plurals). Replace every user-visible literal in `ui/` and presentation-layer messages with resource lookups (presentation emits message *keys* or sealed `UiText`, not hard-coded English). Add `values-xx/` only if you intend a second language now; otherwise just make it possible.
+1. **[DONE 2026-10-07, see ADR 0005]** **String externalisation.** Add `composeResources/values/strings.xml` (English) using Compose Multiplatform resources (`Res.string.*`, plurals). Replace every user-visible literal in `ui/` and presentation-layer messages with resource lookups (presentation emits message *keys* or sealed `UiText`, not hard-coded English). Add `values-xx/` only if you intend a second language now; otherwise just make it possible.
+> Step 1 result: 345 strings and plurals in `composeResources/values/strings.xml` (+ plurals), `UiText` from presentation/sync/platform services, `NoHardCodedTextTest` as the guard, no English changed (screens pixel-identical). **Left for step 2:** month names (`UiFormatting.monthNames`, `DailyShare.monthNames`), weekday names from `DayOfWeek.name` (date lines in `PlanScreen`/`TodayList`, accessibility text of the grid headers), first day of the week, number and date formats. Deliberately not translated: logs, the CSV header, `BackupValidator` diagnostics, token-provider technical messages.
+
 2. **Locale-correct formatting.** Dates, month names, weekday names, percentages and numbers via locale-aware formatting (kotlinx-datetime formatting + platform locale; avoid concatenated English). First day of week: respect locale (Monday vs Sunday) — check `MonthKey`/`MonthEngine` assumptions (workbook uses 5 seven-day blocks; keep the model, localise only labels).
 3. **Accessibility pass.**
    - Every icon-only button: `contentDescription`.
@@ -98,7 +100,7 @@ Run the whole plan: execute P1-3 steps 1-9 in order, a commit per step, with [ma
 Manual: switch device language/region (dates & first weekday adapt); TalkBack/VoiceOver walk-through of Month → toggle a habit → Manage → Settings; 200% font; iOS export → Files app → import on another device; fresh install flow end-to-end.
 
 ## 5. Definition of done
-- [ ] No hard-coded user-visible strings in `ui/`/presentation (guard in CI/lint).
+- [x] No hard-coded user-visible strings in `ui/`/presentation (guard: `NoHardCodedTextTest`, part of `check`). Month/weekday names and formats are step 2.
 - [ ] Accessibility checklist completed on at least one Android and one iOS device.
 - [ ] iOS backup is file-based and validated.
 - [ ] Neutral first-run; sheet-link flow has clear copy, validation and Disconnect.

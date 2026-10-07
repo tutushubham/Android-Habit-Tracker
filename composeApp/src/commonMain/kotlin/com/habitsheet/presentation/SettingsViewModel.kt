@@ -7,6 +7,7 @@ import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
 import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
+import com.habitsheet.resources.*
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetSyncState
 import com.habitsheet.sync.SyncError
@@ -22,7 +23,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** What the settings screen shows about the last sync. [isError] is false for "Will sync when online." */
-data class SyncStatus(val text: String, val isError: Boolean)
+data class SyncStatus(val text: UiText, val isError: Boolean)
 
 internal fun SheetSyncState.toStatus(): SyncStatus = when (val failure = error) {
     null -> SyncStatus(message, isError = false)
@@ -49,8 +50,8 @@ class SettingsViewModel(
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
     private val _sheetUrl = MutableStateFlow("")
     val sheetUrl: StateFlow<String> = _sheetUrl.asStateFlow()
-    private val _sheetMessage = MutableStateFlow<String?>(null)
-    val sheetMessage: StateFlow<String?> = _sheetMessage.asStateFlow()
+    private val _sheetMessage = MutableStateFlow<UiText?>(null)
+    val sheetMessage: StateFlow<UiText?> = _sheetMessage.asStateFlow()
     val sheetSyncState: StateFlow<SheetSyncState> = sheetSync?.state ?: MutableStateFlow(SheetSyncState())
     val sheetSyncStatus: StateFlow<SyncStatus> = sheetSyncState.map { it.toStatus() }
         .stateIn(this.scope, SharingStarted.Eagerly, sheetSyncState.value.toStatus())
@@ -88,17 +89,17 @@ class SettingsViewModel(
     fun saveSheetUrl(input: String) {
         val canonical = if (input.isBlank()) "" else SheetLink.canonicalize(input)
         if (canonical == null) {
-            _sheetMessage.value = "Enter a Google Sheets link."
+            _sheetMessage.value = UiText.of(Res.string.sheet_msg_invalid_link)
             return
         }
         scope.launch(ioDispatcher) {
             runCatchingCancellable {
                 repository.setSheetUrl(canonical)
                 _sheetUrl.value = canonical
-                _sheetMessage.value = if (canonical.isEmpty()) "Sheet link removed." else "Sheet link saved. Tap Connect & sync to authorize Google."
+                _sheetMessage.value = UiText.of(if (canonical.isEmpty()) Res.string.sheet_msg_removed else Res.string.sheet_msg_saved)
             }.onFailure {
                 logger.e(TAG, "saveSheetUrl failed", it)
-                _sheetMessage.value = "Could not save the sheet link."
+                _sheetMessage.value = UiText.of(Res.string.sheet_msg_save_failed)
             }
         }
     }
@@ -110,10 +111,10 @@ class SettingsViewModel(
                 repository.setSheetUrl("")
                 _sheetUrl.value = ""
                 sheetSync?.reset()
-                _sheetMessage.value = "Disconnected. Your habits and check-offs stay on this device."
+                _sheetMessage.value = UiText.of(Res.string.sheet_msg_disconnected)
             }.onFailure {
                 logger.e(TAG, "disconnect failed", it)
-                _sheetMessage.value = "Could not disconnect. Please try again."
+                _sheetMessage.value = UiText.of(Res.string.sheet_msg_disconnect_failed)
             }
         }
     }

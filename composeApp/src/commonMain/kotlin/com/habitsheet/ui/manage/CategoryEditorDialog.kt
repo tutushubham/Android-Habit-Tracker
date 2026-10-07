@@ -28,7 +28,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habitsheet.domain.model.Category
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun CategoryEditorDialog(
@@ -44,7 +46,7 @@ internal fun CategoryEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Manage categories") },
+        title = { Text(stringResource(Res.string.catdlg_title)) },
         text = {
             Column(
                 Modifier
@@ -59,7 +61,7 @@ internal fun CategoryEditorDialog(
                     OutlinedTextField(
                         value = newCategoryName,
                         onValueChange = { newCategoryName = it },
-                        label = { Text("New category") },
+                        label = { Text(stringResource(Res.string.catdlg_new)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
@@ -73,7 +75,7 @@ internal fun CategoryEditorDialog(
                         enabled = newCategoryName.isNotBlank(),
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
-                        Text("Add")
+                        Text(stringResource(Res.string.action_add))
                     }
                 }
                 ordered.forEach { category ->
@@ -85,10 +87,11 @@ internal fun CategoryEditorDialog(
                         OutlinedTextField(
                             value = currentName,
                             onValueChange = { modifiedNames[category.id] = it },
-                            label = { Text("Category") },
+                            label = { Text(stringResource(Res.string.catdlg_category)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                         )
+                        val deleteLabel = stringResource(Res.string.catdlg_delete, category.name)
                         IconButton(
                             onClick = { onDelete(category) },
                             modifier = Modifier.padding(start = 8.dp),
@@ -97,7 +100,7 @@ internal fun CategoryEditorDialog(
                                 "✕",
                                 color = MaterialTheme.colorScheme.error,
                                 fontSize = 20.sp,
-                                modifier = Modifier.semantics { contentDescription = "Delete ${category.name}" },
+                                modifier = Modifier.semantics { contentDescription = deleteLabel },
                             )
                         }
                     }
@@ -113,10 +116,10 @@ internal fun CategoryEditorDialog(
                     }
                 }
                 onDismiss()
-            }) { Text("Save") }
+            }) { Text(stringResource(Res.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

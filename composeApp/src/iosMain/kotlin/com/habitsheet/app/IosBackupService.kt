@@ -1,5 +1,7 @@
 package com.habitsheet.app
 
+import com.habitsheet.presentation.UiText
+import com.habitsheet.resources.*
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import platform.UIKit.UIPasteboard
@@ -16,18 +18,18 @@ class IosBackupService : BackupService {
 
     override fun exportBackup(json: String, onResult: (BackupResult) -> Unit) {
         UIPasteboard.generalPasteboard.string = json
-        onResult(BackupResult.Success("Backup copied. Paste and save it somewhere safe before copying anything else."))
+        onResult(BackupResult.Success(UiText.of(Res.string.backup_copied)))
     }
 
     override fun exportCsv(csv: String, onResult: (BackupResult) -> Unit) {
         UIPasteboard.generalPasteboard.string = csv
-        onResult(BackupResult.Success("CSV copied to clipboard."))
+        onResult(BackupResult.Success(UiText.of(Res.string.csv_copied)))
     }
 
-    override fun importBackup(onImport: (String) -> Unit, onFailure: (String) -> Unit) {
+    override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) {
         val text = UIPasteboard.generalPasteboard.string
         if (text.isNullOrBlank()) {
-            onFailure("The clipboard has no backup text. Copy your backup first, then try again.")
+            onFailure(UiText.of(Res.string.backup_clipboard_empty))
         } else {
             onImport(text)
         }

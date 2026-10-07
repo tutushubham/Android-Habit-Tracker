@@ -26,6 +26,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.habitsheet.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
@@ -75,10 +77,10 @@ internal fun BottomNavigation(
                 drawLine(dividerColor, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
             },
     ) {
-        BottomNavItem(HabitIconGlyph.Tracker, "Tracker", selectedTracker, Modifier.weight(1f), onTracker)
+        BottomNavItem(HabitIconGlyph.Tracker, stringResource(Res.string.nav_tracker), selectedTracker, Modifier.weight(1f), onTracker)
         BottomNavItem(
             HabitIconGlyph.Manage,
-            "Habits",
+            stringResource(Res.string.nav_habits),
             !selectedTracker,
             Modifier.weight(1f).tutorialTarget("manage", onPosition),
             onManage,

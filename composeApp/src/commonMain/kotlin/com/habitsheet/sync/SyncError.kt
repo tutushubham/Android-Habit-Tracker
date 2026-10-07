@@ -1,5 +1,7 @@
 package com.habitsheet.sync
 
+import com.habitsheet.presentation.UiText
+import com.habitsheet.resources.*
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -27,32 +29,57 @@ sealed class SyncError(message: String, cause: Throwable? = null) : Exception(me
     class RateLimited(val retryAfterSeconds: Long? = null) : SyncError("Rate limited")
 
     /** The `Plan` tab exists but is not a valid table. [row] is the 1-based sheet row, or null for the header. */
-    class MalformedPlanTab(val row: Int?, val reason: String) : SyncError(if (row != null) "Plan row $row: $reason" else "Plan tab $reason")
+    class MalformedPlanTab(val row: Int?, val problem: PlanTabProblem) : SyncError(logMessage(row, problem)) {
+        /** English technical wording for logs and tests; users see [userMessage]. */
+        val reason: String get() = problem.logText
+    }
 
     /** Anything else (HTTP [status] after retries, unexpected failures). */
     class Unknown(val status: Int? = null, cause: Throwable? = null) : SyncError(if (status != null) "Google Sheets error $status" else "Sync failed: ${cause?.message}", cause)
 }
 
+private fun logMessage(row: Int?, problem: PlanTabProblem): String =
+    if (row != null) "Plan row $row: ${problem.logText}" else "Plan tab ${problem.logText}"
+
+/** What is wrong with the `Plan` tab. [logText] is English for logs; [text] is what the person reads. */
+sealed class PlanTabProblem(val logText: String) {
+    data object Empty : PlanTabProblem("is empty")
+    data object MissingColumns : PlanTabProblem("needs ID, Date, Habit, Session, Done, Skip (optional Area and Source columns)")
+    data object BadDate : PlanTabProblem("use YYYY-MM-DD in Date")
+    data object MissingRequired : PlanTabProblem("ID, Habit and Session are required")
+    class DuplicateId(val id: String) : PlanTabProblem("duplicate ID $id")
+    class BadFlag(val column: String) : PlanTabProblem("$column must be a checkbox or TRUE/FALSE")
+
+    fun text(): UiText = when (this) {
+        Empty -> UiText.of(Res.string.plan_problem_empty)
+        MissingColumns -> UiText.of(Res.string.plan_problem_missing_columns)
+        BadDate -> UiText.of(Res.string.plan_problem_bad_date)
+        MissingRequired -> UiText.of(Res.string.plan_problem_missing_required)
+        is DuplicateId -> UiText.of(Res.string.plan_problem_duplicate_id, id)
+        is BadFlag -> UiText.of(Res.string.plan_problem_bad_flag, column)
+    }
+}
+
 /** Short, actionable text for the person using the app. */
-fun SyncError.userMessage(): String = when (this) {
-    is SyncError.Offline -> "Will sync when online."
+fun SyncError.userMessage(): UiText = when (this) {
+    is SyncError.Offline -> UiText.of(Res.string.sync_offline)
 
-    is SyncError.AuthExpired -> "Google sign-in needed. Tap Connect & sync to sign in again."
+    is SyncError.AuthExpired -> UiText.of(Res.string.sync_auth_expired)
 
-    is SyncError.AccessDenied -> "No access to this sheet. Use a Google account that can edit it."
+    is SyncError.AccessDenied -> UiText.of(Res.string.sync_access_denied)
 
-    is SyncError.NotFound -> "Spreadsheet not found. Check the link and the Google account."
+    is SyncError.NotFound -> UiText.of(Res.string.sync_not_found)
 
-    is SyncError.RateLimited -> "Google is limiting requests. Sync will retry shortly."
+    is SyncError.RateLimited -> UiText.of(Res.string.sync_rate_limited)
 
     is SyncError.MalformedPlanTab ->
         if (row != null) {
-            "Plan tab, row $row: $reason. Fix the sheet, then sync again."
+            UiText.of(Res.string.sync_plan_row_problem, row, problem.text())
         } else {
-            "Plan tab $reason. Fix the header row, then sync again."
+            UiText.of(Res.string.sync_plan_header_problem, problem.text())
         }
 
-    is SyncError.Unknown -> "Sync failed. Try again in a moment."
+    is SyncError.Unknown -> UiText.of(Res.string.sync_failed)
 }
 
 /** Classifies any failure from a sync attempt. Never call with a [CancellationException]. */

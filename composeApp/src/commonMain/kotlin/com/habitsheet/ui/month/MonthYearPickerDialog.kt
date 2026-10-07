@@ -25,9 +25,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.habitsheet.domain.model.MonthKey
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitIcon
 import com.habitsheet.ui.HabitIconGlyph
 import com.habitsheet.ui.HabitSheetTheme
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun MonthYearPickerDialog(
@@ -41,11 +43,13 @@ internal fun MonthYearPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { year-- }, modifier = Modifier.semantics { contentDescription = "Previous year" }) {
+                val previousYear = stringResource(Res.string.picker_prev_year)
+                val nextYear = stringResource(Res.string.picker_next_year)
+                IconButton(onClick = { year-- }, modifier = Modifier.semantics { contentDescription = previousYear }) {
                     HabitIcon(HabitIconGlyph.Back, Modifier.size(20.dp))
                 }
                 Text(year.toString(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp))
-                IconButton(onClick = { year++ }, modifier = Modifier.semantics { contentDescription = "Next year" }) {
+                IconButton(onClick = { year++ }, modifier = Modifier.semantics { contentDescription = nextYear }) {
                     HabitIcon(HabitIconGlyph.Forward, Modifier.size(20.dp))
                 }
             }
@@ -75,7 +79,7 @@ internal fun MonthYearPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

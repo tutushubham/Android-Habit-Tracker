@@ -2,6 +2,7 @@ package com.habitsheet.app
 
 import com.habitsheet.domain.backup.BackupFixtures
 import com.habitsheet.domain.backup.BackupSerializer
+import com.habitsheet.testing.English
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -45,14 +46,14 @@ class BackupStreamsTest {
     @Test
     fun filesOverTheLimitAreRefusedInsteadOfExhaustingMemory() {
         val error = assertFailsWith<BackupIoException> { read("x".repeat(100), maxBytes = 99) }
-        assertTrue("too large" in error.userMessage)
+        assertTrue("too large" in English.render(error.userMessage))
         assertEquals("x".repeat(99), read("x".repeat(99), maxBytes = 99))
     }
 
     @Test
     fun aNullInputStreamIsAUserVisibleFailureNotASilentEmptyImport() {
         val error = assertFailsWith<BackupIoException> { BackupStreams.readText({ null }) }
-        assertEquals("Couldn't open that file.", error.userMessage)
+        assertEquals("Couldn't open that file.", English.render(error.userMessage))
     }
 
     @Test
@@ -72,7 +73,7 @@ class BackupStreamsTest {
             }
         }
         val error = assertFailsWith<BackupIoException> { BackupStreams.readText({ brokenMidway }) }
-        assertTrue("completely" in error.userMessage)
+        assertTrue("completely" in English.render(error.userMessage))
     }
 
     @Test
@@ -92,7 +93,7 @@ class BackupStreamsTest {
     @Test
     fun aNullOutputStreamIsAFailureNotASilentSuccess() {
         val error = assertFailsWith<BackupIoException> { BackupStreams.writeBytes({ null }, byteArrayOf(1)) }
-        assertEquals("Couldn't create the file.", error.userMessage)
+        assertEquals("Couldn't create the file.", English.render(error.userMessage))
     }
 
     @Test
@@ -101,7 +102,7 @@ class BackupStreamsTest {
             override fun write(b: Int) = throw IOException("No space left on device")
         }
         val error = assertFailsWith<BackupIoException> { BackupStreams.writeBytes({ full }, ByteArray(10)) }
-        assertTrue("storage" in error.userMessage)
+        assertTrue("storage" in English.render(error.userMessage))
         assertFailsWith<BackupIoException> { BackupStreams.writeBytes({ throw SecurityException("denied") }, ByteArray(1)) }
     }
 }

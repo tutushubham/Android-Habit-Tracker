@@ -24,6 +24,7 @@ much of step 4–6 and 9 already exists:
   and a back-navigation/process-death check; step 10 (Roborazzi/Paparazzi goldens) can start from the same screens.
 - Compose UI tests (step 7) can target the leaf composables in `ui/month/*` and `ui/manage/*`, which take plain values
   and lambdas; `MonthPreviewData` builds a realistic `MonthUiState` through the real `toUiState`.
+- Strings (P1-3 step 1): `NoHardCodedTextTest` (guard), `English.render(UiText)` + the generated `EnglishCatalog` for tests that assert wording on the JVM and iOS, `ConfirmationTextTest` (all destructive confirmations in English). UI tests can assert on `stringResource` text or on the same `English` helper.
 - `./gradlew check` also runs Spotless, detekt (baseline in `composeApp/detekt-baseline.xml`) and Android lint; keep
   test code warning-free too (main code is compiled with `allWarningsAsErrors`).
 

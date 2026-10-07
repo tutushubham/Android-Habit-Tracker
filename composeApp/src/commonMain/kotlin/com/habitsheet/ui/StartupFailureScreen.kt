@@ -22,6 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.habitsheet.platform.describeForLog
 import com.habitsheet.presentation.DestructiveAction
+import com.habitsheet.presentation.UiText
+import com.habitsheet.presentation.asString
+import com.habitsheet.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /** What the platform can do about a database that will not open. Each call reports through [BackupResult]. */
 interface StartupRecovery {
@@ -42,7 +46,7 @@ interface StartupRecovery {
 @Composable
 fun StartupFailureScreen(cause: Throwable, recovery: StartupRecovery, onRetry: () -> Unit) {
     var confirmReset by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<UiText?>(null) }
     var messageIsError by remember { mutableStateOf(false) }
 
     fun show(result: BackupResult) {
@@ -66,28 +70,27 @@ fun StartupFailureScreen(cause: Throwable, recovery: StartupRecovery, onRetry: (
             Modifier.safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Habit Sheet can't open its data", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(Res.string.startup_title), style = MaterialTheme.typography.headlineSmall)
             Text(
-                "The data stored on this device could not be opened. Nothing has been deleted. " +
-                    "Try again first; if it keeps failing, save a copy of the data file before resetting.",
+                stringResource(Res.string.startup_text),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "Technical detail: ${cause.describeForLog()}",
+                stringResource(Res.string.startup_detail, cause.describeForLog()),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text("Try again") }
+            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text(stringResource(Res.string.startup_retry)) }
             OutlinedButton(onClick = { recovery.exportRawDatabase(::show) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Save a copy of the data file")
+                Text(stringResource(Res.string.startup_save_copy))
             }
             OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Start with empty data", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(Res.string.startup_empty), color = MaterialTheme.colorScheme.error)
             }
             message?.let {
                 Text(
-                    it,
+                    it.asString(),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 )

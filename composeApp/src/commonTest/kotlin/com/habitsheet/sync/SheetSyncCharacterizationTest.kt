@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.presentation.DateProvider
+import com.habitsheet.testing.English
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonPrimitive
@@ -86,7 +87,7 @@ class SheetSyncCharacterizationTest {
         )
         assertEquals(listOf("Food", "Workout"), server.otherTabs)
         assertTrue(server.calls.none { "Food" in it.path || "Workout" in it.path }, "other tabs must never be addressed")
-        assertEquals("Plan tab created · 1 sessions uploaded", sync.state.value.message)
+        assertEquals("Plan tab created · 1 sessions uploaded", English.render(sync.state.value.message))
         assertEquals(setOf("run-1"), repo.getSheetSyncedKeys())
         assertEquals(setOf("run"), repo.snapshot.value.sheetManagedHabitIds)
         assertTrue(repo.getSheetLastSync() > 0)
@@ -101,7 +102,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Plan tab created · 1 sessions uploaded", sync.state.value.message)
+        assertEquals("Plan tab created · 1 sessions uploaded", English.render(sync.state.value.message))
         assertEquals(2, server.planValues.size)
     }
 
@@ -147,7 +148,7 @@ class SheetSyncCharacterizationTest {
         assertTrue(snapshot.dailyCompletions.single { it.planId == "run-1" }.completed)
         assertEquals(setOf("run", yoga.id), snapshot.sheetManagedHabitIds)
         assertEquals(setOf("run-1", "yoga-1"), repo.getSheetSyncedKeys())
-        assertEquals("Synced 2 sessions", sync.state.value.message)
+        assertEquals("Synced 2 sessions", English.render(sync.state.value.message))
         assertTrue(server.writes.isEmpty(), "nothing pending, so nothing is written to an existing tab")
     }
 
@@ -213,7 +214,7 @@ class SheetSyncCharacterizationTest {
 
         assertTrue(server.cell(1, 4)!!.jsonPrimitive.boolean)
         assertTrue(repo.snapshot.value.dailyCompletions.single().completed)
-        assertEquals("Synced 1 sessions · 1 checks uploaded", sync.state.value.message)
+        assertEquals("Synced 1 sessions · 1 checks uploaded", English.render(sync.state.value.message))
         assertTrue(repo.getSheetLastSync() > 100)
         assertTrue(repo.snapshot.value.pendingCompletions.isEmpty(), "uploaded check is no longer pending")
 
@@ -361,7 +362,7 @@ class SheetSyncCharacterizationTest {
         assertEquals(3, server.planValues.size)
         assertEquals(setOf("run-1", "journal-1"), repo.getSheetSyncedKeys())
         assertEquals(setOf("run", "journal"), repo.snapshot.value.sheetManagedHabitIds)
-        assertEquals("Synced 2 sessions", sync.state.value.message)
+        assertEquals("Synced 2 sessions", English.render(sync.state.value.message))
     }
 
     @Test
@@ -401,7 +402,7 @@ class SheetSyncCharacterizationTest {
 
             sync.sync()
 
-            assertEquals(message, sync.state.value.message, "status $status")
+            assertEquals(message, English.render(sync.state.value.message), "status $status")
             assertFalse(sync.state.value.busy)
             assertEquals(attempts, server.calls.size, "attempts on $status")
             assertEquals(100, repo.getSheetLastSync())
@@ -418,7 +419,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Will sync when online.", sync.state.value.message)
+        assertEquals("Will sync when online.", English.render(sync.state.value.message))
         assertTrue(sync.state.value.error is SyncError.Offline)
         assertEquals(4, server.calls.size)
         assertFalse(sync.state.value.busy)
@@ -439,7 +440,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Sync failed. Try again in a moment.", sync.state.value.message)
+        assertEquals("Sync failed. Try again in a moment.", English.render(sync.state.value.message))
         assertEquals(100, repo.getSheetLastSync())
         // Upload happens before the single local apply, so the sheet's session edit is not applied yet.
         assertEquals("Easy 6 km", repo.snapshot.value.dayPlans.single().detail)
@@ -462,7 +463,7 @@ class SheetSyncCharacterizationTest {
         server.clearFaults()
         sync.sync()
         assertEquals(2, server.planValues.size)
-        assertEquals("Plan tab created · 1 sessions uploaded", sync.state.value.message)
+        assertEquals("Plan tab created · 1 sessions uploaded", English.render(sync.state.value.message))
         assertEquals(1, server.calls.count { it.isAddSheet }, "second sync reuses the empty tab")
     }
 
@@ -482,7 +483,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Synced 1 sessions · 1 row skipped: \"Run\" matches more than one habit, rename one", sync.state.value.message)
+        assertEquals("Synced 1 sessions · 1 row skipped: \"Run\" matches more than one habit, rename one", English.render(sync.state.value.message))
         assertEquals("Edited", repo.snapshot.value.dayPlans.single().detail)
         assertTrue(repo.getSheetLastSync() > 0)
     }
@@ -497,7 +498,7 @@ class SheetSyncCharacterizationTest {
 
         assertEquals(listOf("Jog"), repo.snapshot.value.dailyHabits.map { it.name })
         assertEquals("run", repo.snapshot.value.dailyHabits.single().id)
-        assertEquals("Synced 1 sessions · 1 renamed from sheet", sync.state.value.message)
+        assertEquals("Synced 1 sessions · 1 renamed from sheet", English.render(sync.state.value.message))
     }
 
     // ---- foreign / malformed Plan tab ---------------------------------------------------------------
@@ -511,7 +512,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertTrue(sync.state.value.message.startsWith("Plan tab needs ID, Date, Habit, Session, Done, Skip"))
+        assertTrue(English.render(sync.state.value.message).startsWith("Plan tab needs ID, Date, Habit, Session, Done, Skip"))
         assertTrue(server.writes.isEmpty())
         assertEquals(before, server.rowsAsText())
         assertEquals(100, repo.getSheetLastSync())
@@ -528,7 +529,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Plan tab, row 3: use YYYY-MM-DD in Date. Fix the sheet, then sync again.", sync.state.value.message)
+        assertEquals("Plan tab, row 3: use YYYY-MM-DD in Date. Fix the sheet, then sync again.", English.render(sync.state.value.message))
         assertTrue(server.writes.isEmpty())
         assertEquals("Easy 6 km", repo.snapshot.value.dayPlans.single().detail)
     }
@@ -542,7 +543,7 @@ class SheetSyncCharacterizationTest {
 
         sync.sync()
 
-        assertEquals("Synced 1 sessions", sync.state.value.message)
+        assertEquals("Synced 1 sessions", English.render(sync.state.value.message))
         assertEquals(1, server.calls.count { it.isAppend })
         assertEquals(2, server.planValues.size)
         assertEquals(1, repo.snapshot.value.dayPlans.size)
@@ -559,7 +560,7 @@ class SheetSyncCharacterizationTest {
 
         assertEquals(1, repo.snapshot.value.dayPlans.size)
         assertEquals(setOf("run-1"), repo.getSheetSyncedKeys())
-        assertEquals("Synced 0 sessions · Plan tab has no sessions; kept local sessions", sync.state.value.message)
+        assertEquals("Synced 0 sessions · Plan tab has no sessions; kept local sessions", English.render(sync.state.value.message))
     }
 
     // ---- preconditions ---------------------------------------------------------------------------
@@ -572,9 +573,9 @@ class SheetSyncCharacterizationTest {
         val sync = SheetSync(repo, repo, token, server.client(), dates)
 
         sync.sync(interactive = false)
-        assertEquals("Not synced yet", sync.state.value.message)
+        assertEquals("Not synced yet", English.render(sync.state.value.message))
         sync.sync(interactive = true)
-        assertEquals("Add a spreadsheet link first.", sync.state.value.message)
+        assertEquals("Add a spreadsheet link first.", English.render(sync.state.value.message))
         assertTrue(server.calls.isEmpty())
         assertEquals(0, token.requests)
     }
@@ -586,9 +587,9 @@ class SheetSyncCharacterizationTest {
         val sync = sync(repo, server, Token(null))
 
         sync.sync(interactive = false)
-        assertEquals("Google sign-in needed. Tap Connect & sync to sign in again.", sync.state.value.message)
+        assertEquals("Google sign-in needed. Tap Connect & sync to sign in again.", English.render(sync.state.value.message))
         sync.sync(interactive = true)
-        assertTrue(sync.state.value.message.startsWith("Google sign-in was cancelled or failed."))
+        assertTrue(English.render(sync.state.value.message).startsWith("Google sign-in was cancelled or failed."))
         assertTrue(server.calls.isEmpty())
         assertNull(server.cell(0, 0))
         assertNotNull(sync.state.value)

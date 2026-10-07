@@ -33,8 +33,10 @@ import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitKind
 import com.habitsheet.domain.model.WeeklyHabit
+import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 
 internal sealed interface HabitEditor {
     data class Daily(val habit: DailyHabit?) : HabitEditor
@@ -75,13 +77,13 @@ internal fun HabitEditorDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                if (daily != null || weekly != null) {
-                    "Edit habit"
-                } else if (isDaily) {
-                    "Add daily habit"
-                } else {
-                    "Add weekly habit"
-                },
+                stringResource(
+                    when {
+                        daily != null || weekly != null -> Res.string.editor_title_edit
+                        isDaily -> Res.string.editor_title_add_daily
+                        else -> Res.string.editor_title_add_weekly
+                    },
+                ),
             )
         },
         text = {
@@ -94,12 +96,12 @@ internal fun HabitEditorDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Habit name") },
+                    label = { Text(stringResource(Res.string.editor_name)) },
                     singleLine = true,
                     enabled = !isArchived,
                     isError = !isNameValid && name.isNotEmpty(),
                     supportingText = if (!isNameValid && name.isNotEmpty()) {
-                        { Text("Name cannot be empty") }
+                        { Text(stringResource(Res.string.editor_name_empty)) }
                     } else {
                         null
                     },
@@ -108,37 +110,45 @@ internal fun HabitEditorDialog(
                 )
                 if (isDaily) {
                     Text(
-                        "TRACK AS",
+                        stringResource(Res.string.editor_track_as),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 16.dp),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = kind == HabitKind.ACTION, onClick = { kind = HabitKind.ACTION }, label = { Text("Do") })
-                        FilterChip(selected = kind == HabitKind.AVOIDANCE, onClick = { kind = HabitKind.AVOIDANCE }, label = { Text("Avoid") })
+                        FilterChip(
+                            selected = kind == HabitKind.ACTION,
+                            onClick = { kind = HabitKind.ACTION },
+                            label = { Text(stringResource(Res.string.editor_kind_do)) },
+                        )
+                        FilterChip(
+                            selected = kind == HabitKind.AVOIDANCE,
+                            onClick = { kind = HabitKind.AVOIDANCE },
+                            label = { Text(stringResource(Res.string.editor_kind_avoid)) },
+                        )
                     }
                     if (kind == HabitKind.AVOIDANCE) {
                         Text(
-                            "Name it as a positive check-off, e.g. No Sugar.",
+                            stringResource(Res.string.editor_avoid_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Only on planned dates", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(Res.string.editor_dated_only), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                         androidx.compose.material3.Switch(checked = datedOnly, onCheckedChange = { datedOnly = it })
                     }
                     OutlinedTextField(
                         value = goalText,
                         onValueChange = { goalText = it.filter(Char::isDigit) },
-                        label = { Text("Monthly goal") },
+                        label = { Text(stringResource(Res.string.editor_goal)) },
                         singleLine = true,
                         enabled = !isArchived,
                         isError = !isGoalValid && goalText.isNotEmpty(),
                         supportingText = if (!isGoalValid && goalText.isNotEmpty()) {
-                            { Text("Enter a valid number") }
+                            { Text(stringResource(Res.string.editor_goal_invalid)) }
                         } else {
-                            { Text("Target completions per month") }
+                            { Text(stringResource(Res.string.editor_goal_hint)) }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -146,7 +156,7 @@ internal fun HabitEditorDialog(
                 }
 
                 Text(
-                    text = "CATEGORY",
+                    text = stringResource(Res.string.editor_category),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
@@ -161,7 +171,7 @@ internal fun HabitEditorDialog(
                         selected = categoryId == null,
                         onClick = { categoryId = null },
                         enabled = !isArchived,
-                        label = { Text("None") },
+                        label = { Text(stringResource(Res.string.editor_category_none)) },
                     )
                     categories.forEach { category ->
                         FilterChip(
@@ -185,7 +195,7 @@ internal fun HabitEditorDialog(
                             onSaveWeekly(weekly, name.trim(), categoryId)
                         }
                     },
-                ) { Text("Save") }
+                ) { Text(stringResource(Res.string.action_save)) }
             } else {
                 Row {
                     TextButton(
@@ -197,7 +207,7 @@ internal fun HabitEditorDialog(
                             }
                         },
                     ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(Res.string.action_delete), color = MaterialTheme.colorScheme.error)
                     }
                     TextButton(
                         onClick = {
@@ -207,7 +217,7 @@ internal fun HabitEditorDialog(
                                 onRestoreWeekly(weekly)
                             }
                         },
-                    ) { Text("Restore") }
+                    ) { Text(stringResource(Res.string.action_restore)) }
                 }
             }
         },
@@ -216,15 +226,15 @@ internal fun HabitEditorDialog(
                 if (!isArchived) {
                     if (daily != null) {
                         TextButton(onClick = { onArchiveDaily(daily) }) {
-                            Text("Archive", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(Res.string.action_archive), color = MaterialTheme.colorScheme.error)
                         }
                     } else if (weekly != null) {
                         TextButton(onClick = { onArchiveWeekly(weekly) }) {
-                            Text("Archive", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(Res.string.action_archive), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
             }
         },
     )
