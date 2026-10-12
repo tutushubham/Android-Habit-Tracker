@@ -137,7 +137,7 @@ Each phase: failing tests first, own commit(s), `/feature-definition-of-done` pa
 ## Progress
 - [x] Phase 1 — domain: `domain/plan` (models, `PlanSource`, four templates, `PlanInvariants`, `PlanMerger`), plan wording in the catalog (`plan_text_*`, `PlanTextResources`), `MAX_DAILY_HABITS` in `domain/model/Limits.kt`. Property test found and fixed: short plans could leave a session habit with no sessions.
 - [x] Phase 2 — data: `HabitStore.applyPlan` (atomic, additive, idempotent, consistency checked first) on SQLite and in-memory; `DailyReminder` device setting (`daily_reminder_minute`), cleared by reset; contract, atomic-write and snapshot-parity tests.
-- [ ] Phase 3 — sync: create a spreadsheet
+- [x] Phase 3 — sync: `SheetsApi.createSpreadsheet` (one `Plan` tab, never retried; lost reply or 5xx → `SyncError.CreateUnconfirmed`), `SheetSetup` (createAndLink / linkExisting), `planTabId()` so any blank Plan tab is formatted on first upload; `FakeSheetsServer` models creation; `SheetSetupTest` incl. a fault at every request. Settings still uses its own connect (left as is: same behaviour, no need to churn).
 - [ ] Phase 4 — reminders
 - [ ] Phase 5 — presentation + UI
 - [ ] Phase 6 — scenario, device and screenshot tests

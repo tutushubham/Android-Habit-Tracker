@@ -34,6 +34,12 @@ sealed class SyncError(message: String, cause: Throwable? = null) : Exception(me
         val reason: String get() = problem.logText
     }
 
+    /**
+     * Creating a spreadsheet named [title] may or may not have worked: the request was sent but no answer came back.
+     * Never retried automatically; the person checks Google Drive before trying again.
+     */
+    class CreateUnconfirmed(val title: String, cause: Throwable? = null) : SyncError("Spreadsheet creation unconfirmed", cause)
+
     /** Anything else (HTTP [status] after retries, unexpected failures). */
     class Unknown(val status: Int? = null, cause: Throwable? = null) : SyncError(if (status != null) "Google Sheets error $status" else "Sync failed: ${cause?.message}", cause)
 }
@@ -78,6 +84,8 @@ fun SyncError.userMessage(): UiText = when (this) {
         } else {
             UiText.of(Res.string.sync_plan_header_problem, problem.text())
         }
+
+    is SyncError.CreateUnconfirmed -> UiText.of(Res.string.sync_create_unconfirmed, title)
 
     is SyncError.Unknown -> UiText.of(Res.string.sync_failed)
 }

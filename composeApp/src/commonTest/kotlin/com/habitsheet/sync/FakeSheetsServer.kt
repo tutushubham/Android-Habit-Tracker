@@ -25,11 +25,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-/** One request seen by [FakeSheetsServer]. [path] is everything after `/v4/spreadsheets/{id}`. */
+/** One request seen by [FakeSheetsServer]. [path] is everything after `/v4/spreadsheets/{id}` (a create keeps its whole path). */
 data class RecordedCall(val method: String, val path: String, val query: String, val body: String) {
     val isAddSheet get() = path == ":batchUpdate" && "addSheet" in body
     val isFormat get() = path == ":batchUpdate" && "addSheet" !in body
     val isMetadata get() = method == "GET" && path.isEmpty()
+    val isCreate get() = method == "POST" && path == "/v4/spreadsheets"
     val isRead get() = method == "GET" && path.startsWith("/values/Plan!A:H")
     val isPut get() = method == "PUT" && path.startsWith("/values/Plan!")
     val isAppend get() = method == "POST" && path.endsWith(":append")
@@ -55,7 +56,8 @@ sealed interface FaultAction {
 
 /**
  * In-memory stand-in for the slice of the Sheets v4 API that [SheetSync] uses: spreadsheet metadata,
- * `Plan` values (A:H), `addSheet`/format `batchUpdate`, `values:batchUpdate`, `PUT` and `append`.
+ * `Plan` values (A:H), `addSheet`/format `batchUpdate`, `values:batchUpdate`, `PUT` and `append`, and creating a
+ * spreadsheet (which this fake then becomes: one empty `Plan` tab, counted in [spreadsheetsCreated]).
  * [otherTabs] exist only so tests can prove they are never touched.
  */
 class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
@@ -66,6 +68,11 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     /** Row 0 is the header, exactly as stored in the sheet. */
     val planValues = mutableListOf<MutableList<JsonElement>>()
     val calls = mutableListOf<RecordedCall>()
+
+    /** How many spreadsheets were created (POST /v4/spreadsheets) and their titles. */
+    var spreadsheetsCreated = 0
+        private set
+    val createdTitles = mutableListOf<String>()
 
     /** Writes that targeted anything but the Plan tab. The fake rejects them (400); tests assert this stays empty. */
     val violations = mutableListOf<String>()
@@ -143,13 +150,67 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
             return json(buildJsonObject { put("error", reason) }, HttpStatusCode.BadRequest)
         }
         val response = when {
+            call.isCreate -> {
+                spreadsheetsCreated++
+                createdTitles += Json.parseToJsonElement(body).jsonObject["properties"]!!.jsonObject["title"]!!.jsonPrimitive.content
+                otherTabs.clear()
+                hasPlanTab = true
+                planValues.clear()
+                planSheetId = nextSheetId++
+                json(
+                    buildJsonObject {
+                        put("spreadsheetId", spreadsheetId)
+                        put("spreadsheetUrl", "https://docs.google.com/spreadsheets/d/$spreadsheetId/edit#gid=$planSheetId")
+                        put(
+                            "sheets",
+                            buildJsonArray {
+                                add(
+                                    buildJsonObject {
+                                        put(
+                                            "properties",
+                                            buildJsonObject {
+                                                put("sheetId", planSheetId)
+                                                put("title", "Plan")
+                                            },
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                    },
+                )
+            }
+
             call.isMetadata -> json(
                 buildJsonObject {
                     put(
                         "sheets",
                         buildJsonArray {
-                            (otherTabs + listOfNotNull("Plan".takeIf { hasPlanTab })).forEach { title ->
-                                add(buildJsonObject { put("properties", buildJsonObject { put("title", title) }) })
+                            otherTabs.forEachIndexed { index, title ->
+                                add(
+                                    buildJsonObject {
+                                        put(
+                                            "properties",
+                                            buildJsonObject {
+                                                put("title", title)
+                                                put("sheetId", index + 1)
+                                            },
+                                        )
+                                    },
+                                )
+                            }
+                            if (hasPlanTab) {
+                                add(
+                                    buildJsonObject {
+                                        put(
+                                            "properties",
+                                            buildJsonObject {
+                                                put("title", "Plan")
+                                                put("sheetId", planSheetId)
+                                            },
+                                        )
+                                    },
+                                )
                             }
                         },
                     )
@@ -229,6 +290,8 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
     private fun writeViolation(call: RecordedCall): String? = when {
         !call.isWrite -> null
 
+        call.isCreate -> createViolation(call)
+
         call.isAddSheet -> if (Regex(""""title"\s*:\s*"Plan"""").containsMatchIn(call.body)) null else "addSheet with a title other than Plan"
 
         call.isFormat -> {
@@ -244,6 +307,13 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
         }
 
         else -> "unmodelled write $call"
+    }
+
+    /** A new spreadsheet may only have the one `Plan` tab. */
+    private fun createViolation(call: RecordedCall): String? {
+        val titles = Json.parseToJsonElement(call.body).jsonObject["sheets"]?.jsonArray
+            ?.map { it.jsonObject["properties"]!!.jsonObject["title"]!!.jsonPrimitive.content }
+        return if (titles == listOf("Plan")) null else "create with tabs $titles"
     }
 
     private fun valuesOf(body: String): List<List<JsonElement>> =

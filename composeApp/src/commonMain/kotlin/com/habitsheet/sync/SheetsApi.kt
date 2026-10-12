@@ -56,7 +56,16 @@ class RetryPolicy(
 
 private const val TAG = "SheetsApi"
 
-/** HTTP only: talks to the Sheets v4 REST API for one spreadsheet. Parsing lives in [PlanTable]. */
+/** A spreadsheet [SheetsApi.createSpreadsheet] made: its id, its link and the sheet id of its `Plan` tab. */
+internal data class CreatedSpreadsheet(val id: String, val url: String, val planTabId: Int?)
+
+private const val SPREADSHEETS = "https://sheets.googleapis.com/v4/spreadsheets"
+
+/**
+ * HTTP only: talks to the Sheets v4 REST API for one spreadsheet ([id]), or creates one (an empty [id]: only
+ * [createSpreadsheet] may be called). Parsing lives in [PlanTable].
+ */
+@Suppress("TooManyFunctions") // one function per Sheets endpoint the app uses, plus the shared request handling
 internal class SheetsApi(
     private val client: HttpClient,
     id: String,
@@ -64,7 +73,7 @@ internal class SheetsApi(
     private val retry: RetryPolicy = RetryPolicy(),
     private val logger: Logger = NoOpLogger,
 ) {
-    private val base = "https://sheets.googleapis.com/v4/spreadsheets/$id"
+    private val base = "$SPREADSHEETS/$id"
 
     private fun HttpRequestBuilder.auth() {
         headers { append(HttpHeaders.Authorization, "Bearer $token") }
@@ -122,15 +131,46 @@ internal class SheetsApi(
         else -> SyncError.Unknown(status = status)
     }
 
-    suspend fun hasPlanTab(): Boolean {
+    /** The sheet id of the `Plan` tab, or null when the spreadsheet has none. */
+    suspend fun planTabId(): Int? {
         val body = call(idempotent = true) {
             client.get(base) {
                 auth()
-                url { parameters.append("fields", "sheets(properties(title))") }
+                url { parameters.append("fields", "sheets(properties(title,sheetId))") }
             }
         }
         val data = Json.parseToJsonElement(body).jsonObject
-        return data["sheets"]?.jsonArray?.any { it.jsonObject["properties"]?.jsonObject?.get("title")?.jsonPrimitive?.content == "Plan" } == true
+        return data["sheets"]?.jsonArray?.map { it.jsonObject["properties"]?.jsonObject }
+            ?.firstOrNull { it?.get("title")?.jsonPrimitive?.content == "Plan" }
+            ?.let { it["sheetId"]?.jsonPrimitive?.intOrNull ?: 0 }
+    }
+
+    /**
+     * Creates a new spreadsheet named [title] whose only tab is an empty `Plan` (header row frozen); the first sync
+     * then fills it. Not idempotent: never retried once the request may have reached Google, because a lost reply
+     * would otherwise make a second spreadsheet. A failure that leaves it unknown becomes [SyncError.CreateUnconfirmed].
+     */
+    suspend fun createSpreadsheet(title: String): CreatedSpreadsheet {
+        val payload = buildJsonObject {
+            put("properties", buildJsonObject { put("title", title) })
+            put("sheets", buildJsonArray { add(planTabProperties()) })
+        }.toString()
+        val body = runCatching {
+            call(idempotent = false) {
+                client.post(SPREADSHEETS) {
+                    auth()
+                    contentType(ContentType.Application.Json)
+                    setBody(payload)
+                }
+            }
+        }.getOrElse { throw unconfirmedIfMaybeCreated(it, title) }
+        val data = Json.parseToJsonElement(body).jsonObject
+        val id = data["spreadsheetId"]?.jsonPrimitive?.contentOrNull
+            ?: throw SyncError.Unknown(cause = IllegalStateException("No spreadsheetId in the reply"))
+        val url = data["spreadsheetUrl"]?.jsonPrimitive?.contentOrNull ?: "https://docs.google.com/spreadsheets/d/$id/edit"
+        val planTabId = data["sheets"]?.jsonArray?.firstOrNull()?.jsonObject?.get("properties")?.jsonObject
+            ?.get("sheetId")?.jsonPrimitive?.intOrNull
+        return CreatedSpreadsheet(id, url, planTabId)
     }
 
     suspend fun createPlanTab(): Int? {
@@ -230,4 +270,27 @@ internal class SheetsApi(
             }
         }
     }
+}
+
+/**
+ * A create that went out but got no answer (offline or timed out) or a server error: Google may have made the
+ * spreadsheet anyway. A cancellation is passed through untouched.
+ */
+private fun unconfirmedIfMaybeCreated(failure: Throwable, title: String): Throwable {
+    val error = failure as? SyncError ?: return failure
+    val maybeCreated = error is SyncError.Offline || ((error as? SyncError.Unknown)?.status ?: 0) >= HTTP_SERVER_ERROR
+    return if (maybeCreated) SyncError.CreateUnconfirmed(title, error) else error
+}
+
+private const val HTTP_SERVER_ERROR = 500
+
+/** The only tab a new spreadsheet gets: `Plan`, header row frozen. */
+private fun planTabProperties() = buildJsonObject {
+    put(
+        "properties",
+        buildJsonObject {
+            put("title", "Plan")
+            put("gridProperties", buildJsonObject { put("frozenRowCount", 1) })
+        },
+    )
 }

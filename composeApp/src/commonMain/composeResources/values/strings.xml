@@ -37,6 +37,7 @@
     <string name="sync_plan_row_problem">Plan tab, row %1$d: %2$s. Fix the sheet, then sync again.</string>
     <string name="sync_plan_header_problem">Plan tab %1$s. Fix the header row, then sync again.</string>
     <string name="sync_failed">Sync failed. Try again in a moment.</string>
+    <string name="sync_create_unconfirmed">Google did not confirm that the sheet was created. Check Google Drive for “%1$s” before trying again, so you do not end up with two.</string>
     <string name="sync_warning_plan_empty">Plan tab has no sessions; kept local sessions</string>
     <string name="sync_not_synced">Not synced yet</string>
     <string name="sync_add_link_first">Add a spreadsheet link first.</string>

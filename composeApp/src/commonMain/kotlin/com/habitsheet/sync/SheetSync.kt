@@ -40,6 +40,21 @@ interface SheetTokenProvider {
     }
 }
 
+/** The token, null when the person cancelled (or sign-in is needed and [interactive] is false); throws a [SyncError]. */
+internal suspend fun SheetTokenProvider.awaitToken(interactive: Boolean): String? = suspendCancellableCoroutine { continuation ->
+    requestToken(interactive) { value, error ->
+        if (continuation.isActive) {
+            if (error != null) {
+                continuation.resumeWithException(
+                    if (error == SheetTokenProvider.NETWORK_ERROR) SyncError.Offline() else SyncError.AuthExpired(error),
+                )
+            } else {
+                continuation.resume(value)
+            }
+        }
+    }
+}
+
 /** [error] is set when the last attempt failed; [message] then holds its [userMessage]. */
 data class SheetSyncState(
     val busy: Boolean = false,
@@ -88,11 +103,12 @@ class SheetSync(
             removeLegacyWeeklyPlaceholders()
             val snapshot = repository.snapshot.value
             val window = SheetSyncWindow.rolling(dateProvider.today())
-            val hasPlanTab = api.hasPlanTab()
-            val createdTabId = if (!hasPlanTab) api.createPlanTab() else null
-            val existingRows = if (hasPlanTab) api.readTable() else null
+            val planTabId = api.planTabId()
+            val createdTabId = if (planTabId == null) api.createPlanTab() else null
+            val existingRows = if (planTabId != null) api.readTable() else null
             if (existingRows == null) {
-                uploadNewTab(api, createdTabId, snapshot, window)
+                // A new or blank Plan tab: fill it and format it (also a blank tab the person or the wizard created).
+                uploadNewTab(api, planTabId ?: createdTabId, snapshot, window)
                 return
             }
             var rows = existingRows
@@ -127,12 +143,12 @@ class SheetSync(
         }
     }
 
-    private suspend fun uploadNewTab(api: SheetsApi, createdTabId: Int?, snapshot: HabitSnapshot, window: SheetSyncWindow) {
+    private suspend fun uploadNewTab(api: SheetsApi, tabId: Int?, snapshot: HabitSnapshot, window: SheetSyncWindow) {
         val upload = PlanReconciler.initialUpload(snapshot, window)
         api.putTable(upload.rows)
-        if (createdTabId != null) {
+        if (tabId != null) {
             try {
-                api.formatPlanTab(createdTabId)
+                api.formatPlanTab(tabId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -153,19 +169,7 @@ class SheetSync(
         return UiText.Joined(parts)
     }
 
-    private suspend fun token(interactive: Boolean): String? = suspendCancellableCoroutine { continuation ->
-        tokenProvider.requestToken(interactive) { value, error ->
-            if (continuation.isActive) {
-                if (error != null) {
-                    continuation.resumeWithException(
-                        if (error == SheetTokenProvider.NETWORK_ERROR) SyncError.Offline() else SyncError.AuthExpired(error),
-                    )
-                } else {
-                    continuation.resume(value)
-                }
-            }
-        }
-    }
+    private suspend fun token(interactive: Boolean): String? = tokenProvider.awaitToken(interactive)
 
     /** Forgets the last result (used by Disconnect); local data and the repository are untouched. */
     fun reset() {
