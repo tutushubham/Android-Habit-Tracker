@@ -25,6 +25,8 @@ Everything here was derived from an audit of the repo at commit `53d074e` (see `
 | 6 | `P1-3-gaps-in-existing-features.md` | Strings/localization, accessibility, iOS file backup, neutral first-run |
 | 7 | `P2-testing.md` | Fill coverage: UI, sync fakes, migrations, iOS |
 
+**Status (2026-10-12):** plans 1–6 are done in code; the Mac/device verification of P0-C … P1-3 is collected in `MAC_AND_DEVICE_CHECKLIST.md`, then P2 starts.
+
 **Exit gate for Part 1:** everything runs locally (`./gradlew` tests + Android release build, iOS simulator build on a Mac), a fresh install shows a neutral app with no personal data, and your own phone/iPad still work with your sheet.
 
 ### Part 2 — Beyond the code → `part-2-beyond-code/`
@@ -58,5 +60,6 @@ Start only after Part 1's exit gate.
 ## Files
 
 - `PROGRESS.md` — tick boxes as you go.
+- `MAC_AND_DEVICE_CHECKLIST.md` — everything that needs a Mac, an iPhone/iPad or an Android device, with commands and result lines. Run it after P1-3 and before P2.
 - `00-context/PROJECT_CONTEXT.md` — product vision, constraints, architecture snapshot, full audit findings.
 - `00-context/DECISIONS.md` — open decisions with recommended defaults. Resolve these early; plans assume the recommended default.

@@ -19,6 +19,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.habitsheet.platform.describeForLog
 import com.habitsheet.presentation.DestructiveAction
@@ -70,7 +74,11 @@ fun StartupFailureScreen(cause: Throwable, recovery: StartupRecovery, onRetry: (
             Modifier.safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(stringResource(Res.string.startup_title), style = MaterialTheme.typography.headlineSmall)
+            Text(
+                stringResource(Res.string.startup_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.semantics { heading() },
+            )
             Text(
                 stringResource(Res.string.startup_text),
                 style = MaterialTheme.typography.bodyMedium,
@@ -93,6 +101,7 @@ fun StartupFailureScreen(cause: Throwable, recovery: StartupRecovery, onRetry: (
                     it.asString(),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
         }

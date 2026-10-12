@@ -28,6 +28,20 @@ much of step 4–6 and 9 already exists:
 - `./gradlew check` also runs Spotless, detekt (baseline in `composeApp/detekt-baseline.xml`) and Android lint; keep
   test code warning-free too (main code is compiled with `allWarningsAsErrors`).
 
+## 0b. Handoff from P1-3 (read with section 0)
+
+- **Do `MAC_AND_DEVICE_CHECKLIST.md` first.** P2's instrumented/iOS tests (steps 7–9) should pin behaviour that was checked by hand there; anything that failed on the Mac or a device becomes a bug fixed with a failing test (list it separately).
+- **Counts at the end of P1-3:** 383 JVM tests on Windows (iOS-simulator count: re-run on the Mac). New guards: `ThemeContrastTest`, `OpenSourceNoticesTest`, `AppLinksTest`, `WeekdayOrderTest`, `SyncErrorStatusTest`; `NoHardCodedTextTest` also checks every catalog string is used.
+- **UI tests to write (step 7), with the seams P1-3 added:**
+  - First run: `MonthScreen` with `MonthPreviewData.empty` → two buttons "Add your first habit" / "Link a Google Sheet"; tutorial shows once and replays via Settings → Help.
+  - Settings: pasting a non-Sheets URL shows the inline error and disables **Connect & sync**; a valid link enables it; Open Google Sheet/Disconnect appear only with a saved link; status line text for each `SyncError` (`English.render`).
+  - Data & Backup: export checkbox appears only with a saved link; pick → preview dialog shows both counts; "Also use the sheet link" only for a file that has one; "Export a backup first" present in Import and Reset dialogs; cancel changes nothing. (`BackupService` fake; `BackupViewModel.pickBackup/restore`.)
+  - Month grid semantics: role Checkbox, toggle state and `stateDescription` on `CompletionCell`; label "<habit>, <date>"; `✓`/`·` not exposed; bottom bar tabs with selected state; touch target ≥ 48dp (`MonthGridLayout`).
+  - About: rows disabled with blank `AppLinks`, enabled with values (`AboutScreen(links = …)`); Licences opens (`LicensesScreen(notices = …)`).
+  - Font scale 2.0 and dark theme variants of the leaf previews (feeds step 10 screenshots).
+- **Platform code with no automated coverage yet (needs `iosSimulatorArm64Test` or XCUITest on the Mac, or instrumented tests):** `IosBackupService` (share sheet/picker: at least the temp-file and size-cap logic behind a seam), `IosSystemBars`, `IosReduceMotion`, `IosFirstDayOfWeek`, `AndroidSystemBars`, `AndroidReduceMotion`, `AndroidFirstDayOfWeek` (the pure mapping `dayOfWeekFromSundayBased` is already tested).
+- **Screenshot baseline** (`scripts/screenshots/`) must be re-captured after the P1-3 review; P1-3 changed the grid cell size and borders, the empty state, Settings and About on purpose.
+
 ## 1. Code analysis
 
 Existing (83 `@Test`):

@@ -108,15 +108,27 @@ Run the whole plan: execute P1-3 steps 1-9 in order, a commit per step, with [ma
 Manual: switch device language/region (dates & first weekday adapt); TalkBack/VoiceOver walk-through of Month → toggle a habit → Manage → Settings; 200% font; iOS export → Files app → import on another device; fresh install flow end-to-end.
 
 ## 5. Definition of done
-- [x] No hard-coded user-visible strings in `ui/`/presentation (guard: `NoHardCodedTextTest`, part of `check`). Month/weekday names and formats are step 2.
-- [ ] Accessibility checklist completed on at least one Android and one iOS device.
-- [ ] iOS backup is file-based and validated.
-- [ ] Neutral first-run; sheet-link flow has clear copy, validation and Disconnect.
-- [ ] Light/dark/phone/tablet sweep clean; About has legal placeholders.
-- [ ] `PROGRESS.md` ticked.
+- [x] No hard-coded user-visible strings in `ui/`/presentation (guard: `NoHardCodedTextTest`, part of `check`); month/weekday names and formats come from the catalog (step 2).
+- [x] Accessibility: semantics, touch targets, contrast guard, font scale and reduce motion implemented and documented (`docs/accessibility-checklist.md`).
+  - [ ] Checklist walked through on at least one Android and one iOS device (`MAC_AND_DEVICE_CHECKLIST.md` 3.5, 4).
+- [x] iOS backup is file-based (share sheet + document picker) and uses the P1-1 validation.
+  - [ ] Validated on a physical iPhone/iPad (`MAC_AND_DEVICE_CHECKLIST.md` 3.2).
+- [x] Neutral first run; sheet-link flow has clear copy, validation, Open Google Sheet and Disconnect; tutorial replayable.
+  - [ ] Fresh install end-to-end on phone and tablet (`MAC_AND_DEVICE_CHECKLIST.md` 3.1, 4).
+- [x] Light/dark/phone/tablet sweep done in code (system bars follow the theme, keyboard inset, safe areas, width-based layout); About has legal placeholders (`AppLinks`, Licences).
+  - [ ] Sweep confirmed on devices (`MAC_AND_DEVICE_CHECKLIST.md` 3.4).
+- [x] Section 7 inputs from P1-1: include-link choice on export, preview before import with optional link restore, "export first" in the Import/Reset dialogs, accessibility of the new dialogs and the startup screen.
+- [x] `./gradlew check` green on Windows; `PROGRESS.md` ticked as [Done*] (device/`[mac]` verification owed, tracked in `MAC_AND_DEVICE_CHECKLIST.md`).
 
 ## 6. Handoff
-P2 adds UI tests for these flows (empty state, sheet-link validation, accessibility semantics assertions).
+P2 adds UI tests for these flows (empty state, sheet-link validation, accessibility semantics assertions, backup preview dialog). Run `MAC_AND_DEVICE_CHECKLIST.md` first: P2 pins the behaviour it confirms.
+
+### Inputs for P2 and later (what P1-3 left behind)
+- **Seams for tests:** `SettingsViewModel.connect`, `MonthViewModel.showTutorial`, `BackupViewModel.pickBackup/restore/hasSheetLink` + `BackupPreview`, `AppLinks(...)` (constructor-injectable; `AboutScreen(links = …)`), `LicensesScreen(notices = …)`, `weekdayNumbersFrom`, `dayOfWeekFromSundayBased`, `scaledForText`, `ThemeContrastTest` (tokens are `internal`).
+- **Platform actuals added** (each needs a `[mac]`/device run, none was executed): `IosBackupService(host, logger)`, `IosFirstDayOfWeek`, `IosReduceMotion`, `IosSystemBars`; Android: `AndroidFirstDayOfWeek`, `AndroidReduceMotion`, `AndroidSystemBars`.
+- **Guards that exist:** `NoHardCodedTextTest`, `ThemeContrastTest`, `OpenSourceNoticesTest`, `UiStructureTest` (500 lines), `DestructiveCallSitesTest` (lists `restore`), `SyncErrorStatusTest`.
+- **Known gaps, deliberately left:** no iOS clipboard fallback; full licence texts not bundled; tutorial overlay is not a screen-reader focus trap (to verify); `outlineVariant` hairlines and the "·" dot in not-planned cells are decorative and below 3:1; the Android widget was not audited for contrast/semantics; digits are not localised; the month grid is 48dp-wide cells (fewer days visible at once): the single knob is `MIN_CELL_WIDTH`.
+- **Before B3:** set `AppLinks.Default` (privacy URL, support email) and review `openSourceNotices`.
 
 ## 7. Inputs from P1-1 (already built; this plan finishes the user-facing side)
 - **Backups:** the format is v4 and `BackupViewModel` already has `exportBackup(includeSheetLink = false)` and `importBackup(applySheetLink = false)`; the UI has no control for them yet. Add: an "include my sheet link" choice on export, and on import (when the backup contains a link) a confirm "use the backup's sheet link?".
@@ -124,3 +136,6 @@ P2 adds UI tests for these flows (empty state, sheet-link validation, accessibil
 - **iOS backup** is still clipboard-based (`IosBackupService`); the file-based flow is this plan's step on iOS. Reuse `BackupResult` and `BackupStreams`-style error handling; import must keep calling `BackupSerializer.parse` + one restore transaction.
 - **Strings:** all confirmation texts live in `DestructiveAction` (presentation) and the startup screen/recovery messages in `StartupFailureScreen`, `AndroidStartupRecovery`, `IosStartupRecovery`, `AndroidBackupService`, `BackupStreams`; they must move to resources too (some are shown from non-UI classes: pass message keys or resolved strings through a small interface). Tests assert some of these texts (`DestructiveActionsConfirmationTest`, `BackupStreamsTest`): update them with the move.
 - **Accessibility:** the new dialogs and the startup failure screen need semantics/labels; the startup screen uses only theme defaults.
+
+### Result of section 7 (2026-10-12)
+Implemented: `BackupViewModel.hasSheetLink()` and the export checkbox "Include my Google Sheet link" (off by default, with a note that anyone with the file can see the link); import is now `pickBackup` (reads and fully validates, changes nothing, returns a `BackupPreview`) → confirmation dialog naming both sides ("replaces 1 daily habit … with 3 daily habits … from the file") → `restore(preview, applySheetLink)`; the checkbox "Also use the sheet link stored in this backup" only when the file has one; "Export a backup first" inside the Import and Reset dialogs (no automatic pre-restore copy: the person decides); `StartupFailureScreen` title is a heading and the result line a polite live region. `importBackup` remains as pick + restore in one call for tests and callers without a preview.

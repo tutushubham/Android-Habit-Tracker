@@ -13,6 +13,8 @@ needs a screen reader, a device or a Mac is listed under "Needs your verificatio
 | Not-planned cell `·` | read as "middle dot" | hidden |
 | Multi-session cell and day-header | description already present | wording now `"<habit>, <date>, 2 of 3 complete"` (no colon) |
 | Bottom navigation (Tracker / Habits) | clickable column, no role, no selected state | `selectable(role = Tab)` with selected state |
+| Backup/Settings checkboxes (include link, use backup link) | none | `toggleable(role = Checkbox)` rows with the label as text |
+| Startup failure screen | theme defaults only | title is a heading, result line is a polite live region |
 | Dates in descriptions | ISO `2026-10-12`, enum `MONDAY 12` | full local date (`fullDateLabel`, step 2) |
 | Icon-only buttons | already labelled (settings, back, month ±, move up/down, delete category, close preview) | audited, unchanged |
 

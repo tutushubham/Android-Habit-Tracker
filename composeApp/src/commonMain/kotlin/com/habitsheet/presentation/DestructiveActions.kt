@@ -97,10 +97,15 @@ sealed interface DestructiveAction {
         )
     }
 
-    data class ReplaceWithBackup(val summary: DataSummary) : DestructiveAction {
+    /** [incoming] is what the chosen file holds; null only when the file was not previewed. */
+    data class ReplaceWithBackup(val summary: DataSummary, val incoming: DataSummary? = null) : DestructiveAction {
         override val confirmation = ConfirmationText(
             UiText.of(Res.string.confirm_replace_title),
-            UiText.of(Res.string.confirm_replace_message, summary.describe()),
+            if (incoming == null) {
+                UiText.of(Res.string.confirm_replace_message, summary.describe())
+            } else {
+                UiText.of(Res.string.confirm_replace_message_preview, summary.describe(), incoming.describe())
+            },
             UiText.of(Res.string.confirm_replace_action),
         )
     }

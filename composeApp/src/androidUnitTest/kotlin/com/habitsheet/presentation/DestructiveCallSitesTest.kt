@@ -19,9 +19,9 @@ class DestructiveCallSitesTest {
 
     private val destructive = Regex(
         """\b(viewModel|monthViewModel|manageHabitsViewModel|backupViewModel|settingsViewModel)\s*\.\s*""" +
-            """(deleteDailyHabit|deleteWeeklyHabit|deleteCategory|deleteDayPlanById|deleteDayPlan|deleteWeeklyPlan|clearAllData|importBackup|disconnect)\b""",
+            """(deleteDailyHabit|deleteWeeklyHabit|deleteCategory|deleteDayPlanById|deleteDayPlan|deleteWeeklyPlan|clearAllData|importBackup|restore|disconnect)\b""",
     )
-    private val bareReference = Regex("""::\s*(deleteDailyHabit|deleteWeeklyHabit|deleteCategory|deleteDayPlanById|deleteDayPlan|deleteWeeklyPlan|clearAllData|importBackup|disconnect)\b""")
+    private val bareReference = Regex("""::\s*(deleteDailyHabit|deleteWeeklyHabit|deleteCategory|deleteDayPlanById|deleteDayPlan|deleteWeeklyPlan|clearAllData|importBackup|restore|disconnect)\b""")
 
     private val uiFiles: List<File> = uiDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
@@ -29,7 +29,7 @@ class DestructiveCallSitesTest {
 
     /** file -> calls, each reviewed: it sits inside the `onConfirm` of a DestructiveConfirmDialog. */
     private val confirmed = mapOf(
-        "DataBackupScreen.kt" to listOf("clearAllData", "importBackup"),
+        "DataBackupScreen.kt" to listOf("clearAllData", "restore"),
         "manage/ManageHabitsScreen.kt" to listOf("deleteDailyHabit", "deleteWeeklyHabit", "deleteCategory"),
         "PlanScreen.kt" to listOf("deleteWeeklyPlan", "deleteDayPlanById"),
         // Not data loss: unlinks the sheet and clears sync state; habits, plans and check-offs stay (see audit table).

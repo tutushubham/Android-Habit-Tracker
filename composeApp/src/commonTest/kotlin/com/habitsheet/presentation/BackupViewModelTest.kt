@@ -112,6 +112,66 @@ class BackupViewModelTest {
     }
 
     @Test
+    fun pickingAFileShowsItsContentWithoutChangingAnything() = runTest {
+        val repository = InMemoryHabitRepository(HabitSnapshot())
+        val backup = validSnapshot()
+        val payload = BackupSerializer.serialize(backup, 1L, com.habitsheet.domain.backup.BackupSettings(sheetUrl = "https://docs.google.com/spreadsheets/d/backup/edit"))
+        val viewModel = BackupViewModel(
+            repository = repository,
+            backupService = RecordingBackupService(importPayload = payload),
+            scope = backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        var preview: BackupPreview? = null
+
+        viewModel.pickBackup(onPreview = { preview = it }, onError = { error("unexpected: $it") })
+        runCurrent()
+
+        val shown = assertNotNull(preview)
+        assertEquals(DataSummary.of(backup), shown.incoming)
+        assertTrue(shown.hasSheetLink)
+        assertTrue(repository.snapshot.value.dailyHabits.isEmpty(), "nothing is replaced before restore()")
+
+        var restored = false
+        viewModel.restore(shown, onSuccess = { restored = true }, onError = { error("unexpected: $it") })
+        runCurrent()
+        assertTrue(restored)
+        assertEquals(backup.dailyHabits, repository.snapshot.value.dailyHabits)
+    }
+
+    @Test
+    fun anInvalidFileIsRefusedAtPreviewAndLeavesTheDataAlone() = runTest {
+        val repository = InMemoryHabitRepository(validSnapshot())
+        val viewModel = BackupViewModel(
+            repository = repository,
+            backupService = RecordingBackupService(importPayload = "not a backup"),
+            scope = backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        var error: UiText? = null
+
+        viewModel.pickBackup(onPreview = { error("no preview expected") }, onError = { error = it })
+        runCurrent()
+
+        assertNotNull(error)
+        assertEquals(validSnapshot().dailyHabits, repository.snapshot.value.dailyHabits)
+    }
+
+    @Test
+    fun hasSheetLinkReflectsTheSavedLink() = runTest {
+        val repository = InMemoryHabitRepository(validSnapshot())
+        val viewModel = BackupViewModel(
+            repository = repository,
+            backupService = RecordingBackupService(),
+            scope = backgroundScope,
+            callbackDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        assertFalse(viewModel.hasSheetLink())
+        repository.setSheetUrl("https://docs.google.com/spreadsheets/d/mine/edit")
+        assertTrue(viewModel.hasSheetLink())
+    }
+
+    @Test
     fun exportReportsTheServicesResultToTheCaller() = runTest {
         for (result in listOf(BackupResult.Success(UiText.Raw("ok")), BackupResult.Failure(UiText.Raw("disk full")), BackupResult.Cancelled)) {
             val viewModel = BackupViewModel(

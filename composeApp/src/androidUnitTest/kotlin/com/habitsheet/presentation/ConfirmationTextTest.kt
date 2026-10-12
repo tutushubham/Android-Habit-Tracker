@@ -83,6 +83,13 @@ class ConfirmationTextTest {
     }
 
     @Test
+    fun importTextOfAPreviewedFileNamesBothSides() {
+        val text = DestructiveAction.ReplaceWithBackup(DataSummary.of(snapshot), DataSummary(3, 2, 40)).confirmation.message.let(English::render)
+        assertTrue("replaces 1 daily habit, 1 weekly habit and 3 check-offs" in text, text)
+        assertTrue("with 3 daily habits, 2 weekly habits and 40 check-offs from the file" in text, text)
+    }
+
+    @Test
     fun importTextSaysWhatWillBeReplacedAndThatTheSheetIsUntouched() {
         val text = DestructiveAction.ReplaceWithBackup(DataSummary.of(snapshot)).confirmation.message.let(English::render)
         assertTrue("replaces 1 daily habit, 1 weekly habit and 3 check-offs" in text, text)

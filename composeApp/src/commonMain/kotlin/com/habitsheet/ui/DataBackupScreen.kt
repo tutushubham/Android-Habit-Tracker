@@ -3,16 +3,19 @@ package com.habitsheet.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.habitsheet.presentation.BackupPreview
 import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.DestructiveAction
 import com.habitsheet.presentation.UiText
@@ -26,7 +29,11 @@ fun DataBackupScreen(
     onBack: () -> Unit,
     showBack: Boolean = true,
 ) {
-    var showImportConfirmation by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<BackupPreview?>(null) }
+    var includeSheetLink by remember { mutableStateOf(false) }
+    var applyBackupLink by remember { mutableStateOf(false) }
+    var hasSheetLink by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel) { hasSheetLink = viewModel.hasSheetLink() }
     var errorMessage by remember { mutableStateOf<UiText?>(null) }
     var successMessage by remember { mutableStateOf<UiText?>(null) }
     fun showResult(result: BackupResult) {
@@ -72,8 +79,18 @@ fun DataBackupScreen(
                 title = stringResource(Res.string.backup_export_title),
                 description = stringResource(if (viewModel.usesClipboard) Res.string.backup_export_desc_clipboard else Res.string.backup_export_desc_file),
                 buttonText = stringResource(if (viewModel.usesClipboard) Res.string.backup_export_button_clipboard else Res.string.backup_export_button_file),
-                onClick = { viewModel.exportBackup(onResult = ::showResult) },
-            )
+                onClick = { viewModel.exportBackup(includeSheetLink = includeSheetLink && hasSheetLink, onResult = ::showResult) },
+            ) {
+                if (hasSheetLink) {
+                    LabeledCheckbox(stringResource(Res.string.backup_include_link), includeSheetLink) { includeSheetLink = it }
+                    Text(
+                        stringResource(Res.string.backup_include_link_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                }
+            }
 
             Spacer(Modifier.height(24.dp))
 
@@ -90,7 +107,20 @@ fun DataBackupScreen(
                 title = stringResource(Res.string.backup_import_title),
                 description = stringResource(if (viewModel.usesClipboard) Res.string.backup_import_desc_clipboard else Res.string.backup_import_desc_file),
                 buttonText = stringResource(if (viewModel.usesClipboard) Res.string.backup_import_button_clipboard else Res.string.backup_import_button_file),
-                onClick = { showImportConfirmation = true },
+                onClick = {
+                    viewModel.pickBackup(
+                        onPreview = {
+                            applyBackupLink = false
+                            errorMessage = null
+                            successMessage = null
+                            preview = it
+                        },
+                        onError = {
+                            errorMessage = it
+                            successMessage = null
+                        },
+                    )
+                },
                 isDestructive = true,
             )
 
@@ -116,6 +146,11 @@ fun DataBackupScreen(
                         errorMessage = null
                     },
                     onDismiss = { showResetConfirmation = false },
+                    extraContent = {
+                        TextButton(onClick = { viewModel.exportBackup(onResult = ::showResult) }) {
+                            Text(stringResource(Res.string.backup_export_first))
+                        }
+                    },
                 )
             }
 
@@ -139,12 +174,13 @@ fun DataBackupScreen(
         }
     }
 
-    if (showImportConfirmation) {
+    preview?.let { chosen ->
         DestructiveConfirmDialog(
-            action = DestructiveAction.ReplaceWithBackup(viewModel.currentDataSummary()),
+            action = DestructiveAction.ReplaceWithBackup(viewModel.currentDataSummary(), chosen.incoming),
             onConfirm = {
-                showImportConfirmation = false
-                viewModel.importBackup(
+                preview = null
+                viewModel.restore(
+                    chosen,
                     onSuccess = {
                         successMessage = UiText.of(Res.string.backup_restored)
                         errorMessage = null
@@ -153,9 +189,18 @@ fun DataBackupScreen(
                         errorMessage = it
                         successMessage = null
                     },
+                    applySheetLink = applyBackupLink && chosen.hasSheetLink,
                 )
             },
-            onDismiss = { showImportConfirmation = false },
+            onDismiss = { preview = null },
+            extraContent = {
+                if (chosen.hasSheetLink) {
+                    LabeledCheckbox(stringResource(Res.string.backup_use_link), applyBackupLink) { applyBackupLink = it }
+                }
+                TextButton(onClick = { viewModel.exportBackup(onResult = ::showResult) }) {
+                    Text(stringResource(Res.string.backup_export_first))
+                }
+            },
         )
     }
 }
@@ -167,6 +212,7 @@ private fun BackupActionCard(
     buttonText: String,
     onClick: () -> Unit,
     isDestructive: Boolean = false,
+    extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -181,6 +227,7 @@ private fun BackupActionCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         )
+        extra()
         Button(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
@@ -193,5 +240,19 @@ private fun BackupActionCard(
         ) {
             Text(buttonText)
         }
+    }
+}
+
+@Composable
+private fun LabeledCheckbox(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 12.dp))
     }
 }

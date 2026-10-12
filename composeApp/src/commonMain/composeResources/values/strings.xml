@@ -65,6 +65,7 @@
     <string name="confirm_reset_action">Reset all data</string>
     <string name="confirm_replace_title">Replace existing data?</string>
     <string name="confirm_replace_message">Importing a backup replaces %1$s on this device with the backup\'s content. Syncing with your Google Sheet restarts afterwards (your Google Sheet is untouched). This cannot be undone.</string>
+    <string name="confirm_replace_message_preview">This replaces %1$s on this device with %2$s from the file. Syncing with your Google Sheet restarts afterwards (your Google Sheet is untouched). This cannot be undone.</string>
     <string name="confirm_replace_action">Import &amp; Replace</string>
     <string name="confirm_set_aside_title">Start with empty data?</string>
     <string name="confirm_set_aside_message">The data file on this device can\'t be opened. This moves it aside and starts the app with no habits or history. The old file is kept on the device but you cannot open it from the app, so save a copy first if you want one. Your Google Sheet is untouched; connect it again to bring your plan back.</string>
@@ -90,6 +91,10 @@
     <string name="file_err_no_open_app">No app on this device can open files here.</string>
     <string name="file_err_backup_lost">The backup to save was lost. Please export again.</string>
     <string name="file_err_save">Couldn\'t save the file.</string>
+    <string name="backup_include_link">Include my Google Sheet link</string>
+    <string name="backup_include_link_note">Anyone who has the file can see the link. Leave this off when you share the backup.</string>
+    <string name="backup_use_link">Also use the sheet link stored in this backup</string>
+    <string name="backup_export_first">Export a backup first</string>
     <string name="backup_saved">Backup saved.</string>
     <string name="csv_saved">CSV saved.</string>
     <string name="backup_shared">Backup exported. Keep the file somewhere safe.</string>

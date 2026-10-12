@@ -1,5 +1,7 @@
 package com.habitsheet.ui
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,12 +19,22 @@ import org.jetbrains.compose.resources.stringResource
  * view-model function that deletes, resets or replaces data.
  */
 @Composable
-fun DestructiveConfirmDialog(action: DestructiveAction, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun DestructiveConfirmDialog(
+    action: DestructiveAction,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    extraContent: @Composable ColumnScope.() -> Unit = {},
+) {
     val text = action.confirmation
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text.title.asString()) },
-        text = { Text(text.message.asString()) },
+        text = {
+            Column {
+                Text(text.message.asString())
+                extraContent()
+            }
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(text.confirmLabel.asString(), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
