@@ -46,6 +46,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveDailyHabit(habit: DailyHabit) {
+        require(habit.monthlyGoal >= 0)
         val previous = mutableSnapshot.value.dailyHabits.firstOrNull { it.id == habit.id }?.updatedAtEpochMillis
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.upsert(habit.copy(updatedAtEpochMillis = monotonicUpdatedAt(habit.updatedAtEpochMillis, previous))) { it.id },
@@ -59,7 +60,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
                     habit.copy(
                         active = false,
                         archivedOn = archivedOn,
-                        updatedAtEpochMillis = updatedAtEpochMillis,
+                        updatedAtEpochMillis = maxOf(habit.updatedAtEpochMillis, updatedAtEpochMillis),
                     )
                 } else {
                     habit
@@ -75,7 +76,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
                     habit.copy(
                         active = true,
                         archivedOn = null,
-                        updatedAtEpochMillis = updatedAtEpochMillis,
+                        updatedAtEpochMillis = maxOf(habit.updatedAtEpochMillis, updatedAtEpochMillis),
                     )
                 } else {
                     habit
@@ -97,15 +98,16 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         mutableSnapshot.value = mutableSnapshot.value.copy(
             dailyHabits = mutableSnapshot.value.dailyHabits.map { habit ->
                 orders[habit.id]?.let { order ->
-                    habit.copy(displayOrder = order, updatedAtEpochMillis = updatedAtEpochMillis)
+                    habit.copy(displayOrder = order, updatedAtEpochMillis = maxOf(habit.updatedAtEpochMillis, updatedAtEpochMillis))
                 } ?: habit
             },
         )
     }
 
     override suspend fun saveWeeklyHabit(habit: WeeklyHabit) {
+        val previous = mutableSnapshot.value.weeklyHabits.firstOrNull { it.id == habit.id }?.updatedAtEpochMillis
         mutableSnapshot.value = mutableSnapshot.value.copy(
-            weeklyHabits = mutableSnapshot.value.weeklyHabits.upsert(habit) { it.id },
+            weeklyHabits = mutableSnapshot.value.weeklyHabits.upsert(habit.copy(updatedAtEpochMillis = monotonicUpdatedAt(habit.updatedAtEpochMillis, previous))) { it.id },
         )
     }
 
@@ -116,7 +118,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
                     habit.copy(
                         active = false,
                         archivedOn = archivedOn,
-                        updatedAtEpochMillis = updatedAtEpochMillis,
+                        updatedAtEpochMillis = maxOf(habit.updatedAtEpochMillis, updatedAtEpochMillis),
                     )
                 } else {
                     habit
@@ -132,7 +134,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
                     habit.copy(
                         active = true,
                         archivedOn = null,
-                        updatedAtEpochMillis = updatedAtEpochMillis,
+                        updatedAtEpochMillis = maxOf(habit.updatedAtEpochMillis, updatedAtEpochMillis),
                     )
                 } else {
                     habit
@@ -152,7 +154,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         mutableSnapshot.value = mutableSnapshot.value.copy(
             weeklyHabits = mutableSnapshot.value.weeklyHabits.map { habit ->
                 orders[habit.id]?.let { order ->
-                    habit.copy(displayOrder = order, updatedAtEpochMillis = updatedAtEpochMillis)
+                    habit.copy(displayOrder = order, updatedAtEpochMillis = maxOf(habit.updatedAtEpochMillis, updatedAtEpochMillis))
                 } ?: habit
             },
         )
@@ -172,6 +174,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveWeeklyPlan(plan: WeeklyPlan) {
+        require(plan.weekday in 1..7 && plan.detail.isNotBlank())
         val previous = mutableSnapshot.value.weeklyPlans.firstOrNull { it.habitId == plan.habitId && it.weekday == plan.weekday }?.updatedAtEpochMillis
         val stored = plan.copy(updatedAtEpochMillis = monotonicUpdatedAt(plan.updatedAtEpochMillis, previous))
         mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.upsert(stored) { it.habitId to it.weekday })
@@ -182,6 +185,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveDayPlan(plan: DayPlan) {
+        require(plan.detail.isNotBlank())
         val previous = mutableSnapshot.value.dayPlans.firstOrNull { it.id == plan.id }?.updatedAtEpochMillis
         val stored = plan.copy(updatedAtEpochMillis = monotonicUpdatedAt(plan.updatedAtEpochMillis, previous))
         mutableSnapshot.value = mutableSnapshot.value.copy(dayPlans = mutableSnapshot.value.dayPlans.upsert(stored) { it.id })
