@@ -266,7 +266,7 @@ class ManageHabitsViewModel(
     companion object {
         private const val TAG = "ManageHabits"
         const val MAX_CATEGORIES = 10
-        const val MAX_DAILY_HABITS = 20
-        const val MAX_WEEKLY_HABITS = 20
+        const val MAX_DAILY_HABITS = com.habitsheet.domain.model.MAX_DAILY_HABITS
+        const val MAX_WEEKLY_HABITS = com.habitsheet.domain.model.MAX_WEEKLY_HABITS
     }
 }

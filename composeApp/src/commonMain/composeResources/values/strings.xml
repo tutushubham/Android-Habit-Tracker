@@ -455,4 +455,57 @@
     <!-- Text shared from iOS -->
     <string name="share_text_title">Habit Sheet — %1$s</string>
     <string name="share_text_progress">%1$d/%2$d completed (%3$s)</string>
+
+    <!-- Plan templates (first-run wizard): habit names, session text and category names. %1$d is a number. -->
+    <string name="plan_text_habit_running">Running</string>
+    <string name="plan_text_habit_strength">Strength</string>
+    <string name="plan_text_habit_stretch_min">Stretch %1$d min</string>
+    <string name="plan_text_habit_sleep_hours">Sleep %1$d hours</string>
+    <string name="plan_text_habit_hyrox_training">Hyrox training</string>
+    <string name="plan_text_habit_mobility_min">Mobility %1$d min</string>
+    <string name="plan_text_habit_coding">Coding practice</string>
+    <string name="plan_text_habit_system_design">System design</string>
+    <string name="plan_text_habit_behavioural">Behavioural prep</string>
+    <string name="plan_text_habit_mock_interview">Mock interview</string>
+    <string name="plan_text_habit_review_notes_min">Review notes %1$d min</string>
+    <string name="plan_text_habit_workout">Workout</string>
+    <string name="plan_text_habit_steps">Walk %1$d steps</string>
+    <string name="plan_text_habit_water_litres">Drink %1$d litres of water</string>
+    <string name="plan_text_run_easy_km">Easy run %1$d km</string>
+    <string name="plan_text_run_long_km">Long run %1$d km</string>
+    <string name="plan_text_run_intervals_800">Intervals %1$d × 800 m</string>
+    <string name="plan_text_run_intervals_1k">Intervals %1$d × 1 km</string>
+    <string name="plan_text_strength_core_min">Strength and core %1$d min</string>
+    <string name="plan_text_strength_full_body_min">Full-body strength %1$d min</string>
+    <string name="plan_text_cardio_min">Cardio %1$d min</string>
+    <string name="plan_text_active_outdoors_min">Active outdoors %1$d min</string>
+    <string name="plan_text_hyrox_stations">Stations: %1$d rounds of sled, wall balls and lunges</string>
+    <string name="plan_text_hyrox_compromised_run">Compromised run: %1$d × (1 km run + 1 station)</string>
+    <string name="plan_text_race_marathon">Race day: marathon</string>
+    <string name="plan_text_race_hyrox">Race day: Hyrox</string>
+    <string name="plan_text_coding_arrays_strings">Arrays and strings</string>
+    <string name="plan_text_coding_hashing">Hash maps and sets</string>
+    <string name="plan_text_coding_linked_lists">Linked lists</string>
+    <string name="plan_text_coding_stacks_queues">Stacks and queues</string>
+    <string name="plan_text_coding_trees">Trees</string>
+    <string name="plan_text_coding_graphs">Graphs</string>
+    <string name="plan_text_coding_binary_search">Binary search</string>
+    <string name="plan_text_coding_dynamic_programming">Dynamic programming</string>
+    <string name="plan_text_design_url_shortener">Design a URL shortener</string>
+    <string name="plan_text_design_rate_limiter">Design a rate limiter</string>
+    <string name="plan_text_design_chat">Design a chat service</string>
+    <string name="plan_text_design_news_feed">Design a news feed</string>
+    <string name="plan_text_design_cache">Design a distributed cache</string>
+    <string name="plan_text_behavioural_intro">Tell me about yourself</string>
+    <string name="plan_text_behavioural_conflict">A story about a conflict</string>
+    <string name="plan_text_behavioural_failure">A story about a failure</string>
+    <string name="plan_text_behavioural_leadership">A story about leading others</string>
+    <string name="plan_text_behavioural_questions_to_ask">Questions to ask the interviewer</string>
+    <string name="plan_text_mock_interview_min">Mock interview %1$d min</string>
+    <string name="plan_text_interview_day">Interview day</string>
+    <string name="plan_text_category_fitness">Fitness 💪</string>
+    <string name="plan_text_category_health">Health ❤️‍🩹</string>
+    <string name="plan_text_category_sleep">Sleep 💤</string>
+    <string name="plan_text_category_career">Career 💼</string>
+    <string name="plan_text_category_study">Study 📚</string>
 </resources>
