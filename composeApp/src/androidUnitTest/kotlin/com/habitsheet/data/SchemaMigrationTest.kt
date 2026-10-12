@@ -8,6 +8,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitKind
+import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
@@ -95,6 +96,43 @@ class SchemaMigrationTest {
             repo.close()
         }
     }
+
+    /** The same database moved up one schema version at a time, as a person who skipped no release would. */
+    private suspend fun migratedStepwise(fromVersion: Int, check: suspend (LocalHabitRepository) -> Unit) {
+        val url = copyOfSnapshot(fromVersion)
+        val driver = JdbcSqliteDriver(url)
+        fill(driver, fromVersion)
+        for (step in fromVersion until latest) {
+            HabitsDatabase.Schema.migrate(driver, step.toLong(), (step + 1).toLong())
+        }
+        driver.close()
+        val repo = LocalHabitRepository({ JdbcSqliteDriver(url) })
+        try {
+            check(repo)
+        } finally {
+            repo.close()
+        }
+    }
+
+    @Test
+    fun migratingOneVersionAtATimeGivesTheSameDataAsMigratingDirectly() = runTest {
+        for (version in 1 until latest) {
+            var direct: Pair<HabitSnapshot, Map<String, Any>>? = null
+            migrated(version) { repo -> direct = repo.snapshot.value to settingsOf(repo) }
+            migratedStepwise(version) { repo ->
+                assertEquals(direct?.first, repo.snapshot.value, "snapshot, v$version stepwise vs direct")
+                assertEquals(direct?.second, settingsOf(repo), "settings, v$version stepwise vs direct")
+            }
+        }
+    }
+
+    private suspend fun settingsOf(repo: LocalHabitRepository): Map<String, Any> = mapOf(
+        "onboarding" to repo.isOnboardingCompleted(),
+        "theme" to repo.getThemeMode(),
+        "url" to repo.getSheetUrl(),
+        "lastSync" to repo.getSheetLastSync(),
+        "keys" to repo.getSheetSyncedKeys(),
+    )
 
     @Test
     fun theSnapshotsAreTheReleasedSchemasAndCoverEveryVersion() {
