@@ -106,6 +106,7 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **Test fixtures** (`commonTest/.../testing/`): `FakeDateProvider`, `FakeLogger`, `buildSnapshot { }`, `randomSnapshot(random, month)` (seeded property tests), `FailingHabitStore`, `FakeSheetsServer` (with `FaultAction.LostResponse`), `English.render`. `HabitRepositoryContract` runs on SQLite and on `InMemoryHabitRepository`: a new store method needs a contract test.
 - **Atomicity:** `AtomicWritesTest` fails every statement of every multi-row write; a new multi-row write goes in its list.
 - **UI tests:** `commonTest/.../ui/UiScenarios*.kt` (`ComposeUiTest` extensions over `UiWorld`: real ViewModels on an unconfined scope, fake clock = Monday 12 October 2026). Android: `AndroidUiTests` under Robolectric API 34 (JDK 17 cannot run 35). iOS: `IosUiTests` [mac]. Scroll with `performScrollTo()` before tapping on scrolling screens (the Robolectric screen is 320x470dp). Add a scenario, then one `@Test` line in each runner.
+- **Device tests:** `src/androidInstrumentedTest` (`./gradlew :composeApp:connectedDebugAndroidTest`; released schemas are packaged as test assets) and `src/iosTest` (`iosSimulatorArm64Test`); both written without a device, see `MAC_AND_DEVICE_CHECKLIST.md`. They delete the app database: never on a phone that holds real data.
 - **Strings:** see the copy rule above. Selected state: radio rows and the Day/Month switch expose `selected` (`theThemeOptionsExposeWhichOneIsSelected`).
 
 ## Audit findings (the source for every plan)

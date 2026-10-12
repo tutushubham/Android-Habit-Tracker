@@ -72,6 +72,14 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.google.play.services.auth)
         }
+        // Device tests (src/androidInstrumentedTest): ./gradlew :composeApp:connectedDebugAndroidTest
+        androidInstrumentedTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.androidx.test.runner)
+            implementation(libs.androidx.test.ext.junit)
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.kotlinx.coroutines.test)
+        }
         androidUnitTest.dependencies {
             implementation(libs.sqldelight.sqlite.driver)
             // Compose UI tests run on the JVM under Robolectric (see src/androidUnitTest/.../ui/AndroidUiTests.kt).
@@ -162,6 +170,12 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = providers.gradleProperty("appVersionCode").get().toInt()
         versionName = providers.gradleProperty("appVersionName").get()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets {
+        // The released schemas (1.db ... N.db) are test assets: the on-device migration test opens each of them.
+        getByName("androidTest").assets.srcDir("src/commonMain/sqldelight/databases")
     }
 
     signingConfigs {
@@ -301,6 +315,8 @@ detekt {
         "src/iosMain/kotlin",
         "src/commonTest/kotlin",
         "src/androidUnitTest/kotlin",
+        "src/androidInstrumentedTest/kotlin",
+        "src/iosTest/kotlin",
     )
     parallel = true
 }

@@ -4,6 +4,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContracts
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
@@ -29,6 +30,8 @@ import java.io.File
 class AndroidBackupService(
     private val activity: ComponentActivity,
     private val logger: Logger = NoOpLogger,
+    /** The registry the pickers are registered with. Tests pass one that answers without showing a picker. */
+    registry: ActivityResultRegistry = activity.activityResultRegistry,
 ) : BackupService {
 
     private enum class Kind(val extension: String, val mime: String) {
@@ -42,14 +45,17 @@ class AndroidBackupService(
 
     private val createJsonLauncher = activity.registerForActivityResult(
         ActivityResultContracts.CreateDocument(Kind.Json.mime),
+        registry,
     ) { uri -> finishExport(Kind.Json, uri) }
 
     private val createCsvLauncher = activity.registerForActivityResult(
         ActivityResultContracts.CreateDocument(Kind.Csv.mime),
+        registry,
     ) { uri -> finishExport(Kind.Csv, uri) }
 
     private val openDocumentLauncher = activity.registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
+        registry,
     ) { uri -> finishImport(uri) }
 
     private fun pendingFile(kind: Kind) = File(File(activity.cacheDir, PENDING_DIR), "pending.${kind.extension}")

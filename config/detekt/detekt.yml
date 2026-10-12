@@ -23,13 +23,13 @@ style:
     ignoreAnnotated: ['Composable', 'Preview']
     ignorePropertyDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
-    excludes: ['**/commonTest/**', '**/androidUnitTest/**']
+    excludes: ['**/commonTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/iosTest/**']
   UnusedPrivateMember:
     # @Preview functions are used by the IDE only.
     ignoreAnnotated: ['Preview']
   MaxLineLength:
     maxLineLength: 160
-    excludes: ['**/commonTest/**', '**/androidUnitTest/**']
+    excludes: ['**/commonTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/iosTest/**']
   ReturnCount:
     max: 4
   WildcardImport:

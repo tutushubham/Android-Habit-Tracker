@@ -121,3 +121,36 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 
 - [ ] On a device and on the iOS simulator, open Settings, Data and Backup, About and a destructive confirmation and read the texts that contain apostrophes ("Couldn't ...", "can't open its data", "Delete 'Name' ..."): no backslash anywhere (fixed in code, see PROGRESS.md).
 - [ ] `./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.ui.IosUiTests"` on the Mac (25 shared UI scenarios; run with English and a phone-sized simulator).
+
+## Device and simulator tests written in P2 steps 8-9 (not run on the machine they were written on)
+
+Android (emulator or phone, API 26+; an emulator image with Google APIs is fine). The app is installed twice,
+as the app and as the test APK; tests delete the app database first, so **use an emulator, not the phone that holds
+your real data**.
+
+```
+./gradlew :composeApp:connectedDebugAndroidTest
+./gradlew :composeApp:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.habitsheet.app.BackupServiceTest
+```
+
+- [ ] `AppSmokeTest` - first run, skip tutorial, add a habit, check it off, rotate twice, recreate, relaunch.
+- [ ] `WidgetToggleTest` - real broadcast to the widget provider: check, uncheck, stale date ignored.
+- [ ] `BackupServiceTest` - export/import through a registry that answers instead of the picker.
+- [ ] `DatabaseMigrationOnDeviceTest` - every released schema upgrades in place; `theDriverEnforcesForeignKeysSoAnOrphanCheckOffIsRejected` answers the open "does the Android driver keep foreign keys ON" question (if it fails, deletes rely only on the explicit cascades, which is safe; record the answer).
+
+iOS (Mac with Xcode, English simulator language):
+
+```
+./gradlew :composeApp:iosSimulatorArm64Test
+./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.app.IosRepositoryContractTest"
+./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.ui.IosUiTests"
+gem install xcodeproj && ruby scripts/ios/add_ui_test_target.rb      # once
+xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp \
+  -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:iosAppUITests
+```
+
+- [ ] `iosSimulatorArm64Test` - all shared tests plus the three below on the simulator.
+- [ ] `IosRepositoryContractTest` - the repository contract on `NativeSqliteDriver`.
+- [ ] `IosDriverTest` - answers whether the native driver enforces foreign keys.
+- [ ] `IosStartupRecoveryTest` - where the driver puts `habit-sheet.db`, and that recovery finds and moves it.
+- [ ] `AppSmokeUITests` (XCUITest) - add a habit, check it off, background and foreground. It assumes the accessibility labels of the English copy and that Compose exposes the row's state as the element value; if the last assertion fails, check how the element reports its value before changing the test.
