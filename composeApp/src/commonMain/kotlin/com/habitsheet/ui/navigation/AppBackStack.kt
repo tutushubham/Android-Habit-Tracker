@@ -15,6 +15,7 @@ internal enum class Destination {
     Settings,
     Backup,
     About,
+    Licenses,
     ;
 
     /** Where Back leads (on-screen and system back alike); null for the start screen. */
@@ -23,6 +24,7 @@ internal enum class Destination {
             Tracker -> null
             Manage, Plan, Settings -> Tracker
             Backup, About -> Settings
+            Licenses -> About
         }
 
     /** The top-level section a screen belongs to (highlighted in the tablet sidebar). */

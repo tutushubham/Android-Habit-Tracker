@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.habitsheet.AppGraph
+import com.habitsheet.platform.SystemBarsStyle
 import com.habitsheet.presentation.BackupViewModel
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
@@ -75,13 +76,13 @@ fun HabitSheetApp(
     BackHandler(enabled = backStack.canGoBack) { backStack.back() }
 
     val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
-    HabitSheetTheme(
-        darkTheme = when (themeMode) {
-            ThemeMode.System -> androidx.compose.foundation.isSystemInDarkTheme()
-            ThemeMode.Light -> false
-            ThemeMode.Dark -> true
-        },
-    ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.System -> androidx.compose.foundation.isSystemInDarkTheme()
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+    }
+    SystemBarsStyle(themeMode, darkTheme)
+    HabitSheetTheme(darkTheme = darkTheme) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val tabletLayout = maxWidth >= 720.dp
             AdaptiveFrame(
@@ -180,7 +181,14 @@ private fun AppDestination(
 
         Destination.Backup -> backupViewModel?.let { DataBackupScreen(it, onBack = back, showBack = !tabletLayout) }
 
-        Destination.About -> AboutScreen(versionProvider, onBack = back, showBack = !tabletLayout)
+        Destination.About -> AboutScreen(
+            versionProvider,
+            onBack = back,
+            showBack = !tabletLayout,
+            onLicenses = { navigate(Destination.Licenses) },
+        )
+
+        Destination.Licenses -> LicensesScreen(onBack = back, showBack = !tabletLayout)
     }
 }
 

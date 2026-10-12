@@ -29,6 +29,7 @@ class AppBackStackTest {
             Destination.Settings to Destination.Tracker,
             Destination.Backup to Destination.Settings,
             Destination.About to Destination.Settings,
+            Destination.Licenses to Destination.About,
         )
         expectedParent.forEach { (screen, parent) ->
             val stack = AppBackStack()
@@ -67,6 +68,7 @@ class AppBackStackTest {
     fun theSidebarHighlightsTheSectionAScreenBelongsTo() {
         assertEquals(Destination.Settings, Destination.Backup.section)
         assertEquals(Destination.Settings, Destination.About.section)
+        assertEquals(Destination.Settings, Destination.Licenses.section)
         listOf(Destination.Tracker, Destination.Plan, Destination.Manage, Destination.Settings).forEach {
             assertEquals(it, it.section)
         }

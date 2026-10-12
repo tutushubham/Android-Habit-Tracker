@@ -369,6 +369,15 @@
     <string name="about_local">Your habit data is stored locally on your device.</string>
     <string name="about_data_title">Your data</string>
     <string name="about_data_text">Your habits and completion history are stored locally on your device. The app does not require an account or an internet connection to track your habits.</string>
+    <string name="about_legal_title">Legal and support</string>
+    <string name="about_privacy_policy">Privacy policy</string>
+    <string name="about_privacy_policy_desc">How your data is handled</string>
+    <string name="about_licenses">Open-source licences</string>
+    <string name="about_licenses_desc">Software this app is built with</string>
+    <string name="about_support">Contact support</string>
+    <string name="about_link_unavailable">Not available yet</string>
+    <string name="licenses_title">Open-source licences</string>
+    <string name="licenses_intro">Habit Sheet is built with these open-source components. Tap one to open its project page.</string>
     <string name="about_stays">Your habit data stays on your device.</string>
 
     <!-- Startup failure screen -->

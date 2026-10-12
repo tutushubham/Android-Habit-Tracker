@@ -58,7 +58,7 @@ fun SettingsScreen(
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.TopCenter) {
             Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()),
             ) {
                 SettingsSection(stringResource(Res.string.settings_plan_sync)) {
                     val draftInvalid = sheetDraft.isNotBlank() && SheetLink.canonicalize(sheetDraft) == null
@@ -182,12 +182,13 @@ private fun ThemeOption(label: String, mode: ThemeMode, current: ThemeMode, onSe
 }
 
 @Composable
-private fun SettingsActionItem(title: String, description: String, onClick: () -> Unit) {
+internal fun SettingsActionItem(title: String, description: String, onClick: () -> Unit, enabled: Boolean = true) {
     val navigateLabel = stringResource(Res.string.settings_navigate)
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(
+                enabled = enabled,
                 onClick = onClick,
                 role = Role.Button,
             )
