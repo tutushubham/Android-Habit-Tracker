@@ -45,6 +45,12 @@ sealed interface FaultAction {
 
     /** No route / DNS failure: an IOException before any response. */
     data object ConnectionFailure : FaultAction
+
+    /**
+     * The request reaches the server and is applied, but the reply never arrives (the connection drops, the app is
+     * killed mid-request). The client sees a timeout while the sheet has already changed.
+     */
+    data object LostResponse : FaultAction
 }
 
 /**
@@ -107,6 +113,7 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
         val call = RecordedCall(request.method.value, path, url.encodedQuery, body)
         calls += call
 
+        var lostResponse = false
         val fault = faults.firstOrNull { it.remaining > 0 && it.matches(call) }
         if (fault != null) {
             if (fault.skip > 0) {
@@ -114,9 +121,11 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
             } else {
                 fault.remaining--
                 when (val action = fault.action) {
-                    FaultAction.Timeout -> throw HttpRequestTimeoutException(url.toString(), 1)
+                    FaultAction.Timeout -> timedOut(url.toString())
 
                     FaultAction.ConnectionFailure -> throw kotlinx.io.IOException("Unable to resolve host")
+
+                    FaultAction.LostResponse -> lostResponse = true
 
                     is FaultAction.Status -> return respond(
                         action.body ?: """{"error":{"code":${action.code}}}""",
@@ -133,7 +142,7 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
             violations += reason
             return json(buildJsonObject { put("error", reason) }, HttpStatusCode.BadRequest)
         }
-        return when {
+        val response = when {
             call.isMetadata -> json(
                 buildJsonObject {
                     put(
@@ -210,7 +219,11 @@ class FakeSheetsServer(val spreadsheetId: String = "test-sheet") {
 
             else -> json(buildJsonObject { put("error", "unmodelled $call") }, HttpStatusCode.NotFound)
         }
+        if (lostResponse) timedOut(url.toString())
+        return response
     }
+
+    private fun timedOut(url: String): Nothing = throw HttpRequestTimeoutException(url, 1)
 
     /** Null if the write only touches the Plan tab; otherwise why it does not. */
     private fun writeViolation(call: RecordedCall): String? = when {
