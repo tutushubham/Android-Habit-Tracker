@@ -17,26 +17,27 @@ class PlanResolverPropertyTest {
     private data class Expected(val habitId: String, val id: String, val detail: String?, val skipped: Boolean)
 
     /** The documented precedence, written without sharing code with the implementation. */
-    private fun expected(snapshot: HabitSnapshot, date: LocalDate): List<Expected> {
-        val weekday = date.dayOfWeek.ordinal + 1 // Monday = 1
-        val result = mutableListOf<Expected>()
-        for (habit in snapshot.dailyHabits.sortedBy { it.displayOrder }) {
-            val started = date >= habit.createdOn
-            val ended = habit.archivedOn != null && date >= habit.archivedOn
-            val live = habit.active || habit.archivedOn != null
-            if (!started || ended || !live) continue
+    private fun expected(snapshot: HabitSnapshot, date: LocalDate): List<Expected> =
+        snapshot.dailyHabits.sortedBy { it.displayOrder }.filter { isLive(it, date) }.flatMap { sessionsOf(it, snapshot, date) }
 
-            val dated = snapshot.dayPlans.filter { it.habitId == habit.id && it.date == date }
-            val weekly = snapshot.weeklyPlans.firstOrNull { it.habitId == habit.id && it.weekday == weekday }
-            val hasAnySchedule = habit.datedOnly || snapshot.weeklyPlans.any { it.habitId == habit.id } || habit.id in snapshot.sheetManagedHabitIds
-            when {
-                dated.isNotEmpty() -> dated.forEach { result += Expected(habit.id, it.id, it.detail, it.skipped) }
-                weekly != null -> result += Expected(habit.id, "${habit.id}|$date", weekly.detail, false)
-                hasAnySchedule -> Unit
-                else -> result += Expected(habit.id, "${habit.id}|$date", null, false)
-            }
+    private fun isLive(habit: DailyHabit, date: LocalDate): Boolean {
+        val started = date >= habit.createdOn
+        val ended = habit.archivedOn != null && date >= habit.archivedOn
+        val live = habit.active || habit.archivedOn != null
+        return started && !ended && live
+    }
+
+    private fun sessionsOf(habit: DailyHabit, snapshot: HabitSnapshot, date: LocalDate): List<Expected> {
+        val weekday = date.dayOfWeek.ordinal + 1 // Monday = 1
+        val dated = snapshot.dayPlans.filter { it.habitId == habit.id && it.date == date }
+        val weekly = snapshot.weeklyPlans.firstOrNull { it.habitId == habit.id && it.weekday == weekday }
+        val hasAnySchedule = habit.datedOnly || snapshot.weeklyPlans.any { it.habitId == habit.id } || habit.id in snapshot.sheetManagedHabitIds
+        return when {
+            dated.isNotEmpty() -> dated.map { Expected(habit.id, it.id, it.detail, it.skipped) }
+            weekly != null -> listOf(Expected(habit.id, "${habit.id}|$date", weekly.detail, false))
+            hasAnySchedule -> emptyList()
+            else -> listOf(Expected(habit.id, "${habit.id}|$date", null, false))
         }
-        return result
     }
 
     private fun actual(snapshot: HabitSnapshot, date: LocalDate) =

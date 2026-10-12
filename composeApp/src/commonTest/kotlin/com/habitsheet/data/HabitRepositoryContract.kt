@@ -45,6 +45,7 @@ abstract class HabitRepositoryContract {
 
     private fun category(id: String, name: String = id, order: Int = 0, stamp: Long = 100) = Category(id, name, order, true, stamp)
 
+    @Suppress("LongParameterList")
     private fun habit(id: String, name: String = id, order: Int = 0, goal: Int = 10, categoryId: String? = null, stamp: Long = 100) =
         DailyHabit(id, name, categoryId, goal, order, true, LocalDate(2026, 9, 1), null, stamp, stamp)
 

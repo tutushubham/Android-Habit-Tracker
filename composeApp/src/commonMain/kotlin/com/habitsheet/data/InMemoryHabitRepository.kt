@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.LocalDate
 
+/** Monday = 1 .. Sunday = 7, as stored in `WeeklyPlan.weekday`. */
+private val WEEKDAYS = 1..7
+
 class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitRepository {
     private val mutableSnapshot = MutableStateFlow(initial)
     override val snapshot: StateFlow<HabitSnapshot> = mutableSnapshot.asStateFlow()
@@ -107,7 +110,9 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun saveWeeklyHabit(habit: WeeklyHabit) {
         val previous = mutableSnapshot.value.weeklyHabits.firstOrNull { it.id == habit.id }?.updatedAtEpochMillis
         mutableSnapshot.value = mutableSnapshot.value.copy(
-            weeklyHabits = mutableSnapshot.value.weeklyHabits.upsert(habit.copy(updatedAtEpochMillis = monotonicUpdatedAt(habit.updatedAtEpochMillis, previous))) { it.id },
+            weeklyHabits = mutableSnapshot.value.weeklyHabits.upsert(
+                habit.copy(updatedAtEpochMillis = monotonicUpdatedAt(habit.updatedAtEpochMillis, previous)),
+            ) { it.id },
         )
     }
 
@@ -174,7 +179,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     }
 
     override suspend fun saveWeeklyPlan(plan: WeeklyPlan) {
-        require(plan.weekday in 1..7 && plan.detail.isNotBlank())
+        require(plan.weekday in WEEKDAYS && plan.detail.isNotBlank())
         val previous = mutableSnapshot.value.weeklyPlans.firstOrNull { it.habitId == plan.habitId && it.weekday == plan.weekday }?.updatedAtEpochMillis
         val stored = plan.copy(updatedAtEpochMillis = monotonicUpdatedAt(plan.updatedAtEpochMillis, previous))
         mutableSnapshot.value = mutableSnapshot.value.copy(weeklyPlans = mutableSnapshot.value.weeklyPlans.upsert(stored) { it.habitId to it.weekday })
