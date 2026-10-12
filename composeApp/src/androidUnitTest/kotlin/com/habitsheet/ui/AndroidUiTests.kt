@@ -19,6 +19,14 @@ import com.habitsheet.ui.UiScenarios.theDayAndMonthSwitchExposesWhichModeIsSelec
 import com.habitsheet.ui.UiScenarios.theFirstRunTutorialShowsOnceAndSkippingItIsRemembered
 import com.habitsheet.ui.UiScenarios.theSheetLinkIsValidatedWhileTypingAndConnectNeedsAValidLink
 import com.habitsheet.ui.UiScenarios.theThemeOptionsExposeWhichOneIsSelected
+import com.habitsheet.ui.UiScenariosMore.aFailedSetAsideShowsTheReasonAndDoesNotRestartTheApp
+import com.habitsheet.ui.UiScenariosMore.aboutRowsAreDisabledWithoutLinksAndWorkOnceTheyAreSet
+import com.habitsheet.ui.UiScenariosMore.aboutRowsAreEnabledWithLinksAndLicencesOpen
+import com.habitsheet.ui.UiScenariosMore.atTwiceTheTextSizeTargetsKeepTheirMinimumSizeAndStillWork
+import com.habitsheet.ui.UiScenariosMore.deletingAnArchivedHabitNeedsConfirmationAndCancelKeepsIt
+import com.habitsheet.ui.UiScenariosMore.theDarkThemeRendersTheMonthScreenAndItsCellsAreStillLabelled
+import com.habitsheet.ui.UiScenariosMore.theLicencesScreenListsEveryNoticeItIsGiven
+import com.habitsheet.ui.UiScenariosMore.theStartupFailureScreenOffersThreeActionsAndResettingNeedsConfirmation
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -82,4 +90,28 @@ class AndroidUiTests {
 
     @Test
     fun theDayAndMonthSwitchExposesWhichModeIsSelected() = runComposeUiTest { theDayAndMonthSwitchExposesWhichModeIsSelected() }
+
+    @Test
+    fun theStartupFailureScreenOffersThreeActionsAndResettingNeedsConfirmation() = runComposeUiTest { theStartupFailureScreenOffersThreeActionsAndResettingNeedsConfirmation() }
+
+    @Test
+    fun aFailedSetAsideShowsTheReasonAndDoesNotRestartTheApp() = runComposeUiTest { aFailedSetAsideShowsTheReasonAndDoesNotRestartTheApp() }
+
+    @Test
+    fun aboutRowsAreDisabledWithoutLinksAndWorkOnceTheyAreSet() = runComposeUiTest { aboutRowsAreDisabledWithoutLinksAndWorkOnceTheyAreSet() }
+
+    @Test
+    fun aboutRowsAreEnabledWithLinksAndLicencesOpen() = runComposeUiTest { aboutRowsAreEnabledWithLinksAndLicencesOpen() }
+
+    @Test
+    fun theLicencesScreenListsEveryNoticeItIsGiven() = runComposeUiTest { theLicencesScreenListsEveryNoticeItIsGiven() }
+
+    @Test
+    fun deletingAnArchivedHabitNeedsConfirmationAndCancelKeepsIt() = runComposeUiTest { deletingAnArchivedHabitNeedsConfirmationAndCancelKeepsIt() }
+
+    @Test
+    fun atTwiceTheTextSizeTargetsKeepTheirMinimumSizeAndStillWork() = runComposeUiTest { atTwiceTheTextSizeTargetsKeepTheirMinimumSizeAndStillWork() }
+
+    @Test
+    fun theDarkThemeRendersTheMonthScreenAndItsCellsAreStillLabelled() = runComposeUiTest { theDarkThemeRendersTheMonthScreenAndItsCellsAreStillLabelled() }
 }

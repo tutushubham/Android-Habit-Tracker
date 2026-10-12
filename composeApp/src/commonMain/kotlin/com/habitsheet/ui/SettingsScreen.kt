@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -168,7 +169,9 @@ private fun ThemeOption(label: String, mode: ThemeMode, current: ThemeMode, onSe
             .clickable(
                 onClick = { onSelect(mode) },
                 onClickLabel = selectLabel,
+                role = Role.RadioButton,
             )
+            .semantics { selected = current == mode }
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

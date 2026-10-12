@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -217,7 +218,7 @@ private fun ModeSwitcherItem(
     modifier: Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier.fillMaxHeight().semantics { this.selected = selected },
         shape = RoundedCornerShape(9.dp),
         color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
         shadowElevation = if (selected) 1.dp else 0.dp,
