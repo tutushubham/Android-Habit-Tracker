@@ -51,8 +51,10 @@ import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SubtleProgress
 import com.habitsheet.ui.categoryColor
+import com.habitsheet.ui.fullDateLabel
 import com.habitsheet.ui.percentLabel
 import com.habitsheet.ui.weekdayLabel
+import com.habitsheet.ui.weekdayName
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -171,7 +173,7 @@ internal fun DailyHabitGrid(
             }
             SummaryLabel(stringResource(Res.string.grid_done), summaryHeight)
             SummaryLabel(stringResource(Res.string.grid_miss), summaryHeight)
-            SummaryLabel("%", summaryHeight)
+            SummaryLabel(stringResource(Res.string.grid_percent), summaryHeight)
         }
         Column(Modifier.weight(1f).horizontalScroll(scrollState)) {
             Row(Modifier.height(headerHeight)) {
@@ -202,7 +204,7 @@ internal fun DailyHabitGrid(
                                 description = stringResource(
                                     if (completedCount == 1) Res.string.cell_planned_complete else Res.string.cell_planned_incomplete,
                                     summary.habit.name,
-                                    date.toString(),
+                                    date.fullDateLabel(),
                                 ),
                                 width = cellWidth,
                                 height = rowHeight,
@@ -214,7 +216,7 @@ internal fun DailyHabitGrid(
                                 val progressDescription = stringResource(
                                     Res.string.cell_sessions_progress,
                                     summary.habit.name,
-                                    date.toString(),
+                                    date.fullDateLabel(),
                                     completedCount,
                                     planned.size,
                                 )
@@ -256,7 +258,7 @@ internal fun monthGridLayout(maxWidth: Dp): MonthGridLayout {
 
 @Composable
 private fun NotPlannedCell(name: String, date: LocalDate, width: Dp, height: Dp) {
-    val description = stringResource(Res.string.cell_not_planned, name, date.toString())
+    val description = stringResource(Res.string.cell_not_planned, name, date.fullDateLabel())
     Box(
         Modifier
             .width(width)
@@ -277,11 +279,11 @@ private fun NotPlannedCell(name: String, date: LocalDate, width: Dp, height: Dp)
 private fun DateHeader(date: LocalDate, current: Boolean, width: Dp, onClick: () -> Unit) {
     val indicatorColor = MaterialTheme.colorScheme.primary
     val dateDescription = if (current) {
-        stringResource(Res.string.date_header_today, date.dayOfWeek.name, date.day)
+        stringResource(Res.string.date_header_today, date.weekdayName(), date.day)
     } else {
-        stringResource(Res.string.date_header, date.dayOfWeek.name, date.day)
+        stringResource(Res.string.date_header, date.weekdayName(), date.day)
     }
-    val openPlanLabel = stringResource(Res.string.date_open_plan, date.toString())
+    val openPlanLabel = stringResource(Res.string.date_open_plan, date.fullDateLabel())
 
     Column(
         Modifier

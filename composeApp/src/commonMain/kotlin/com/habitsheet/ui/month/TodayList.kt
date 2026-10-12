@@ -43,6 +43,8 @@ import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SectionLabel
 import com.habitsheet.ui.SubtleProgress
+import com.habitsheet.ui.dayMonthLabel
+import com.habitsheet.ui.fullDayLabel
 import com.habitsheet.ui.monthName
 import com.habitsheet.ui.percentLabel
 import kotlinx.datetime.LocalDate
@@ -69,7 +71,7 @@ internal fun TodayModeContent(
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        "${state.selectedDay.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}, ${state.selectedDay.day} ${state.selectedMonth.monthName()}",
+                        state.selectedDay.fullDayLabel(),
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier.padding(top = 4.dp),
                     )
@@ -140,7 +142,7 @@ internal fun TodayModeContent(
                 stringResource(
                     Res.string.today_next_header,
                     stringResource(if (state.selectedDay == state.today) Res.string.today_tomorrow else Res.string.today_next_day),
-                    "${nextDate.day} ${MonthKey.from(nextDate).monthName()}",
+                    nextDate.dayMonthLabel(),
                 ),
                 Modifier.padding(top = 32.dp, bottom = 8.dp),
             )

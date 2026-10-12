@@ -29,6 +29,7 @@ import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitIcon
 import com.habitsheet.ui.HabitIconGlyph
 import com.habitsheet.ui.HabitSheetTheme
+import com.habitsheet.ui.monthName
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -56,22 +57,17 @@ internal fun MonthYearPickerDialog(
         },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                val months = listOf(
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December",
-                )
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    months.forEachIndexed { index, name ->
-                        val m = index + 1
+                    for (m in 1..12) {
                         val selected = current.year == year && current.month == m
                         FilterChip(
                             selected = selected,
                             onClick = { onSelect(MonthKey(year, m)) },
-                            label = { Text(name) },
+                            label = { Text(MonthKey(year, m).monthName()) },
                         )
                     }
                 }

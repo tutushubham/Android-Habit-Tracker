@@ -44,7 +44,7 @@ fun ShareImageContent(
         )
 
         Text(
-            text = formatFullDate(summary.date),
+            text = summary.date.fullDayLabel(),
             style = MaterialTheme.typography.headlineMedium,
             color = Color.White,
             modifier = Modifier.padding(top = 4.dp),
@@ -239,14 +239,3 @@ fun SharePreviewScreen(
         }
     }
 }
-
-private fun formatFullDate(date: LocalDate): String {
-    val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
-    val monthName = monthNames[date.month.ordinal]
-    return "$dayName, ${date.day} $monthName"
-}
-
-private val monthNames = listOf(
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-)

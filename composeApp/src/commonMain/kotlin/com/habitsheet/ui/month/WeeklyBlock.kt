@@ -100,7 +100,7 @@ internal fun WeeklySection(
                 SummaryLabel(stringResource(Res.string.grid_done), 36.dp)
                 SummaryLabel(stringResource(Res.string.grid_left), 36.dp)
                 SummaryLabel(stringResource(Res.string.grid_goal), 36.dp)
-                SummaryLabel("%", 36.dp)
+                SummaryLabel(stringResource(Res.string.grid_percent), 36.dp)
             }
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                 state.weeklyBlocks.forEach { block ->

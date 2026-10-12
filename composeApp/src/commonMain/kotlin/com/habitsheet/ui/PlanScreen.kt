@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.domain.model.DailyHabit
-import com.habitsheet.domain.model.MonthKey
+import com.habitsheet.platform.localeFirstDayOfWeek
 import com.habitsheet.presentation.DestructiveAction
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.resources.*
@@ -56,6 +56,7 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val weekdays = weekdayLabels()
+    val firstDay = remember { localeFirstDayOfWeek() }
     var weeklyMode by remember { mutableStateOf(false) }
     var editor by remember { mutableStateOf<PlanEditor?>(null) }
     var pendingRemoval by remember { mutableStateOf<Pair<DestructiveAction, () -> Unit>?>(null) }
@@ -89,7 +90,7 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
                 }
                 if (!weeklyMode || sheetUrl.isNotBlank()) {
                     Text(
-                        "${selectedDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}, ${selectedDate.day} ${MonthKey.from(selectedDate).monthName()} ${selectedDate.year}",
+                        selectedDate.fullDateLabel(),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 18.dp),
                     )
@@ -138,7 +139,7 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
                     if (activeHabits.isEmpty()) Text(stringResource(Res.string.plan_create_habit_first))
                     activeHabits.forEach { habit ->
                         Text(habit.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
-                        (1..7).forEach { weekday ->
+                        weekdayNumbersFrom(firstDay).forEach { weekday ->
                             val plan = state.weeklyPlans.firstOrNull { it.habitId == habit.id && it.weekday == weekday }
                             PlanRow(weekdays[weekday - 1], plan?.detail ?: stringResource(Res.string.plan_rest_none)) { editor = PlanEditor(habit, weekday) }
                         }
@@ -157,7 +158,7 @@ fun PlanScreen(viewModel: MonthViewModel, onBack: () -> Unit, showBack: Boolean 
             val isWeekly = selected.weekday != null
             AlertDialog(
                 onDismissRequest = { editor = null },
-                title = { Text("${selected.habit.name} · ${if (isWeekly) weekdays[selected.weekday - 1] else selectedDate}") },
+                title = { Text("${selected.habit.name} · ${if (isWeekly) weekdays[selected.weekday - 1] else selectedDate.fullDateLabel()}") },
                 text = {
                     Column {
                         OutlinedTextField(
