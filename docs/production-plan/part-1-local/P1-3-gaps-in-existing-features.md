@@ -53,7 +53,7 @@ Reminders/notifications and an iOS widget are **not implemented** and **not part
 2. **[DONE 2026-10-12]** **Locale-correct formatting.** Dates, month names, weekday names, percentages and numbers via locale-aware formatting (kotlinx-datetime formatting + platform locale; avoid concatenated English). First day of week: respect locale (Monday vs Sunday) — check `MonthKey`/`MonthEngine` assumptions (workbook uses 5 seven-day blocks; keep the model, localise only labels).
 > Step 2 result: month names, full/short weekday names, weekday initials and the date shapes (`date_weekday_day_month[_year]`, `date_day_month`, `percent_value`) are catalog strings, so the platform language picks them and a translator can reorder them (`UiFormatting.kt`). The Plan screen lists weekdays from the device's first day of the week (`localeFirstDayOfWeek()`, `weekdayNumbersFrom`); stored weekdays (1 = Monday) and the five-block month are unchanged. Accessibility descriptions that used ISO dates (`2026-10-12`) and upper-case enum names (`MONDAY 12`) now speak the full local date. Digits stay ASCII on purpose (sheet, CSV and backups use them; no screen shows a decimal separator). Only English is shipped: adding `values-xx/` is now translation work, not code.
 
-3. **Accessibility pass.**
+3. **[DONE in code 2026-10-12; screen-reader/device checks owed, see `docs/accessibility-checklist.md`]** **Accessibility pass.**
    - Every icon-only button: `contentDescription`.
    - Month grid cells and checkboxes: role, state, and a descriptive label; reading order sensible (date → habit → state).
    - Minimum 48dp (Android) / 44pt (iOS) touch targets for tappable cells (use `minimumInteractiveComponentSize` or padding).

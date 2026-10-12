@@ -83,6 +83,13 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **Platform:** iOS builds the shared text from the catalog (`getString`); Android's share-sheet title is an Android string. The widget keeps `widget_strings.xml`.
 - **Copy-change policy:** moving text must not change it. `verbatim` check used in P1-3 step 1: compare each catalog string with the literals of the previous commit (see ADR 0005).
 
+## Facts from P1-3 step 3 (accessibility) that later plans must respect
+
+- **Contrast:** `ThemeContrastTest` guards AA for the theme tokens (4.5:1 text, 3:1 control boundaries); `LightColors`/`DarkColors` are `internal` for it. Use `onPrimary` on `primary`, never `Color.White`; category colours come from `categoryColor()` (a composable using theme tokens).
+- **Cells:** grid cells are `toggleable(role = Checkbox)` with `cell_label` = "<habit>, <date>"; decorative glyphs use `clearAndSetSemantics {}`. Minimum cell width is 48dp (`MIN_CELL_WIDTH`).
+- **Sizes:** use `scaledForText(dp)` for fixed row heights that hold text; `rememberReduceMotion()` before starting any animation of our own.
+- Checklist and what is still owed on devices: `docs/accessibility-checklist.md`.
+
 ## Audit findings (the source for every plan)
 
 Legend: **V** = verified by reading code/config; **I** = inferred.

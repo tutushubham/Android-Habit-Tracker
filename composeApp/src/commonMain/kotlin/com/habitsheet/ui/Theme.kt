@@ -22,7 +22,7 @@ val HabitGreenDark = Color(0xFF8BD79B)
 val HabitSlate = Color(0xFF475569)
 val HabitTertiary = Color(0xFF71717A)
 
-private val LightColors = lightColorScheme(
+internal val LightColors = lightColorScheme(
     primary = Color(0xFF166534),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFDCFCE7),
@@ -38,12 +38,12 @@ private val LightColors = lightColorScheme(
     onSurface = Color(0xFF0F172A),
     surfaceVariant = Color(0xFFF8FAFC),
     onSurfaceVariant = Color(0xFF64748B),
-    outline = Color(0xFFCBD5E1),
+    outline = Color(0xFF8190A5),
     outlineVariant = Color(0xFFF1F5F9),
-    error = Color(0xFFEF4444),
+    error = Color(0xFFB91C1C),
 )
 
-private val DarkColors = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = Color(0xFF4ADE80),
     onPrimary = Color(0xFF064E3B),
     primaryContainer = Color(0xFF064E3B),
@@ -59,7 +59,7 @@ private val DarkColors = darkColorScheme(
     onSurface = Color(0xFFF8FAFC),
     surfaceVariant = Color(0xFF0F172A),
     onSurfaceVariant = Color(0xFF94A3B8),
-    outline = Color(0xFF334155),
+    outline = Color(0xFF5B6676),
     outlineVariant = Color(0xFF1E293B),
     error = Color(0xFFF87171),
 )

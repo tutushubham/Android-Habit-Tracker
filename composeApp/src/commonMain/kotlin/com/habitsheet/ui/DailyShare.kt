@@ -25,10 +25,19 @@ interface ShareService {
     fun shareDailySummary(summary: DailyShareSummary)
 }
 
+/** The image always has a dark background, so it always uses the dark colours (text contrast). */
 @Composable
 fun ShareImageContent(
     summary: DailyShareSummary,
     modifier: Modifier = Modifier,
+) {
+    HabitSheetTheme(darkTheme = true) { ShareImageBody(summary, modifier) }
+}
+
+@Composable
+private fun ShareImageBody(
+    summary: DailyShareSummary,
+    modifier: Modifier,
 ) {
     Column(
         modifier = modifier

@@ -21,11 +21,11 @@ class MonthLayoutRulesTest {
     }
 
     @Test
-    fun dayCellsFitTheMonthBetween28And44Dp() {
-        assertEquals(36.dp, monthGridLayout(1000.dp).cellWidth(0))
-        assertEquals(28.dp, monthGridLayout(360.dp).cellWidth(31), "a phone scrolls; cells stay tappable")
-        assertEquals(44.dp, monthGridLayout(2000.dp).cellWidth(30), "a wide tablet does not stretch cells")
-        assertEquals(30.dp, monthGridLayout(1130.dp).cellWidth(31))
+    fun dayCellsAreAtLeast48DpForTouchAndAtMost56() {
+        assertEquals(48.dp, monthGridLayout(1000.dp).cellWidth(0))
+        assertEquals(48.dp, monthGridLayout(360.dp).cellWidth(31), "a phone scrolls; cells stay tappable")
+        assertEquals(56.dp, monthGridLayout(2000.dp).cellWidth(30), "a wide tablet does not stretch cells")
+        assertEquals(48.dp, monthGridLayout(1130.dp).cellWidth(31))
     }
 
     private fun habit(name: String, category: String?, kind: HabitKind = HabitKind.ACTION) =

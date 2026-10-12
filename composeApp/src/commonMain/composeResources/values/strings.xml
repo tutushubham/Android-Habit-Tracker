@@ -173,10 +173,9 @@
     <string name="grid_goal">GOAL</string>
     <string name="grid_habit">HABIT</string>
     <string name="grid_legend">□ planned incomplete · ✓ complete · · not planned · 1/2 multiple (tap day)</string>
-    <string name="cell_planned_complete">%1$s, %2$s: planned, complete</string>
-    <string name="cell_planned_incomplete">%1$s, %2$s: planned, incomplete</string>
-    <string name="cell_not_planned">%1$s, %2$s: not planned</string>
-    <string name="cell_sessions_progress">%1$s, %2$s: %3$d of %4$d complete</string>
+    <string name="cell_label">%1$s, %2$s</string>
+    <string name="cell_not_planned">%1$s, %2$s, not planned</string>
+    <string name="cell_sessions_progress">%1$s, %2$s, %3$d of %4$d complete</string>
     <string name="date_header_today">Today, %1$s %2$d</string>
     <string name="date_header">%1$s %2$d</string>
     <string name="date_open_plan">Open plan for %1$s</string>

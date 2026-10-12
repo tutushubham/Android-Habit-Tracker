@@ -34,6 +34,7 @@ import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.SectionLabel
 import com.habitsheet.ui.monthName
 import com.habitsheet.ui.percentLabel
+import com.habitsheet.ui.scaledForText
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -80,14 +81,14 @@ internal fun WeeklySection(
                         drawLine(dividerColor, Offset(size.width, 0f), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
                     },
             ) {
-                Box(Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
+                Box(Modifier.fillMaxWidth().height(scaledForText(40.dp)).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
                     Text(stringResource(Res.string.grid_habit), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 state.weeklyHabits.forEach { habit ->
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(scaledForText(52.dp))
                             .drawBehind {
                                 drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
                             }
@@ -97,16 +98,16 @@ internal fun WeeklySection(
                         Text(habit.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                SummaryLabel(stringResource(Res.string.grid_done), 36.dp)
-                SummaryLabel(stringResource(Res.string.grid_left), 36.dp)
-                SummaryLabel(stringResource(Res.string.grid_goal), 36.dp)
-                SummaryLabel(stringResource(Res.string.grid_percent), 36.dp)
+                SummaryLabel(stringResource(Res.string.grid_done), scaledForText(36.dp))
+                SummaryLabel(stringResource(Res.string.grid_left), scaledForText(36.dp))
+                SummaryLabel(stringResource(Res.string.grid_goal), scaledForText(36.dp))
+                SummaryLabel(stringResource(Res.string.grid_percent), scaledForText(36.dp))
             }
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                 state.weeklyBlocks.forEach { block ->
                     Column(Modifier.width(weekWidth)) {
                         Row(
-                            Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 6.dp),
+                            Modifier.fillMaxWidth().height(scaledForText(40.dp)).padding(horizontal = 6.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -121,7 +122,7 @@ internal fun WeeklySection(
                             Box(
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(52.dp)
+                                    .height(scaledForText(52.dp))
                                     .drawBehind {
                                         drawLine(dividerColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 0.5.dp.toPx())
                                     },
@@ -138,15 +139,15 @@ internal fun WeeklySection(
                                         state.selectedMonth.monthName(),
                                     ),
                                     width = weekWidth,
-                                    height = 46.dp,
+                                    height = scaledForText(46.dp),
                                     onClick = { onToggleWeekly(habit.id, block.weekStartDate) },
                                 )
                             }
                         }
-                        SummaryValue(block.completed.toString(), 36.dp)
-                        SummaryValue(block.notCompleted.toString(), 36.dp)
-                        SummaryValue(block.goal.toString(), 36.dp)
-                        SummaryValue(block.percentage.percentLabel(), 36.dp)
+                        SummaryValue(block.completed.toString(), scaledForText(36.dp))
+                        SummaryValue(block.notCompleted.toString(), scaledForText(36.dp))
+                        SummaryValue(block.goal.toString(), scaledForText(36.dp))
+                        SummaryValue(block.percentage.percentLabel(), scaledForText(36.dp))
                     }
                 }
             }

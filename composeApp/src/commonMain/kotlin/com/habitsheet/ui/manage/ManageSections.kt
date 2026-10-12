@@ -242,7 +242,7 @@ private fun HabitMoveButton(name: String, up: Boolean, onClick: (() -> Unit)?) {
     IconButton(
         onClick = { onClick?.invoke() },
         enabled = onClick != null,
-        modifier = Modifier.size(44.dp).semantics { contentDescription = moveLabel },
+        modifier = Modifier.size(48.dp).semantics { contentDescription = moveLabel },
     ) {
         HabitIcon(if (up) HabitIconGlyph.Up else HabitIconGlyph.Down, Modifier.size(20.dp), MaterialTheme.colorScheme.onSurfaceVariant)
     }

@@ -1,7 +1,10 @@
 package com.habitsheet.ui
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.resources.*
@@ -50,14 +53,21 @@ internal fun Double.percentLabel(): String = stringResource(Res.string.percent_v
  */
 internal fun weekdayNumbersFrom(first: DayOfWeek): List<Int> = (0 until DAYS_IN_WEEK).map { (first.ordinal + it) % DAYS_IN_WEEK + 1 }
 
+/** Theme tokens, so each colour keeps its contrast in light and dark. */
+@Composable
 internal fun categoryColor(category: Category?, all: List<Category>): Color {
     val index = all.indexOfFirst { it.id == category?.id }.coerceAtLeast(0)
+    val scheme = MaterialTheme.colorScheme
     return when (index % 3) {
-        0 -> HabitSlate
-        1 -> HabitGreen
-        else -> HabitTertiary
+        0 -> scheme.secondary
+        1 -> scheme.primary
+        else -> scheme.tertiary
     }
 }
+
+/** Fixed row heights grow with the text size (up to 200%) so enlarged text is not clipped. */
+@Composable
+internal fun scaledForText(base: Dp): Dp = base * LocalDensity.current.fontScale.coerceIn(1f, 2f)
 
 private const val DAYS_IN_WEEK = 7
 

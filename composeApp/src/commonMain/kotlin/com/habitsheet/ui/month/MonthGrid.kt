@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -35,6 +36,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.habitsheet.platform.rememberReduceMotion
 import com.habitsheet.presentation.MonthUiState
 import com.habitsheet.resources.*
 import com.habitsheet.ui.HabitSheetTheme
@@ -53,6 +56,7 @@ import com.habitsheet.ui.SubtleProgress
 import com.habitsheet.ui.categoryColor
 import com.habitsheet.ui.fullDateLabel
 import com.habitsheet.ui.percentLabel
+import com.habitsheet.ui.scaledForText
 import com.habitsheet.ui.weekdayLabel
 import com.habitsheet.ui.weekdayName
 import kotlinx.datetime.LocalDate
@@ -98,6 +102,7 @@ internal fun DailyHabitGrid(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
+    val reduceMotion = rememberReduceMotion()
     val dates = state.selectedMonth.dates()
     val density = LocalDensity.current
     // Only rows that have at least one planned session this month — hide never-planned clutter.
@@ -113,13 +118,14 @@ internal fun DailyHabitGrid(
             val currentScroll = scrollState.value
             val isVisible = currentScroll <= target && currentScroll >= target - (cellWidthPx * 3)
             if (state.scrollToTodayTrigger > 0 || (scrollState.value == 0 && !isVisible)) {
-                scrollState.animateScrollTo(target.coerceAtMost(scrollState.maxValue))
+                val position = target.coerceAtMost(scrollState.maxValue)
+                if (reduceMotion) scrollState.scrollTo(position) else scrollState.animateScrollTo(position)
             }
         }
     }
-    val rowHeight = 56.dp
-    val headerHeight = 44.dp
-    val summaryHeight = 32.dp
+    val rowHeight = scaledForText(56.dp)
+    val headerHeight = scaledForText(44.dp)
+    val summaryHeight = scaledForText(32.dp)
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
     Row(modifier.fillMaxWidth()) {
@@ -157,7 +163,7 @@ internal fun DailyHabitGrid(
                         Text(
                             category?.name?.uppercase() ?: stringResource(Res.string.category_general),
                             style = MaterialTheme.typography.labelSmall,
-                            color = categoryColor(category, state.categories).copy(alpha = 0.8f),
+                            color = categoryColor(category, state.categories),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -201,11 +207,7 @@ internal fun DailyHabitGrid(
                             1 -> CompletionCell(
                                 completed = completedCount == 1,
                                 currentDay = date == state.today,
-                                description = stringResource(
-                                    if (completedCount == 1) Res.string.cell_planned_complete else Res.string.cell_planned_incomplete,
-                                    summary.habit.name,
-                                    date.fullDateLabel(),
-                                ),
+                                description = stringResource(Res.string.cell_label, summary.habit.name, date.fullDateLabel()),
                                 width = cellWidth,
                                 height = rowHeight,
                                 onClick = { onTogglePlanned(planned.single().id, date) },
@@ -238,11 +240,15 @@ internal fun DailyHabitGrid(
     }
 }
 
+/** 48dp is the minimum comfortable touch target; narrower cells make the grid scroll further instead. */
+private val MIN_CELL_WIDTH = 48.dp
+private val MAX_CELL_WIDTH = 56.dp
+
 internal data class MonthGridLayout(val leftWidth: Dp, val availableForDays: Dp) {
     fun cellWidth(dayCount: Int): Dp {
-        if (dayCount <= 0) return 36.dp
+        if (dayCount <= 0) return MIN_CELL_WIDTH
         val fitted = availableForDays / dayCount
-        return fitted.coerceIn(28.dp, 44.dp)
+        return fitted.coerceIn(MIN_CELL_WIDTH, MAX_CELL_WIDTH)
     }
 }
 
@@ -271,6 +277,7 @@ private fun NotPlannedCell(name: String, date: LocalDate, width: Dp, height: Dp)
             "·",
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
             style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.clearAndSetSemantics {},
         )
     }
 }
@@ -323,7 +330,7 @@ private fun DateHeader(date: LocalDate, current: Boolean, width: Dp, onClick: ()
                 date.day.toString(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
-                color = if (current) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (current) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -337,70 +344,6 @@ internal fun MonthGridLegend(modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     )
-}
-
-@Composable
-internal fun CompletionCell(
-    completed: Boolean,
-    currentDay: Boolean,
-    enabled: Boolean = true,
-    description: String,
-    width: Dp,
-    height: Dp,
-    onClick: () -> Unit,
-) {
-    val haptic = LocalHapticFeedback.current
-    val statusDescription = stringResource(
-        when {
-            !enabled -> Res.string.status_not_planned
-            completed -> Res.string.status_completed
-            else -> Res.string.status_incomplete
-        },
-    )
-    val clickLabel = stringResource(if (completed) Res.string.mark_incomplete else Res.string.mark_complete)
-
-    Box(
-        Modifier
-            .width(width)
-            .height(height)
-            .background(
-                when {
-                    !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-                    currentDay -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                    else -> Color.Transparent
-                },
-            )
-            .semantics {
-                role = Role.Checkbox
-                contentDescription = description
-                stateDescription = statusDescription
-            }
-            .clickable(
-                enabled = enabled,
-                onClickLabel = clickLabel,
-            ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier
-                .size(22.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(if (completed && enabled) MaterialTheme.colorScheme.primary else Color.Transparent)
-                .border(
-                    BorderStroke(
-                        if (completed && enabled) 0.dp else 1.dp,
-                        if (completed && enabled) Color.Transparent else MaterialTheme.colorScheme.outlineVariant,
-                    ),
-                    RoundedCornerShape(6.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (completed && enabled) Text("✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
 }
 
 @Composable

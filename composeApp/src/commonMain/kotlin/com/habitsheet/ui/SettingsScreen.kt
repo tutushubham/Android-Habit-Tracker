@@ -2,6 +2,7 @@ package com.habitsheet.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -186,7 +187,7 @@ internal fun SettingsTopBar(
         Modifier
             .fillMaxWidth()
             .then(if (insetTop) Modifier.windowInsetsPadding(WindowInsets.statusBars) else Modifier)
-            .height(if (showBack) 64.dp else 72.dp)
+            .heightIn(min = if (showBack) 64.dp else 72.dp)
             .drawBehind {
                 drawLine(borderColor, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
             }
