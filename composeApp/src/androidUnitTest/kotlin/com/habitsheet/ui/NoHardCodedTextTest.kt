@@ -61,9 +61,10 @@ class NoHardCodedTextTest {
         assertEquals(emptySet(), used - names.toSet(), "used but not defined")
         assertEquals(emptySet(), names.toSet() - used, "defined but never used")
 
-        // Android-style escapes: a bare apostrophe or an unescaped ampersand breaks the resource compiler.
+        // XML, not Android resources: an unescaped ampersand breaks the file. Apostrophes are written as they are;
+        // a backslash before one would be shown on screen (see StringCatalogEscapesTest).
         val bad = Regex("""<string[^>]*>([^<]*)</string>""").findAll(text).map { it.groupValues[1] }
-            .filter { Regex("""(?<!\\)'""").containsMatchIn(it) || Regex("""&(?!amp;|lt;|gt;|quot;)""").containsMatchIn(it) }.toList()
+            .filter { Regex("""&(?!amp;|lt;|gt;|quot;)""").containsMatchIn(it) }.toList()
         assertEquals(emptyList(), bad)
     }
 }

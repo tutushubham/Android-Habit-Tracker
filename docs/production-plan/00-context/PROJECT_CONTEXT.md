@@ -76,7 +76,7 @@ Read this at the start of every plan session. It is the shared memory for all pl
 
 ## Facts from P1-3 step 1 (strings) that later plans must respect
 
-- **Copy is in `composeResources/values/strings.xml`.** Add text there, never as a literal in `ui/` (`NoHardCodedTextTest` fails). Escape `'` as `\'` and `&` as `&amp;`; keep leading/trailing spaces out of values (use format arguments); percent signs and plural handling follow `%1$d` / `%1$s` (pass an already-formatted string for a literal `%`).
+- **Copy is in `composeResources/values/strings.xml`.** Add text there, never as a literal in `ui/` (`NoHardCodedTextTest` fails). Write apostrophes and quotes as they are (the Compose resource plugin does **not** consume a backslash: `Couldn\'t` renders with the backslash; `StringCatalogEscapesTest` guards it) and `&` as `&amp;`; keep leading/trailing spaces out of values (use format arguments); percent signs and plural handling follow `%1$d` / `%1$s` (pass an already-formatted string for a literal `%`).
 - **Presentation returns `UiText`, not `String`:** `MonthUiState.error`, `ManageHabitsViewModel.error`, `SettingsViewModel.sheetMessage`, `SyncStatus.text`, `SheetSyncState.message`, `ConfirmationText.*`, `BackupResult.message`, `BackupService.importBackup(onFailure: (UiText) -> Unit)`. Data stays `Raw`. `SyncError.userMessage()` and `SyncWarning.describe()` return `UiText`; `SyncError.MalformedPlanTab.problem` (`PlanTabProblem`) carries both the user text and the English `logText` (kept in logs and in `reason`).
 - **Tests:** compare `UiText` values for behaviour; use `English.render(...)` when the wording matters. `DestructiveCallSitesTest`, `UiStructureTest`, `NoHardCodedTextTest` all scan `ui/**` and will fail on structure or literals.
 - **Dates (P1-3 step 2):** month/weekday names and date shapes are catalog strings (`ui/UiFormatting.kt`: `monthName()`, `weekdayName()`, `fullDayLabel()`, `fullDateLabel()`, `dayMonthLabel()`, `percentLabel()`; all `@Composable`). First day of week for labels: `platform/localeFirstDayOfWeek()` (Calendar / NSCalendar), used by the Plan screen's weekly list only. Digits stay ASCII by design. **Not translated by design:** logs, the CSV header, `BackupValidator` diagnostics, token-provider technical messages.
@@ -100,6 +100,13 @@ Read this at the start of every plan session. It is the shared memory for all pl
 - **System chrome:** `SystemBarsStyle(themeMode, darkTheme)` in `HabitSheetApp`; Android calls `enableEdgeToEdge` with the app's own style, iOS sets `overrideUserInterfaceStyle`.
 - **About:** `AppLinks.Default` is blank until B3 (rows disabled, "Not available yet"); `openSourceNotices` is checked against `libs.versions.toml` by `OpenSourceNoticesTest`; `Destination.Licenses` has parent About.
 - **Do not "fix":** 48dp grid cells (`MIN_CELL_WIDTH`), `outline` tokens used for control borders (`ThemeContrastTest`), `scaledForText` heights, `Color.White` only on the always-dark tutorial scrim/share image.
+
+## Facts from P2 steps 1-7 that later plans must respect
+
+- **Test fixtures** (`commonTest/.../testing/`): `FakeDateProvider`, `FakeLogger`, `buildSnapshot { }`, `randomSnapshot(random, month)` (seeded property tests), `FailingHabitStore`, `FakeSheetsServer` (with `FaultAction.LostResponse`), `English.render`. `HabitRepositoryContract` runs on SQLite and on `InMemoryHabitRepository`: a new store method needs a contract test.
+- **Atomicity:** `AtomicWritesTest` fails every statement of every multi-row write; a new multi-row write goes in its list.
+- **UI tests:** `commonTest/.../ui/UiScenarios*.kt` (`ComposeUiTest` extensions over `UiWorld`: real ViewModels on an unconfined scope, fake clock = Monday 12 October 2026). Android: `AndroidUiTests` under Robolectric API 34 (JDK 17 cannot run 35). iOS: `IosUiTests` [mac]. Scroll with `performScrollTo()` before tapping on scrolling screens (the Robolectric screen is 320x470dp). Add a scenario, then one `@Test` line in each runner.
+- **Strings:** see the copy rule above. Selected state: radio rows and the Day/Month switch expose `selected` (`theThemeOptionsExposeWhichOneIsSelected`).
 
 ## Audit findings (the source for every plan)
 

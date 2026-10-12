@@ -109,7 +109,10 @@ val generateEnglishCatalog by tasks.registering {
     outputs.dir(outDir)
     doLast {
         val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stringsXml.asFile)
-        fun unescape(raw: String) = raw.replace("\\'", "'").replace("\\\"", "\"").replace("\\n", "\n")
+
+        // Only what the Compose resource plugin itself converts: it keeps a backslash before an apostrophe or quote
+        // (StringCatalogEscapesTest keeps those out of strings.xml), so the catalog must not hide one.
+        fun unescape(raw: String) = raw.replace("\\n", "\n")
         fun literal(text: String) = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("\n", "\\n") + "\""
         val strings = StringBuilder()
         val plurals = StringBuilder()

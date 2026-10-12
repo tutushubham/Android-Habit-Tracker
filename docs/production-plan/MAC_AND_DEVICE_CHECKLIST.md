@@ -116,3 +116,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 3. File each failure as a bug with the section number above; fix before starting P2 (or carry them into P2 step 7–9
    as UI/instrumented tests that pin the fix).
 4. Then continue with `part-1-local/P2-testing.md` (its section 0 lists what to start from).
+
+## Added in P2 step 7
+
+- [ ] On a device and on the iOS simulator, open Settings, Data and Backup, About and a destructive confirmation and read the texts that contain apostrophes ("Couldn't ...", "can't open its data", "Delete 'Name' ..."): no backslash anywhere (fixed in code, see PROGRESS.md).
+- [ ] `./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.ui.IosUiTests"` on the Mac (25 shared UI scenarios; run with English and a phone-sized simulator).

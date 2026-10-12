@@ -20,6 +20,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -162,11 +163,14 @@ object UiScenariosMore {
         val action = DestructiveAction.delete(habit, world.repository.snapshot.value)
         onNode(inDialog(English.render(action.confirmation.title))).assertExists()
         onNode(inDialog(English.render(action.confirmation.message))).assertExists()
-        onNode(inDialog(text(Res.string.action_cancel))).performClick()
+        // The editor is still open under the confirmation, so there are two Cancel and two Delete buttons: the
+        // confirmation is the one on top, which is the last in the tree.
+        onAllNodes(inDialog(text(Res.string.action_cancel))).onLast().performClick()
         assertEquals(2, world.repository.snapshot.value.dailyHabits.size, "cancel deletes nothing")
 
+        onNode(inDialog(English.render(action.confirmation.title))).assertDoesNotExist()
         onNode(inDialog(text(Res.string.action_delete))).performClick()
-        onNode(inDialog(English.render(action.confirmation.confirmLabel))).performClick()
+        onAllNodes(inDialog(English.render(action.confirmation.confirmLabel))).onLast().performClick()
         assertEquals(listOf("run"), world.repository.snapshot.value.dailyHabits.map { it.id })
         world.close()
     }
