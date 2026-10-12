@@ -509,4 +509,8 @@
     <string name="plan_text_category_sleep">Sleep 💤</string>
     <string name="plan_text_category_career">Career 💼</string>
     <string name="plan_text_category_study">Study 📚</string>
+
+    <!-- Daily reminder notification -->
+    <string name="reminder_title">Habit Sheet</string>
+    <string name="reminder_body">Time to check off today’s habits.</string>
 </resources>

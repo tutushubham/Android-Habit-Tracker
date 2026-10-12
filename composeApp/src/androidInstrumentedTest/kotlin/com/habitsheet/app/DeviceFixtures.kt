@@ -16,3 +16,17 @@ internal fun s(resource: StringResource, vararg args: Any): String = runBlocking
 internal fun deleteAppDatabase() {
     targetContext.deleteDatabase(AndroidDriverFactory.DATABASE_NAME)
 }
+
+/**
+ * Waits until [condition] holds, for work the system does on its own schedule without a callback to wait on
+ * (a posted notification appears in the system server shortly after `notify`). Polls up to [timeoutMillis]; this
+ * waits for a condition, not a fixed time. Returns whether it held.
+ */
+internal fun waitUntil(timeoutMillis: Long = 5_000, condition: () -> Boolean): Boolean {
+    val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+    while (!condition()) {
+        if (System.nanoTime() > deadline) return false
+        java.util.concurrent.locks.LockSupport.parkNanos(10_000_000)
+    }
+    return true
+}

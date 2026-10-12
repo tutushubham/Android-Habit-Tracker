@@ -10,7 +10,9 @@ import com.habitsheet.data.DriverFactory
 import com.habitsheet.data.LocalHabitRepository
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.ReminderPlatform
 import com.habitsheet.presentation.BackupViewModel
+import com.habitsheet.presentation.DailyReminders
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
@@ -24,11 +26,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class AppGraph(
     driverFactory: DriverFactory,
     tokenProvider: SheetTokenProvider,
     val logger: Logger = NoOpLogger,
+    reminderPlatform: ReminderPlatform = ReminderPlatform.NONE,
 ) : ViewModelStoreOwner {
     /**
      * The ViewModels live exactly as long as this graph: they are created on first use (see [viewModelProviderFactory]) and
@@ -41,6 +45,7 @@ class AppGraph(
     val repository = LocalHabitRepository(driverFactory)
     val sheetSync = SheetSync(repository, repository, serializedTokens, logger = logger)
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val dailyReminders = DailyReminders(repository, reminderPlatform, logger)
 
     // "Will sync when online": while offline with check-offs still waiting, retry on its own (30 s, doubling to 5 min).
     private val syncScheduler = SyncScheduler(
@@ -73,6 +78,11 @@ class AppGraph(
 
     val monthViewModel: MonthViewModel get() = ViewModelProvider.create(this, defaultFactory)[MonthViewModel::class]
     val settingsViewModel: SettingsViewModel get() = ViewModelProvider.create(this, defaultFactory)[SettingsViewModel::class]
+
+    init {
+        // An Android reboot or update drops alarms, and the language may have changed: schedule the reminder again.
+        syncScope.launch { dailyReminders.restore() }
+    }
 
     fun syncOnForeground() = syncScheduler.syncNow()
 

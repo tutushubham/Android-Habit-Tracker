@@ -3,6 +3,7 @@ package com.habitsheet
 import com.habitsheet.data.DriverFactory
 import com.habitsheet.platform.Logger
 import com.habitsheet.platform.NoOpLogger
+import com.habitsheet.platform.ReminderPlatform
 import com.habitsheet.platform.e
 import com.habitsheet.platform.runCatchingCancellable
 import com.habitsheet.sync.SheetTokenProvider
@@ -25,7 +26,8 @@ object AppStartup {
         driverFactory: DriverFactory,
         tokenProvider: SheetTokenProvider,
         logger: Logger = NoOpLogger,
-    ): StartupState = runCatchingCancellable { AppGraph(driverFactory, tokenProvider, logger) }
+        reminders: ReminderPlatform = ReminderPlatform.NONE,
+    ): StartupState = runCatchingCancellable { AppGraph(driverFactory, tokenProvider, logger, reminders) }
         .fold(
             onSuccess = { StartupState.Ready(it) },
             onFailure = {

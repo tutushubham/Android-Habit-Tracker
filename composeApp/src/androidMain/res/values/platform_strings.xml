@@ -2,4 +2,7 @@
 <resources>
     <!-- Text shown by Android itself (system share sheet title). All in-app text is in commonMain composeResources. -->
     <string name="share_chooser_title">Share Today\'s Habits</string>
+    <!-- Notification channel for the daily reminder (shown in Android's app notification settings). -->
+    <string name="reminder_channel_name">Daily reminder</string>
+    <string name="reminder_channel_description">One reminder a day to check off your habits.</string>
 </resources>

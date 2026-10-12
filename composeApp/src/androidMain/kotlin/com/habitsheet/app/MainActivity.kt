@@ -16,7 +16,10 @@ import androidx.lifecycle.lifecycleScope
 import com.habitsheet.AppGraph
 import com.habitsheet.AppStartup
 import com.habitsheet.StartupState
+import com.habitsheet.app.reminders.AndroidNotificationPermission
+import com.habitsheet.app.reminders.AndroidReminderScheduler
 import com.habitsheet.app.widget.HabitWidgetUpdater
+import com.habitsheet.platform.ReminderPlatform
 import com.habitsheet.ui.HabitSheetApp
 import com.habitsheet.ui.HabitSheetTheme
 import com.habitsheet.ui.StartupFailureScreen
@@ -30,6 +33,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var logger: AndroidLogger
     private lateinit var tokenProvider: AndroidSheetTokenProvider
+    private lateinit var reminders: ReminderPlatform
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +42,7 @@ class MainActivity : ComponentActivity() {
         AndroidLogger.installUncaughtExceptionLogger(logger)
         // Everything that registers an activity-result launcher is created once, here, whether or not the database opens.
         tokenProvider = AndroidSheetTokenProvider(this, logger)
+        reminders = ReminderPlatform(AndroidReminderScheduler(this), AndroidNotificationPermission(this))
         val shareService = AndroidShareService(this)
         val backupService = AndroidBackupService(this, logger)
         val recovery = AndroidStartupRecovery(this, logger)
@@ -60,7 +65,7 @@ class MainActivity : ComponentActivity() {
 
     /** Opens the database and builds the app. On failure the recovery screen is shown instead of crashing. */
     private fun start() {
-        val result = AppStartup.create(AndroidDriverFactory(applicationContext), tokenProvider, logger)
+        val result = AppStartup.create(AndroidDriverFactory(applicationContext), tokenProvider, logger, reminders)
         graph = (result as? StartupState.Ready)?.graph
         startup = result
         if (graph != null && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) onForeground()

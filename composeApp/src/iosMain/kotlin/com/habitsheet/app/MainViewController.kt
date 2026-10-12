@@ -18,6 +18,7 @@ import com.habitsheet.StartupState
 import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.platform.IosLogger
 import com.habitsheet.platform.Logger
+import com.habitsheet.platform.ReminderPlatform
 import com.habitsheet.resources.Res
 import com.habitsheet.resources.share_text_progress
 import com.habitsheet.resources.share_text_title
@@ -45,7 +46,8 @@ fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewControl
     val logger = remember { IosLogger() }
     var attempt by remember { mutableIntStateOf(0) }
     // Opening the database (and migrating it) can fail; then the recovery screen replaces the app.
-    val startup = remember(attempt) { AppStartup.create(IosDriverFactory(), tokenProvider, logger) }
+    val reminders = remember { ReminderPlatform(IosReminderScheduler(), IosNotificationPermission()) }
+    val startup = remember(attempt) { AppStartup.create(IosDriverFactory(), tokenProvider, logger, reminders) }
     val hostController = LocalUIViewController.current
     when (startup) {
         is StartupState.Failed -> {

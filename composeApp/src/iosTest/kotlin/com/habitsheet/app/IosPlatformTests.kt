@@ -10,6 +10,7 @@ import com.habitsheet.data.LocalHabitRepository
 import com.habitsheet.data.RepositoryHandle
 import com.habitsheet.database.HabitsDatabase
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.platform.IosLogger
 import com.habitsheet.platform.LogLevel
@@ -142,5 +143,19 @@ class IosLoggerTest {
         val logger = IosLogger()
         logger.log(LogLevel.ERROR, "Tag", "100% done %@ %s %d %n", IllegalStateException("boom %@"))
         logger.log(LogLevel.INFO, "Tag", "plain", null)
+    }
+}
+
+class IosReminderRequestTest {
+    @Test
+    fun theDailyRequestRepeatsAtTheReminderTimeUnderOneFixedIdentifier() {
+        val request = dailyReminderRequest(DailyReminder(7 * 60 + 30), "Habit Sheet", "Time to check off today’s habits.")
+        assertEquals(DAILY_REMINDER_ID, request.identifier)
+        assertEquals("Habit Sheet", request.content.title)
+        assertEquals("Time to check off today’s habits.", request.content.body)
+        val trigger = assertIs<platform.UserNotifications.UNCalendarNotificationTrigger>(request.trigger)
+        assertTrue(trigger.repeats)
+        assertEquals(7L, trigger.dateComponents.hour)
+        assertEquals(30L, trigger.dateComponents.minute)
     }
 }

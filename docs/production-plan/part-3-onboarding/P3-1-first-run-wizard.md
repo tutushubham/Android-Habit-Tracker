@@ -138,7 +138,7 @@ Each phase: failing tests first, own commit(s), `/feature-definition-of-done` pa
 - [x] Phase 1 — domain: `domain/plan` (models, `PlanSource`, four templates, `PlanInvariants`, `PlanMerger`), plan wording in the catalog (`plan_text_*`, `PlanTextResources`), `MAX_DAILY_HABITS` in `domain/model/Limits.kt`. Property test found and fixed: short plans could leave a session habit with no sessions.
 - [x] Phase 2 — data: `HabitStore.applyPlan` (atomic, additive, idempotent, consistency checked first) on SQLite and in-memory; `DailyReminder` device setting (`daily_reminder_minute`), cleared by reset; contract, atomic-write and snapshot-parity tests.
 - [x] Phase 3 — sync: `SheetsApi.createSpreadsheet` (one `Plan` tab, never retried; lost reply or 5xx → `SyncError.CreateUnconfirmed`), `SheetSetup` (createAndLink / linkExisting), `planTabId()` so any blank Plan tab is formatted on first upload; `FakeSheetsServer` models creation; `SheetSetupTest` incl. a fault at every request. Settings still uses its own connect (left as is: same behaviour, no need to churn).
-- [ ] Phase 4 — reminders
+- [x] Phase 4 — reminders: `ReminderScheduler` / `NotificationPermission` / `ReminderPlatform` (common), `DailyReminders` (permission → store → schedule; restored at every start); Android inexact repeating alarm + `ReminderReceiver` (notification, reschedule on boot/update/clock/zone) + Android 13 permission; iOS `UNCalendarNotificationTrigger` with a fixed id. Device test found: cancel left the PendingIntent alive (fixed). The Settings reminder row moves to phase 5 with the rest of the UI.
 - [ ] Phase 5 — presentation + UI
 - [ ] Phase 6 — scenario, device and screenshot tests
 - [ ] Phase 7 — docs

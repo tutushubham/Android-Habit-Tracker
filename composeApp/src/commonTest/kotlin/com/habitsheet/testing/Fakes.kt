@@ -1,7 +1,11 @@
 package com.habitsheet.testing
 
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.platform.LogLevel
 import com.habitsheet.platform.Logger
+import com.habitsheet.platform.NotificationPermission
+import com.habitsheet.platform.NotificationPermissionStatus
+import com.habitsheet.platform.ReminderScheduler
 import com.habitsheet.platform.formatLogLine
 import com.habitsheet.presentation.DateProvider
 import kotlinx.datetime.DatePeriod
@@ -49,4 +53,47 @@ class FakeLogger : Logger {
 
     /** Everything a platform logger would print: tag, message and the redacted throwable summary. */
     fun printed(): String = entries.joinToString("\n") { "${it.tag} ${formatLogLine(it.message, it.throwable)}" }
+}
+
+/** Records what would be scheduled; [scheduled] is null when nothing is. */
+class FakeReminderScheduler : ReminderScheduler {
+    data class Scheduled(val reminder: DailyReminder, val title: String, val body: String)
+
+    var scheduled: Scheduled? = null
+        private set
+    var calls = 0
+        private set
+
+    override fun schedule(reminder: DailyReminder, title: String, body: String) {
+        calls++
+        scheduled = Scheduled(reminder, title, body)
+    }
+
+    override fun cancel() {
+        calls++
+        scheduled = null
+    }
+}
+
+/** The permission as the person would answer: [answer] is what [request] returns (and makes [status]). */
+class FakeNotificationPermission(
+    var current: NotificationPermissionStatus = NotificationPermissionStatus.NOT_ASKED,
+    var answer: Boolean = true,
+) : NotificationPermission {
+    var requests = 0
+        private set
+    var settingsOpened = 0
+        private set
+
+    override suspend fun status() = current
+
+    override suspend fun request(): Boolean {
+        requests++
+        current = if (answer) NotificationPermissionStatus.GRANTED else NotificationPermissionStatus.DENIED
+        return answer
+    }
+
+    override fun openSystemSettings() {
+        settingsOpened++
+    }
 }
