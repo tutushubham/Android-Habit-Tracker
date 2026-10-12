@@ -106,9 +106,9 @@ xcodebuild test -scheme iosApp ...                   # [mac], XCUITest smoke
 - [x] Coverage report with agreed thresholds enforced (`verifyCoverageFloors`, part of `check`; floors = measured minus 2).
 - [x] Domain, data, sync, ViewModel and UI layers each have meaningful tests; failure paths covered.
 - [x] Instrumented + iOS smoke tests exist (written without a device; they compile).
-  - [ ] They pass on your machines (`MAC_AND_DEVICE_CHECKLIST.md` 1.1, 1.4, 1.5).
+  - [x] They pass on your machines (`MAC_AND_DEVICE_CHECKLIST.md` 1.1, 1.4, 1.5). (2026-10-12)
 - [x] Release-APK smoke test script exists (`scripts/android/release_smoke.py`; its parser self-test passes and its build step was run).
-  - [ ] It passes on an emulator (`MAC_AND_DEVICE_CHECKLIST.md` 1.5).
+  - [x] It passes on an emulator (`MAC_AND_DEVICE_CHECKLIST.md` 1.5). (2026-10-12)
 - [x] `docs/TESTING.md` written; bugs found are fixed with regression tests.
 - [x] `PROGRESS.md` ticked as [Done*] → **Part 1 exit gate** review (`MAC_AND_DEVICE_CHECKLIST.md` section 5).
 

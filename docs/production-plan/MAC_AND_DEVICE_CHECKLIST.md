@@ -43,17 +43,17 @@ is the app, it is a bug (failing test first, separate commit).
 ./gradlew check
 ```
 
-- [ ] `check` is green. It runs: JVM tests, schema-migration verification, Android lint, Spotless, detekt, the
+- [x] `check` is green (2026-10-12, Mac, Xcode 26.6, JDK 17). It runs: JVM tests, schema-migration verification, Android lint, Spotless, detekt, the
   coverage floors, **and on a Mac the common + iOS tests on the simulator**. Windows result at the end of P2:
-  **548 JVM tests**, package floors 97/97/97/92/70/19 and total 75 %, measured 99.3/99.3/99.6/94.6/72.0/21.4/77.1. Mac result: JVM tests = →  ; iOS simulator tests = →  .
-- [ ] The iOS simulator test report (`composeApp/build/reports/tests/iosSimulatorArm64Test/index.html`) shows these
+  **548 JVM tests**, package floors 97/97/97/92/70/19 and total 75 %, measured 99.3/99.3/99.6/94.6/72.0/21.4/77.1. Mac result: JVM tests = → **548, 0 failed**; iOS simulator tests = → **421, 0 failed** (measured 99.3/99.3/99.6/94.6/72.0/21.4/77.1, floors met). The first Mac run had 3 iOS failures, all test assumptions, fixed (PROGRESS session log).
+- [x] The iOS simulator test report (`composeApp/build/reports/tests/iosSimulatorArm64Test/index.html`) shows these
   classes and their results (they were written without a Mac and compile but have never run):
-  - `IosRepositoryContractTest` (the repository contract on the native SQLite driver) → 
-  - `IosDriverTest` (**answers: does the iOS driver enforce foreign keys?**) → 
+  - `IosRepositoryContractTest` (the repository contract on the native SQLite driver) → pass (`restoringReplaces…` had used the repository closed by `reopen()`; test fixed)
+  - `IosDriverTest` (**answers: does the iOS driver enforce foreign keys?**) → **yes, it enforces them** (test passes)
   - `IosStartupRecoveryTest` (**answers: where the native driver puts `habit-sheet.db`, and that recovery finds
-    it**) → 
-  - `IosUiTests` (the 25 shared Compose scenarios; they assume English and a phone-sized simulator) → 
-- [ ] Anything that fails only here is an iOS-only difference: note it, classify (test assumption / real bug).
+    it**) → `Library/Application Support/databases/habit-sheet.db` in the app container (inside the searched list); the driver opens lazily, so the test now runs a statement first; recovery finds and moves it. Pass.
+  - `IosUiTests` (the 25 shared Compose scenarios; they assume English and a phone-sized simulator) → 25/25 pass. The test window is 1024 dp wide, which selects the tablet layout (no bottom tabs), so `showMonthScreen` now renders in a 412×892 dp box.
+- [x] Anything that fails only here is an iOS-only difference: note it, classify (test assumption / real bug).
 
 ### 1.2 Android builds
 
@@ -61,22 +61,22 @@ is the app, it is a bug (failing test first, separate commit).
 ./gradlew :composeApp:assembleDebug :composeApp:assembleRelease :composeApp:bundleRelease
 ```
 
-- [ ] Debug, release (R8) and the bundle build. APK size → ; mapping file kept per `docs/RELEASING.md`.
+- [~] Debug APK builds (17 MB). Release/bundle stop at `checkReleaseSigning` without `keystore.properties`, by design: **[you]** run once with your keystore. The R8 release APK was built with the throwaway key and smoke-tested (1.5): 3.5 MB.
 
 ### 1.3 iOS simulator build and archive
 
 ```bash
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator \
-  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+  -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build   # arm64 only: no x86_64 Kotlin slice
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Release \
   -destination 'generic/platform=iOS' -archivePath build/HabitSheet.xcarchive \
   -allowProvisioningUpdates archive
 ```
 
-- [ ] The simulator build links (first link since P1-3 added `IosBackupService`, `IosSystemBars`, `IosReduceMotion`,
-  `IosFirstDayOfWeek`). → 
-- [ ] The archive succeeds with your team (needs `Local.xcconfig`). The ICU linker warning (data built for iOS 18.5
-  vs deployment target 15.0) is expected; copy it here. → 
+- [x] The simulator build links (first link since P1-3 added `IosBackupService`, `IosSystemBars`, `IosReduceMotion`,
+  `IosFirstDayOfWeek`). → links (needs `ARCHS=arm64`; the generic destination also builds x86_64 and fails in `syncComposeResourcesForIos`).
+- [x] The archive succeeds with your team (needs `Local.xcconfig`). The ICU linker warning (data built for iOS 18.5
+  vs deployment target 15.0) is expected; copy it here. → **ARCHIVE SUCCEEDED** with the team from `Local.xcconfig`. The ICU linker warning shows on the simulator build, as expected.
 - [ ] **[you]** Open the archive in Xcode Organizer → Validate App passes; privacy report matches
   `PrivacyInfo.xcprivacy` (section 2).
 
@@ -87,14 +87,15 @@ gem install xcodeproj                              # once
 ruby scripts/ios/add_ui_test_target.rb             # adds target iosAppUITests + scheme entry, idempotent
 git diff --stat iosApp/                            # review: project.pbxproj and the shared scheme only
 xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp \
-  -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:iosAppUITests
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO \
+  -only-testing:iosAppUITests
 ```
 
-- [ ] The script runs and the project still opens in Xcode (the script was written without a Mac). → 
-- [ ] `AppSmokeUITests` passes: add a habit, check it off, home, activate. The test assumes Compose exposes the
+- [x] The script runs and the project still opens in Xcode (the script was written without a Mac). → yes after one fix (`PRODUCT_NAME` was empty: "Multiple commands produce -Runner.app"); target and scheme are committed.
+- [x] `AppSmokeUITests` passes: add a habit, check it off, home, activate. The test assumes Compose exposes the
   row's state as the element's accessibility value ("Completed") and the English labels; if only the value
-  assertion fails, look at what the element reports (`po app.debugDescription`) and adjust the test, not the app. → 
-- [ ] If it worked, **commit** the pbxproj/scheme change and the (possibly adjusted) test: they become part of the
+  assertion fails, look at what the element reports (`po app.debugDescription`) and adjust the test, not the app. → **passes**, and on the way found a real bug: `IosLogger` crashed the app at the first log line (PROGRESS). The test needed text views (not text fields) and the goal field. The "Completed" value works as assumed.
+- [x] If it worked, **commit** the pbxproj/scheme change and the (possibly adjusted) test: they become part of the
   repository from then on.
 
 ### 1.5 Android emulator (also works from the Mac)
@@ -107,13 +108,13 @@ adb devices                                        # exactly one emulator; use a
 python3 scripts/android/release_smoke.py           # builds the release APK, installs, drives first run to restart
 ```
 
-- [ ] `AppSmokeTest` (first run, add habit, check off, rotate, recreate, relaunch) → 
-- [ ] `WidgetToggleTest` (real broadcast to the widget provider) → 
-- [ ] `BackupServiceTest` (export/import through a registry that answers the pickers) → 
-- [ ] `DatabaseMigrationOnDeviceTest`: every released schema upgrades in place → ; **foreign keys on the
-  Android driver** (`theDriverEnforcesForeignKeys…`) → 
+- [ ] `AppSmokeTest` (first run, add habit, check off, rotate, recreate, relaunch) → pass (API 36.1 emulator; needed espresso-core 3.7.0 and a wait for the saved habit)
+- [ ] `WidgetToggleTest` (real broadcast to the widget provider) → pass
+- [ ] `BackupServiceTest` (export/import through a registry that answers the pickers) → pass
+- [ ] `DatabaseMigrationOnDeviceTest`: every released schema upgrades in place → pass; **foreign keys on the
+  Android driver** (`theDriverEnforcesForeignKeys…`) → **enforced** (pass). 12/12 device tests.
 - [ ] `release_smoke.py` passes on the R8 build (it selects UI by English text and `uiautomator dump`; if it cannot
-  find a label, the output lists what was visible). → 
+  find a label, the output lists what was visible). → **PASSED** 6/6 (start, tutorial, add, check off, restart, no crash in log).
 
 ### 1.6 Informational: screenshot goldens
 
@@ -123,11 +124,11 @@ python3 scripts/android/release_smoke.py           # builds the release APK, ins
 
 - [ ] The 30 goldens were recorded on Windows. On macOS tiny font/anti-aliasing differences are **expected**; a
   failure here is not a bug. Look at `composeApp/build/outputs/roborazzi` (run with `-Proborazzi.test.compare=true`)
-  only to confirm the differences are sub-pixel. **Never re-record the goldens on the Mac.** → 
+  only to confirm the differences are sub-pixel. **Never re-record the goldens on the Mac.** → all 30 differ on macOS, as predicted; goldens untouched.
 
 ### 1.7 Leave the tree clean
 
-- [ ] `git status`: only intentional changes (the pbxproj/scheme/test from 1.4, bug fixes, this file's results).
+- [x] `git status`: only intentional changes (the pbxproj/scheme/test from 1.4, bug fixes, this file's results).
   No goldens, no `Local.xcconfig`, no `keystore.properties`.
 
 ## 2. iOS release path `[mac]` (P0-C)
@@ -211,21 +212,21 @@ python3 scripts/android/release_smoke.py           # builds the release APK, ins
 
 Do this last, when sections 1–4 are done and every bug they found is fixed.
 
-- [ ] **[auto] Clean clone builds and passes.** In an empty directory (this proves nothing depends on files that
+- [x] **[auto] Clean clone builds and passes.** In an empty directory (this proves nothing depends on files that
   are only on your machine):
   ```bash
   git clone "$(git -C <your repo> remote get-url origin)" /tmp/habitsheet-clean && cd /tmp/habitsheet-clean
   cp <your repo>/iosApp/Config/Local.xcconfig iosApp/Config/        # not in git, needed by the iOS build
   ./gradlew check :composeApp:assembleRelease                        # release needs keystore.properties or HABITSHEET_*
   ```
-  → 
-- [ ] **[auto]** No personal strings or IDs in tracked files (expect only the `.example` placeholders and the
+  → clean clone of the committed state: `./gradlew check :composeApp:assembleDebug` BUILD SUCCESSFUL (548 JVM + 421 iOS tests, floors met); `assembleRelease` needs your keystore, not run there.
+- [x] **[auto]** No personal strings or IDs in tracked files (expect only the `.example` placeholders and the
   intentional legacy cleanup constant): 
   ```bash
   git grep -nE "<your Apple team id>|<your client id number>|apps.googleusercontent.com" -- . ':!docs' ':!personal'
   git ls-files | grep -iE "xlsx|keystore|\.jks|Local\.xcconfig$|local\.properties"     # expect only keystore.properties.example
   ```
-  → 
+  → only `Local.xcconfig.example` placeholder and `keystore.properties.example` are tracked.
 - [ ] **[you]** Fresh install on a phone **and** an iPad: neutral app, no personal data, tutorial once (3.1, 4).
 - [ ] **[you]** Update-over-install on your own phone and iPad keeps your data and your sheet syncs both ways
   (P0-A step 9, P1-1 steps 9–10).
