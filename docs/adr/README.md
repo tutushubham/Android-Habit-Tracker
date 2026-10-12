@@ -10,3 +10,4 @@ numbered in order; a superseded record stays and points to its replacement.
 | [0003](0003-navigation-back-stack.md) | A small hierarchical back stack instead of Navigation Compose | accepted |
 | [0004](0004-no-di-framework.md) | Hand-written composition root (`AppGraph`), no DI framework | accepted |
 | [0005](0005-strings-in-resources-and-uitext.md) | Copy in Compose resources; presentation emits `UiText` | accepted |
+| [0006](0006-plan-sources-and-first-run-wizard.md) | Plan sources (bundled templates now), additive plans, the first-run wizard, reminders | accepted |

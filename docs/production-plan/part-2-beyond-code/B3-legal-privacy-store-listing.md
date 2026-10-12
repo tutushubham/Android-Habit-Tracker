@@ -10,6 +10,7 @@ Goal: everything the stores and Google require before review: privacy policy, da
 - Google user data: OAuth access token (not persisted by the app; platform libraries manage sessions); scope `spreadsheets`.
 - Backups: user-initiated JSON/CSV export; Android Auto Backup of the DB is disabled (P0-C).
 - Sensitive-ish content: habit names, notes about health/fitness/ADHD habits typed by the user — it is user-generated data stored in their own sheet; the privacy policy must say it is never accessed by the developer.
+- Added by P3-1 (2026-10-12): the setup wizard can **create a spreadsheet** in the person's Drive (same `spreadsheets` scope; say so in the policy and the OAuth consent description), and the app shows a **daily local notification** if the person turns it on (Android `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`; iOS notification authorisation). Notifications are scheduled on the device only; no push service, nothing leaves the device. Store data-safety answers: no change to "data collected".
 - Children: not targeted; set an age rating accordingly (likely 4+/Everyone, verify questionnaires).
 - Apple Sign-In rule (App Store Review Guideline 4.8) and account deletion rule (5.1.1(v)): Google is used only to authorise Sheets access, there is no app account — confirm with current guideline text; be ready to explain in review notes.
 - Reviewers must be able to use core features **without** signing in (local-only mode works) — state this in review notes.

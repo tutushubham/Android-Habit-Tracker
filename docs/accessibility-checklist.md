@@ -69,6 +69,12 @@ Tick when done; write what you saw next to each item.
 - [ ] Reduce Motion on: tapping "today" in the grid jumps without scrolling animation.
 - [ ] iOS compile of `IosReduceMotion.kt` and `IosFirstDayOfWeek.kt` (`UIAccessibilityIsReduceMotionEnabled`).
 
+### First-run setup wizard (P3-1)
+- [ ] TalkBack / VoiceOver: "Step 3 of 7" is announced when the step changes; each step title is a heading; goal cards read name then description; preview rows read "<habit>, … checkbox, checked"; the date and time pickers are usable.
+- [ ] Back (system back / edge swipe) goes to the previous step; on the first step it asks "Skip setup?".
+- [ ] 200% text: every step scrolls, nothing clipped; buttons stay at least 48 dp.
+- [ ] Android 13+: the notification permission dialog appears from "Turn on reminder"; refusing it shows "Open settings".
+
 ### Visual / size
 - [ ] **Look at the new grid**: 48dp cells and the stronger checkbox border change how the month looks. If it feels too sparse, the cell width is `MIN_CELL_WIDTH` in `month/MonthGrid.kt` (and `MonthLayoutRulesTest`); WCAG AA itself only requires 24dp.
 - [ ] Font size 200% (Android: Settings → Display → Font size, largest + Display size; iOS: Larger Text): Month grid, weekly block, Today list, Settings, Habits editor, dialogs. Note any clipped text.

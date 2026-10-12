@@ -39,11 +39,13 @@ Compose Multiplatform UI is shared across Android and iOS.
 
 **Accessibility and chrome** (P1-3): grid cells are `toggleable` checkboxes (≥ 48dp) with a "<habit>, <date>" label and a state; theme tokens are guarded by `ThemeContrastTest`; fixed row heights use `scaledForText`; `rememberReduceMotion()` gates our own animations; `SystemBarsStyle` keeps Android bar icons and the iOS interface style in step with the app theme. Details and device checks: `docs/accessibility-checklist.md`. **About** reads `AppLinks` (blank until B3) and shows `openSourceNotices` on `Destination.Licenses`.
 
+**First-run setup wizard** (ADR 0006): `OnboardingViewModel` walks Welcome → Goal → Questions → Preview → Reminder → Sheet → Done on `Destination.Onboarding` (`ui/onboarding/`). A goal's plan comes from a `PlanSource` (`domain/plan`: bundled templates, `PlanInvariants`, `PlanMerger`) and is added with `HabitStore.applyPlan` in one transaction; the sheet step uses `SheetSetup` (create a spreadsheet or link one, then the normal first sync); the reminder step uses `DailyReminders` over the platform `ReminderPlatform`. It opens on a fresh install (not completed, no habits), from Settings ("Set up a new plan") and from the empty tracker.
+
 **Backup flow:** `BackupViewModel.pickBackup` validates a chosen file without changing anything and returns a `BackupPreview`; `restore` applies it in one transaction after the person confirmed. iOS shares/opens real files (`IosBackupService`: `UIActivityViewController`, `UIDocumentPickerViewController`).
 
 **Screens** are split into an entry composable that collects ViewModel state and leaf composables that take plain values and lambdas: `ui/month/` (`MonthScreen`, `MonthHeader`, `MonthGrid`, `MonthSummary`, `WeeklyBlock`, `TodayList`, `MonthYearPickerDialog`; callbacks bundled in `MonthActions`) and `ui/manage/` (`ManageHabitsScreen`, `ManageSections`, `HabitEditorDialog`, `CategoryEditorDialog`). Every leaf file has `@Preview`s (sample data in `MonthPreviewData`); `UiStructureTest` enforces this and the 500-line limit for `ui/` and `data/`.
 
-**ViewModels** (ADR 0002): the four ViewModels (`MonthViewModel`, `ManageHabitsViewModel`, `SettingsViewModel`, `BackupViewModel`) are `androidx.lifecycle.ViewModel`s (KMP artifacts). `AppGraph` is their `ViewModelStoreOwner` and provides the factory (`viewModelProviderFactory(backupService)`); `HabitSheetApp(graph, …)` obtains them with `viewModel(viewModelStoreOwner = graph, factory = …)` and screens collect state with `collectAsStateWithLifecycle()`. They live as long as the graph (cleared in `AppGraph.close()`), which on Android is the Activity's: they are not retained across an Activity re-creation because the token provider is bound to the Activity. Their work runs in `viewModelScope`'s job on `Dispatchers.Default` (`ViewModel.backgroundScope()`), so repository calls stay off the main thread. `MonthViewModel` and `ManageHabitsViewModel` combine repository state with pure calculations into immutable UI state; `MonthViewModel` combines typed groups (`Selection`, `Chrome`) with the snapshot into an `@Immutable` `MonthUiState` (`MonthStateWiringTest` pins which input feeds which field). Width-based layout primitives size the month grid and day plan; phone vs tablet is a breakpoint on available width, not device-specific business logic. The month grid shows only habits planned in that month and marks unplanned days as non-actionable (not empty checkboxes).
+**ViewModels** (ADR 0002): the five ViewModels (`MonthViewModel`, `ManageHabitsViewModel`, `SettingsViewModel`, `BackupViewModel`, `OnboardingViewModel`) are `androidx.lifecycle.ViewModel`s (KMP artifacts). `AppGraph` is their `ViewModelStoreOwner` and provides the factory (`viewModelProviderFactory(backupService)`); `HabitSheetApp(graph, …)` obtains them with `viewModel(viewModelStoreOwner = graph, factory = …)` and screens collect state with `collectAsStateWithLifecycle()`. They live as long as the graph (cleared in `AppGraph.close()`), which on Android is the Activity's: they are not retained across an Activity re-creation because the token provider is bound to the Activity. Their work runs in `viewModelScope`'s job on `Dispatchers.Default` (`ViewModel.backgroundScope()`), so repository calls stay off the main thread. `MonthViewModel` and `ManageHabitsViewModel` combine repository state with pure calculations into immutable UI state; `MonthViewModel` combines typed groups (`Selection`, `Chrome`) with the snapshot into an `@Immutable` `MonthUiState` (`MonthStateWiringTest` pins which input feeds which field). Width-based layout primitives size the month grid and day plan; phone vs tablet is a breakpoint on available width, not device-specific business logic. The month grid shows only habits planned in that month and marks unplanned days as non-actionable (not empty checkboxes).
 
 ## Module boundaries
 
@@ -53,7 +55,8 @@ The project intentionally uses one shared application module rather than many Gr
 - `domain.calculation`: workbook formula translation
 - `domain.repository`: data contract (`HabitStore`, `SettingsStore`, `BackupStore`, their union `HabitRepository`)
 - `domain.backup`: backup format v1–v4, validation, `Sha256`
-- `platform`: `Logger`, `runCatchingCancellable`
+- `domain.plan`: plan templates behind `PlanSource`, `PlanInvariants`, `PlanMerger` (pure; ADR 0006)
+- `platform`: `Logger`, `runCatchingCancellable`, the reminder interfaces (`ReminderScheduler`, `NotificationPermission`)
 - `data`: SQLDelight mapping (`RowMappers`), `LocalDatabase`, the local repository and its parts, `DatabaseFileNames`
 - `presentation`: UI state and view models
 - `ui`: shared Compose screens and design system; `ui.navigation` (back stack), `ui.month`, `ui.manage` (split screens)
@@ -62,9 +65,10 @@ The project intentionally uses one shared application module rather than many Gr
   - `PlanTable`: parse/serialize the `Plan` tab (pure)
   - `PlanReconciler`: pure function from local snapshot + remote rows + pending flags to a `ReconcileResult` (habit identity, renames, deletions, completions to apply or upload)
   - `SheetSync`: orchestration (token, API calls, reconcile, one `applySheetSync`)
+  - `SheetSetup`: the wizard's sheet step (create a spreadsheet with one `Plan` tab, or link one; then the first sync)
   - `SyncScheduler`: debounces triggers (2.5 s), one follow-up run, immediate on foreground / Sync now, automatic retry while offline with pending check-offs
   - `SyncError` / `SerializingTokenProvider`: typed failures with user messages; queues platform sign-in requests
-- `androidMain` / `iosMain`: database drivers, platform entry points, backup and startup-recovery implementations, loggers, and the Google authorization bridge
+- `androidMain` / `iosMain`: database drivers, platform entry points, backup and startup-recovery implementations, loggers, the Google authorization bridge, and the daily reminder (`app/reminders/` on Android: alarm, receiver, permission; `IosReminders.kt`)
 - `androidMain/.../widget`: the home-screen widget. `HabitWidgetLogic` (what it lists, what a tap writes) works on a `HabitStore`; `runWidgetWork` opens the app's own database for one action under the widget lock, always closes it, gives up after 8 s (inside the broadcast window of `goAsync()`) and turns any failure (for example a damaged database) into the widget's "unavailable" state instead of a crash. Widget check-offs set the pending-upload flag like the app's; they do not start a sync themselves.
 
 ## Sync limits
@@ -85,4 +89,4 @@ Dependabot PRs (`.github/dependabot.yml`).
 
 ## Decisions
 
-Architecture decision records live in `docs/adr/`: Google Sheet as the backend (0001), lifecycle ViewModels (0002), the navigation back stack (0003), no DI framework (0004), strings in resources and `UiText` (0005).
+Architecture decision records live in `docs/adr/`: Google Sheet as the backend (0001), lifecycle ViewModels (0002), the navigation back stack (0003), no DI framework (0004), strings in resources and `UiText` (0005), plan sources and the first-run wizard (0006).

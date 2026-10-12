@@ -7,7 +7,7 @@ what was found along the way is in `docs/production-plan/PROGRESS.md`.
 
 | Layer | Where | Runs on | What it proves |
 |---|---|---|---|
-| Domain and calculations | `commonTest/.../domain` | JVM, iOS simulator | Plan resolution, month arithmetic, workbook figures, backup format. Includes seeded property tests (300 seeds each). |
+| Domain and calculations | `commonTest/.../domain` | JVM, iOS simulator | Plan resolution, month arithmetic, workbook figures, backup format, plan templates (`PlanGeneratorPropertyTest`: every template keeps `PlanInvariants` for random answers) and `PlanMerger`. Includes seeded property tests (300 seeds each). |
 | Repository | `commonTest/.../data` (`HabitRepositoryContract`), `androidUnitTest/.../data` | JVM; the contract also on the iOS simulator | Every store method on real SQLite and on the in-memory double, idempotent upserts, cascades, monotonic `updated_at`, migrations from every released schema, atomic writes (`AtomicWritesTest` fails every statement of every multi-row write). |
 | Sync | `commonTest/.../sync` | JVM, iOS simulator | `FakeSheetsServer` (a stand-in for the Sheets API): every typed error at every request, retry and backoff on virtual time, the scheduler, conflict rule, foreign tabs untouched, recovery equals a clean sync. |
 | ViewModels | `commonTest/.../presentation` | JVM, iOS simulator | State, navigation, toggling, rollover, and the message for every failure. |
@@ -77,6 +77,13 @@ Fixtures (`commonTest/.../testing`):
 - `FakeLogger`: assert what is logged, and that user text is not.
 - `FakeSheetsServer`: faults (`fail`, `failCallNumber`, `FaultAction.LostResponse`) and `violations` (writes outside the
   Plan tab).
+- `FakeSheetsServer` also models creating a spreadsheet (`isCreate`, `spreadsheetsCreated`, `createdTitles`); a new
+  spreadsheet may only have the `Plan` tab.
+- `FakeReminderScheduler` / `FakeNotificationPermission`: what would be scheduled, and the person's answer to the
+  permission dialog. `UiWorld.onboarding` is the wizard's ViewModel with them and a `FakeSheetLinker`.
+- `waitUntil { … }` (`androidInstrumentedTest/.../DeviceFixtures.kt`): for system-side effects without a callback (a
+  posted notification); polls a condition up to a deadline. In Compose device tests use `compose.waitUntil` for state
+  written on a background dispatcher.
 - `FailingHabitStore(inner, "setDailyCompletion")`: makes named store calls throw, for error-message tests.
 - `English.render(uiText)`: the exact copy, from the same catalog the app renders.
 - `UiWorld`: real ViewModels on an unconfined scope and a fake clock (Monday 12 October 2026) for screen tests.

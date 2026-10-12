@@ -4,6 +4,19 @@ The app uses one private Google spreadsheet as the source of truth for dated ses
 
 The first successful authorized sync creates a separate `Plan` tab and uploads the app's planned sessions for a rolling window (from 31 days before the start of the current month to 180 days ahead). Other tabs in the spreadsheet are not modified. If `Plan` already exists and has a valid table, the Sheet wins over local plans; habits that exist only on the device are appended. A blank `Plan` tab is initialized from the local plan.
 
+## From the setup wizard
+
+The first-run wizard (also **Settings → Set up a new plan**) offers **Create a sheet for me**: after Google sign-in the
+app creates a new spreadsheet in your Drive named "Habit Sheet: <goal>" with one empty `Plan` tab, links it, and the
+first sync fills it with the plan. It uses the same `spreadsheets` permission as syncing. If Google does not confirm
+the creation (the connection dropped after the request was sent), the app does **not** try again by itself and says so:
+check Google Drive for a sheet with that name before trying again, so you do not end up with two. **Use my own sheet**
+links a sheet you already have, exactly like Settings (rows already in it win; habits of the plan it does not have are
+appended). After linking, change the plan in the sheet; the app follows.
+
+A blank `Plan` tab (new, created by the wizard, or one you made yourself) gets the header formatting on its first
+upload: checkboxes in `Done`/`Skip`, a bold header row, a wide `Session` column.
+
 ## Plan tab
 
 One row per planned session, with these six headers in row 1:
@@ -52,7 +65,7 @@ What that means in practice:
 
 ## What the app will and will not write
 
-- It only ever writes to a tab named exactly `Plan`: it creates the tab if it does not exist, rewrites it only when it is the first upload to a brand-new/blank tab, and otherwise only appends rows for habits the sheet does not know and updates `Done` cells of rows it recognises.
+- It only ever writes to a tab named exactly `Plan` (or creates a new spreadsheet whose only tab is `Plan`, when you ask the setup wizard to): it creates the tab if it does not exist, rewrites it only when it is the first upload to a brand-new/blank tab, and otherwise only appends rows for habits the sheet does not know and updates `Done` cells of rows it recognises.
 - If a tab called `Plan` exists but its header row is not the six (or eight) documented columns in the documented order, or a row is malformed (bad date, missing ID/Habit/Session, duplicate ID, `Done`/`Skip` not a checkbox or TRUE/FALSE), the app **does not modify it**. It shows what is wrong (including the row number) and waits for you to fix the sheet.
 - All other tabs (Food, Workout, Marathon Plan, and so on) are never read for data or written. A different tab whose name only differs by capitalisation (for example `plan`) makes Google reject creating `Plan`; the sync then fails without touching either tab.
 - Local changes are applied to the device database in one transaction, so a failure part-way never leaves a half-synced plan.

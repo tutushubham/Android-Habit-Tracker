@@ -237,6 +237,22 @@ Do this last, when sections 1–4 are done and every bug they found is fixed.
 - [ ] **[you] Housekeeping:** delete the remote branch `origin/docs/production-plan` if you do not want it; leave
   the open Dependabot PRs #2 and #3 unmerged (both need compileSdk 37, `notes/p1-2-dependency-review.md`).
 
+## 5b. First-run setup wizard (P3-1) — owed on devices **[you]**
+
+- [ ] Fresh install (Android phone, iPhone, iPad): the wizard opens; Marathon with a date 16 weeks out → preview → Create
+  my plan → reminder 07:00 (grant permission) → **Create a sheet for me** with your Google account → Done. The sheet is
+  in your Drive as "Habit Sheet: Marathon", its `Plan` tab is formatted and holds every session; today's session shows
+  on the tracker; the coach marks show once. →
+- [ ] The reminder arrives at the chosen time (Android: also after a reboot and after changing the time zone; iOS: also
+  with the app closed). Tapping it opens the app. Settings → Daily reminder changes the time and turns it off. →
+- [ ] Android 13+: refuse the permission → the step says so and **Open settings** opens the app's notification settings. →
+- [ ] Airplane mode on **Create a sheet for me** → an offline message, nothing linked; with a flaky network, if the
+  "Google did not confirm" message shows, Drive has at most one sheet with that name. →
+- [ ] **Use my own sheet** with your real plan sheet: its rows win, the plan's other habits are appended. →
+- [ ] Settings → **Set up a new plan** with existing habits: "This adds to your N current habits"; same-named habits are reused. →
+- [ ] Skip setup on a fresh install → empty tracker with **Set up a plan**; the wizard does not open again. →
+- [ ] Record the 12 wizard screenshot goldens on the goldens' OS (`ScreenshotTests.wizard*`, `-Proborazzi.test.record=true`). →
+
 ## 6. Recording results and closing Part 1
 
 1. Fill the arrows in this file and commit it ("Mac session results") together with any bug fixes (each bug: failing
