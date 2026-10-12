@@ -1,6 +1,7 @@
 package com.habitsheet.data
 
 import com.habitsheet.domain.model.SheetSyncChanges
+import com.habitsheet.domain.model.monotonicUpdatedAt
 import com.habitsheet.domain.repository.SettingsStore
 
 /** SQLite [SettingsStore]: theme, onboarding, the sheet link and sync state, and the atomic apply of a sync. */
@@ -73,7 +74,12 @@ internal class SettingsStoreImpl(private val db: LocalDatabase) : SettingsStore 
                     habit_id = completion.habitId,
                     date = key,
                     completed = completion.completed.toDbLong(),
-                    updated_at = nextCompletionTime(completion.planId, key, completion.updatedAtEpochMillis),
+                    // Not strictly later: a value taken from the sheet needs no upload acknowledgement, and applying
+                    // the same sync twice must leave the same row (strictness is for the person's own toggles).
+                    updated_at = monotonicUpdatedAt(
+                        completion.updatedAtEpochMillis,
+                        selectDailyCompletionUpdatedAt(completion.planId, key).executeAsOneOrNull(),
+                    ),
                     pending_upload = 0L,
                 )
             }
