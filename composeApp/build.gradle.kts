@@ -85,6 +85,8 @@ kotlin {
             // Compose UI tests run on the JVM under Robolectric (see src/androidUnitTest/.../ui/AndroidUiTests.kt).
             implementation(libs.androidx.compose.ui.test.junit4)
             implementation(libs.robolectric)
+            implementation(libs.roborazzi)
+            implementation(libs.roborazzi.compose)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)
@@ -327,9 +329,16 @@ configurations.matching { it.name == "detekt" }.configureEach {
     }
 }
 
-// --- Coverage (P2 step 1): report-only. `./gradlew :composeApp:koverHtmlReport` (or koverXmlReport) after the JVM
-// unit tests; `scripts/coverage-by-package.py` prints the per-package table. No threshold is enforced yet (P2 step 12
-// ratchets one to what was achieved). Generated code is excluded so the numbers describe code we wrote.
+// --- Coverage (P2 steps 1 and 12) ---
+// `./gradlew :composeApp:koverHtmlReport` for the report, `python scripts/coverage-by-package.py` for the table
+// (after `koverXmlReport`), `./gradlew :composeApp:verifyCoverageFloors` for the floors below; `check` runs it.
+//
+// Floors are LINE coverage of the JVM unit tests (androidUnitTest + commonTest on the JVM, Robolectric UI tests
+// included; device and iOS runs are not counted), set to what was achieved at the end of P2 minus 2 points, so that
+// ordinary work passes and a real drop fails. Measured 2026-10-12: domain 99.3, data 99.3, sync 99.6,
+// presentation 94.6, ui 72.0, app + platform 21.4 (Android and iOS shell code, covered by device tests), total 77.1.
+// Ratchet: when coverage rises, raise the floor to (measured - 2), never lower one to make a build pass.
+// Generated code is excluded so the numbers describe code we wrote.
 kover {
     reports {
         filters {
@@ -347,5 +356,70 @@ kover {
                 )
             }
         }
+    }
+}
+
+// The floors, checked against the Kover XML report (Kover's own rules cannot be limited to a package in this version).
+// Package prefixes use '/' as in the report; `check` runs this task.
+val coverageFloors = listOf(
+    Triple("domain", listOf("com/habitsheet/domain"), 97),
+    Triple("data", listOf("com/habitsheet/data"), 97),
+    Triple("sync", listOf("com/habitsheet/sync"), 97),
+    Triple("presentation", listOf("com/habitsheet/presentation"), 92),
+    Triple("ui", listOf("com/habitsheet/ui"), 70),
+    Triple("app and platform shell", listOf("com/habitsheet/app", "com/habitsheet/platform"), 19),
+    Triple("total", listOf("com/habitsheet"), 75),
+)
+val verifyCoverageFloors by tasks.registering {
+    group = "verification"
+    description = "Fails when line coverage of a package group is below its floor (see the comment above kover)."
+    dependsOn("koverXmlReport")
+    val report = layout.buildDirectory.file("reports/kover/report.xml")
+    val floors = coverageFloors
+    doLast {
+        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply {
+            setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+        }.newDocumentBuilder().parse(report.get().asFile)
+        val packages = doc.getElementsByTagName("package")
+        val covered = mutableMapOf<String, LongArray>()
+        for (index in 0 until packages.length) {
+            val element = packages.item(index) as org.w3c.dom.Element
+            val name = element.getAttribute("name")
+            val counters = element.childNodes
+            for (c in 0 until counters.length) {
+                val counter = counters.item(c) as? org.w3c.dom.Element ?: continue
+                if (counter.tagName != "counter" || counter.getAttribute("type") != "LINE") continue
+                for ((group, prefixes, _) in floors) {
+                    if (prefixes.any { name == it || name.startsWith("$it/") }) {
+                        val sums = covered.getOrPut(group) { LongArray(2) }
+                        sums[0] += counter.getAttribute("missed").toLong()
+                        sums[1] += counter.getAttribute("covered").toLong()
+                    }
+                }
+            }
+        }
+        val failures = mutableListOf<String>()
+        floors.forEach { (group, _, floor) ->
+            val sums = covered[group] ?: longArrayOf(0, 0)
+            val percent = if (sums[0] + sums[1] == 0L) 0.0 else 100.0 * sums[1] / (sums[0] + sums[1])
+            val line = "%-24s %5.1f%%  (floor %d%%)".format(group, percent, floor)
+            logger.lifecycle(line)
+            if (percent < floor) failures += line
+        }
+        if (failures.isNotEmpty()) throw GradleException("Coverage fell below its floor:\n" + failures.joinToString("\n"))
+    }
+}
+tasks.named("check") { dependsOn(verifyCoverageFloors) }
+
+// Screenshot tests (ScreenshotTests, Roborazzi library without its Gradle plugin: the plugin made every test in the
+// module run about twice as slow, which fails LoadSnapshotPerformanceTest). They compare nothing unless asked:
+//   -Proborazzi.test.record=true   write or update the goldens
+//   -Proborazzi.test.verify=true   fail when a screen differs from its golden
+//   -Proborazzi.test.compare=true  write old/new/diff images to build/outputs/roborazzi
+tasks.withType<Test>().configureEach {
+    // Goldens are read by the tests, so a changed golden must rerun them (otherwise verify is "up to date").
+    inputs.files(fileTree("src/androidUnitTest/screenshots")).withPropertyName("screenshotGoldens")
+    listOf("record", "verify", "compare").forEach { mode ->
+        providers.gradleProperty("roborazzi.test.$mode").orNull?.let { systemProperty("roborazzi.test.$mode", it) }
     }
 }

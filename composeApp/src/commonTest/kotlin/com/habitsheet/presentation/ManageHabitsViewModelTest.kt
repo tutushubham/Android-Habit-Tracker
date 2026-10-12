@@ -5,6 +5,7 @@ import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
@@ -63,12 +64,11 @@ class ManageHabitsViewModelTest {
         val viewModel = ManageHabitsViewModel(repository, idGenerator, dateProvider, backgroundScope)
 
         viewModel.addDailyHabit("", null, 10) // Empty name
-        // Wait a bit to ensure nothing happens
-        kotlinx.coroutines.delay(100)
+        runCurrent() // run everything the call could have launched
         assertTrue(repository.snapshot.value.dailyHabits.isEmpty())
 
         viewModel.addDailyHabit("Valid", null, -1) // Invalid goal
-        kotlinx.coroutines.delay(100)
+        runCurrent()
         assertTrue(repository.snapshot.value.dailyHabits.isEmpty())
     }
 

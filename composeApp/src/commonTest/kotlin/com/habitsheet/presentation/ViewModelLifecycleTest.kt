@@ -10,12 +10,14 @@ import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.testing.FakeDateProvider
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -28,6 +30,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -54,12 +57,28 @@ class ViewModelLifecycleTest {
         override fun importBackup(onImport: (String) -> Unit, onFailure: (UiText) -> Unit) = Unit
     }
     private var replaced = 0
+
+    // Events instead of sleeping: the ViewModels persist on their own scope, so tests wait for the store call itself.
+    private val settingsLoaded = CompletableDeferred<Unit>()
+    private val themeStored = CompletableDeferred<Unit>()
+    private val dataReplaced = CompletableDeferred<Unit>()
+    private val settingsStore = object : SettingsStore by repository {
+        override suspend fun getSheetUrl(): String = repository.getSheetUrl().also { settingsLoaded.complete(Unit) }
+
+        override suspend fun setThemeMode(mode: Int) {
+            repository.setThemeMode(mode)
+            themeStored.complete(Unit)
+        }
+    }
     private val factory = viewModelFactory {
         initializer { MonthViewModel(repository, repository, dates) }
         initializer { ManageHabitsViewModel(repository, DefaultIdGenerator(), dates) }
-        initializer { SettingsViewModel(repository) }
+        initializer { SettingsViewModel(settingsStore) }
         initializer {
-            BackupViewModel(repository, noBackup, dates, callbackDispatcher = Dispatchers.Main, onDataReplaced = { replaced++ })
+            BackupViewModel(repository, noBackup, dates, callbackDispatcher = Dispatchers.Main, onDataReplaced = {
+                replaced++
+                dataReplaced.complete(Unit)
+            })
         }
     }
     private val provider = ViewModelProvider.create(owner, factory)
@@ -72,6 +91,9 @@ class ViewModelLifecycleTest {
         owner.viewModelStore.clear()
         Dispatchers.resetMain()
     }
+
+    /** The scope the ViewModel launches its work on shares the ViewModel's job, which clearing cancels. */
+    private fun ViewModel.isBackgroundScopeActive(): Boolean = backgroundScope().coroutineContext[Job]?.isActive == true
 
     private suspend fun realTime(block: suspend () -> Unit) = withContext(Dispatchers.Default) { withTimeout(10_000) { block() } }
 
@@ -99,8 +121,8 @@ class ViewModelLifecycleTest {
     fun clearingTheStoreStopsMonthViewModelWork() = runTest {
         val viewModel = provider[MonthViewModel::class]
         owner.viewModelStore.clear()
+        assertFalse(viewModel.isBackgroundScopeActive(), "clearing the store cancels the ViewModel's scope")
         viewModel.toggleDaily("read", today)
-        realTime { delay(200) }
         assertTrue(repository.snapshot.value.dailyCompletions.isEmpty(), "a cleared ViewModel must not keep working")
     }
 
@@ -108,11 +130,11 @@ class ViewModelLifecycleTest {
     fun clearingTheStoreStopsOtherViewModelsToo() = runTest {
         val manage = provider[ManageHabitsViewModel::class]
         val settings = provider[SettingsViewModel::class]
-        realTime { delay(50) } // let the settings load finish before clearing
         owner.viewModelStore.clear()
+        assertFalse(manage.isBackgroundScopeActive())
+        assertFalse(settings.isBackgroundScopeActive())
         manage.addCategory("Fitness")
         settings.setThemeMode(ThemeMode.Dark)
-        realTime { delay(200) }
         assertTrue(repository.snapshot.value.categories.isEmpty())
         assertEquals(0, repository.getThemeMode())
     }
@@ -126,16 +148,16 @@ class ViewModelLifecycleTest {
     @Test
     fun settingsViewModelWorksOnItsOwnScope() = runTest {
         val settings = provider[SettingsViewModel::class]
-        realTime { delay(50) } // the initial load from storage runs first, as in the app
+        realTime { settingsLoaded.await() } // the initial load from storage runs first, as in the app
         settings.setThemeMode(ThemeMode.Dark)
-        realTime { while (repository.getThemeMode() != ThemeMode.Dark.ordinal) delay(10) }
+        realTime { themeStored.await() }
         assertEquals(ThemeMode.Dark, settings.themeMode.value)
     }
 
     @Test
     fun backupViewModelReportsADataResetOnItsCallbackDispatcher() = runTest {
         provider[BackupViewModel::class].clearAllData()
-        realTime { while (replaced == 0) delay(10) }
+        realTime { dataReplaced.await() }
         assertEquals(1, replaced)
     }
 
