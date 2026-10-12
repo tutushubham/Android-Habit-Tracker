@@ -1,35 +1,134 @@
-# Mac and device checklist
+# Mac and device runbook — closing Part 1
 
-Everything the plans could not verify on the Windows PC, collected in one place so you can run it in a single session
-when you have the Mac (and your phone/iPad). Last consolidated: **2026-10-12**, after P1-3.
+Everything that could not be verified on the Windows PC, in the order to do it. Last rewritten: **2026-10-12**, after
+P2. When this file is done and its results are recorded, **Part 1 is complete** (section 6 says exactly what to tick).
 
-How to use: work top to bottom, tick `[x]`, write what you saw after an arrow (`→ …`). Anything that fails becomes a
-bug: note it in `PROGRESS.md` ("Session log") and fix it before P2, because P2 builds tests on top of this behaviour.
-Sources in brackets point to the plan that raised the item.
+**Two kinds of item.**
+
+- **[auto]** — commands. Ask Claude on the Mac: *"do section 1 of docs/production-plan/MAC_AND_DEVICE_CHECKLIST.md"*.
+  Claude runs them in order, records results next to each box, and fixes failures (failing test first, one commit per
+  bug). Claude cannot do anything that needs your hands, a physical device, a Google sign-in or your Apple account.
+- **[you]** — things only a person can do: sections 3, 4 and parts of 2 and 5. Do them with the devices and note
+  what you saw after the arrow (`→ …`).
+
+How to read an item: `- [ ]` open, `- [x]` done, then `→` the observed result. Failures are bugs: write them in the
+`PROGRESS.md` session log with the section number and fix them before ticking Part 1.
 
 ## 0. Setup on the Mac
 
-- [ ] Xcode (current), JDK 17, Android SDK not needed for the iOS part. `git pull` on `master`.
-- [ ] `iosApp/Config/Local.xcconfig` exists (copy from `Local.xcconfig.example`): team ID and the iOS Google client IDs (see `docs/RELEASING.md`, `SHEET_SYNC.md`).
-- [ ] An iPhone and an iPad (physical) trusted by Xcode; optionally the simulators.
-- [ ] Your own Google account is a test user on the OAuth consent screen (`SHEET_SYNC.md`), and you have one blank Google Sheet plus your real plan sheet.
-- [ ] Optional: a second phone/tablet or a second Google account, for the two-device items.
+- [ ] **[you]** `git pull` on `master` (single-branch policy: no other branch is needed).
+- [ ] **[you]** Xcode (current) with the iOS simulator runtimes; command line tools selected
+  (`xcode-select -p`); JDK 17 (`java -version`); Android SDK + an emulator image (API 34, Google APIs) for the Android
+  device tests (Android Studio's SDK Manager is the easy way; `ANDROID_HOME` set); Ruby with `gem install xcodeproj`.
+- [ ] **[you]** `iosApp/Config/Local.xcconfig` exists (copy `Local.xcconfig.example`): your team ID and the iOS Google
+  client IDs (`docs/RELEASING.md`, `SHEET_SYNC.md`). It is gitignored; never commit it.
+- [ ] **[you]** For the Android release build: `keystore.properties` (repo root, gitignored) or the `HABITSHEET_*`
+  environment variables (`docs/RELEASING.md`). Without them `release_smoke.py` uses a throwaway key, which is fine for
+  smoke tests but is not a store build.
+- [ ] **[you]** An iPhone and an iPad (physical) trusted by Xcode; your Android phone; optionally a second device or
+  Google account for the two-device items.
+- [ ] **[you]** Your Google account is a test user on the OAuth consent screen (`SHEET_SYNC.md`); one blank Google
+  Sheet and your real plan sheet.
 
-## 1. Automated commands (Mac)
+## 1. Automated commands **[auto]**
 
-Run from the repository root. Record the test counts (last Windows result: 383 JVM tests; iOS simulator tests were last run on the Mac at P1-3 step 1: 275).
+Run from the repository root, in this order. Record the numbers. A failure is investigated, not skipped: if the
+cause is a test that assumed something about a platform that turns out to be false, say so and fix the test; if it
+is the app, it is a bug (failing test first, separate commit).
+
+### 1.1 The whole check
 
 ```bash
-./gradlew check                                   # JVM tests + migrations + lint + Spotless + detekt + iOS simulator tests
-./gradlew :composeApp:compileKotlinIosSimulatorArm64 :composeApp:compileTestKotlinIosSimulatorArm64
-./gradlew :composeApp:iosSimulatorArm64Test       # the common tests on the simulator
-./gradlew assembleDebug assembleRelease           # release needs keystore.properties or HABITSHEET_* (docs/RELEASING.md)
-xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
+./gradlew --version                  # JDK 17 expected for the build toolchain
+./gradlew check
 ```
 
-- [ ] `check` green on the Mac (watch for iOS-only failures: Windows only compiles the iOS klib, it does not run it). → 
-- [ ] The simulator build links (this is the first link since P1-3 added `IosBackupService` file sharing, `IosSystemBars`, `IosReduceMotion`, `IosFirstDayOfWeek`). → 
-- [ ] Optional: `./gradlew --stop`, then `scripts/screenshots/` comparison against the previous build (README there): **expected differences** are listed in `docs/accessibility-checklist.md` ("Look at the new grid"), plus new empty-state and Settings layouts.
+- [ ] `check` is green. It runs: JVM tests, schema-migration verification, Android lint, Spotless, detekt, the
+  coverage floors, **and on a Mac the common + iOS tests on the simulator**. Windows result at the end of P2:
+  **548 JVM tests**, package floors 97/97/97/92/70/19 and total 75 %, measured 99.3/99.3/99.6/94.6/72.0/21.4/77.1. Mac result: JVM tests = →  ; iOS simulator tests = →  .
+- [ ] The iOS simulator test report (`composeApp/build/reports/tests/iosSimulatorArm64Test/index.html`) shows these
+  classes and their results (they were written without a Mac and compile but have never run):
+  - `IosRepositoryContractTest` (the repository contract on the native SQLite driver) → 
+  - `IosDriverTest` (**answers: does the iOS driver enforce foreign keys?**) → 
+  - `IosStartupRecoveryTest` (**answers: where the native driver puts `habit-sheet.db`, and that recovery finds
+    it**) → 
+  - `IosUiTests` (the 25 shared Compose scenarios; they assume English and a phone-sized simulator) → 
+- [ ] Anything that fails only here is an iOS-only difference: note it, classify (test assumption / real bug).
+
+### 1.2 Android builds
+
+```bash
+./gradlew :composeApp:assembleDebug :composeApp:assembleRelease :composeApp:bundleRelease
+```
+
+- [ ] Debug, release (R8) and the bundle build. APK size → ; mapping file kept per `docs/RELEASING.md`.
+
+### 1.3 iOS simulator build and archive
+
+```bash
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath build/HabitSheet.xcarchive \
+  -allowProvisioningUpdates archive
+```
+
+- [ ] The simulator build links (first link since P1-3 added `IosBackupService`, `IosSystemBars`, `IosReduceMotion`,
+  `IosFirstDayOfWeek`). → 
+- [ ] The archive succeeds with your team (needs `Local.xcconfig`). The ICU linker warning (data built for iOS 18.5
+  vs deployment target 15.0) is expected; copy it here. → 
+- [ ] **[you]** Open the archive in Xcode Organizer → Validate App passes; privacy report matches
+  `PrivacyInfo.xcprivacy` (section 2).
+
+### 1.4 The XCUITest smoke
+
+```bash
+gem install xcodeproj                              # once
+ruby scripts/ios/add_ui_test_target.rb             # adds target iosAppUITests + scheme entry, idempotent
+git diff --stat iosApp/                            # review: project.pbxproj and the shared scheme only
+xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp \
+  -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:iosAppUITests
+```
+
+- [ ] The script runs and the project still opens in Xcode (the script was written without a Mac). → 
+- [ ] `AppSmokeUITests` passes: add a habit, check it off, home, activate. The test assumes Compose exposes the
+  row's state as the element's accessibility value ("Completed") and the English labels; if only the value
+  assertion fails, look at what the element reports (`po app.debugDescription`) and adjust the test, not the app. → 
+- [ ] If it worked, **commit** the pbxproj/scheme change and the (possibly adjusted) test: they become part of the
+  repository from then on.
+
+### 1.5 Android emulator (also works from the Mac)
+
+```bash
+emulator -list-avds
+emulator -avd <name> -no-snapshot -no-audio &      # wait: adb wait-for-device
+adb devices                                        # exactly one emulator; use an EMULATOR, the tests wipe app data
+./gradlew :composeApp:connectedDebugAndroidTest
+python3 scripts/android/release_smoke.py           # builds the release APK, installs, drives first run to restart
+```
+
+- [ ] `AppSmokeTest` (first run, add habit, check off, rotate, recreate, relaunch) → 
+- [ ] `WidgetToggleTest` (real broadcast to the widget provider) → 
+- [ ] `BackupServiceTest` (export/import through a registry that answers the pickers) → 
+- [ ] `DatabaseMigrationOnDeviceTest`: every released schema upgrades in place → ; **foreign keys on the
+  Android driver** (`theDriverEnforcesForeignKeys…`) → 
+- [ ] `release_smoke.py` passes on the R8 build (it selects UI by English text and `uiautomator dump`; if it cannot
+  find a label, the output lists what was visible). → 
+
+### 1.6 Informational: screenshot goldens
+
+```bash
+./gradlew :composeApp:testDebugUnitTest --tests "*ScreenshotTests" -Proborazzi.test.verify=true
+```
+
+- [ ] The 30 goldens were recorded on Windows. On macOS tiny font/anti-aliasing differences are **expected**; a
+  failure here is not a bug. Look at `composeApp/build/outputs/roborazzi` (run with `-Proborazzi.test.compare=true`)
+  only to confirm the differences are sub-pixel. **Never re-record the goldens on the Mac.** → 
+
+### 1.7 Leave the tree clean
+
+- [ ] `git status`: only intentional changes (the pbxproj/scheme/test from 1.4, bug fixes, this file's results).
+  No goldens, no `Local.xcconfig`, no `keystore.properties`.
 
 ## 2. iOS release path `[mac]` (P0-C)
 
@@ -90,7 +189,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 - [ ] Afterwards restore a normal install and confirm the app opens. →
 
 ### 3.7 SQLite
-- [ ] `PRAGMA foreign_keys` is ON on the iOS driver (P1-1 follow-up; deletes no longer depend on it, but confirm): e.g. a debug log or a test in P2. →
+- [ ] `PRAGMA foreign_keys` on the iOS driver: answered by `IosDriverTest` in 1.1 (deletes do not depend on it either way). →
 
 ## 4. Android device pass (same sitting, no Mac needed) — owed from P0–P1-3
 
@@ -108,49 +207,49 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 - [ ] Theme: app Dark on a Light phone and the reverse: status and navigation bar icons readable on every screen (gesture and 3-button navigation). →
 - [ ] Tutorial overlay and TalkBack: can focus move to the screen behind it? (known open question) →
 
-## 5. When done
+## 5. Part 1 exit gate (README, P2 plan section 6)
 
-1. Fill the arrows, commit this file with the results and a line in the `PROGRESS.md` session log.
-2. Tick the owed boxes in `PROGRESS.md` ("Manual checks still owed") and the Definition of done in
-   `part-1-local/P1-3-gaps-in-existing-features.md` (accessibility, iOS backup, first run, sweep).
-3. File each failure as a bug with the section number above; fix before starting P2 (or carry them into P2 step 7–9
-   as UI/instrumented tests that pin the fix).
-4. Then continue with `part-1-local/P2-testing.md` (its section 0 lists what to start from).
+Do this last, when sections 1–4 are done and every bug they found is fixed.
 
-## Added in P2 step 7
+- [ ] **[auto] Clean clone builds and passes.** In an empty directory (this proves nothing depends on files that
+  are only on your machine):
+  ```bash
+  git clone "$(git -C <your repo> remote get-url origin)" /tmp/habitsheet-clean && cd /tmp/habitsheet-clean
+  cp <your repo>/iosApp/Config/Local.xcconfig iosApp/Config/        # not in git, needed by the iOS build
+  ./gradlew check :composeApp:assembleRelease                        # release needs keystore.properties or HABITSHEET_*
+  ```
+  → 
+- [ ] **[auto]** No personal strings or IDs in tracked files (expect only the `.example` placeholders and the
+  intentional legacy cleanup constant): 
+  ```bash
+  git grep -nE "<your Apple team id>|<your client id number>|apps.googleusercontent.com" -- . ':!docs' ':!personal'
+  git ls-files | grep -iE "xlsx|keystore|\.jks|Local\.xcconfig$|local\.properties"     # expect only keystore.properties.example
+  ```
+  → 
+- [ ] **[you]** Fresh install on a phone **and** an iPad: neutral app, no personal data, tutorial once (3.1, 4).
+- [ ] **[you]** Update-over-install on your own phone and iPad keeps your data and your sheet syncs both ways
+  (P0-A step 9, P1-1 steps 9–10).
+- [ ] **[you] D2 — repo history** (`00-context/DECISIONS.md`): decide now so Part 2 (B1/B4) does not ship private
+  history. Recommended default: keep this repository private as the working repo and publish from a fresh repository
+  with clean history after Part 1. Record the decision in `DECISIONS.md` and `PROGRESS.md`. (`stitch/` design exports
+  are still tracked; decide with it.) →
+- [ ] **[you] Housekeeping:** delete the remote branch `origin/docs/production-plan` if you do not want it; leave
+  the open Dependabot PRs #2 and #3 unmerged (both need compileSdk 37, `notes/p1-2-dependency-review.md`).
 
-- [ ] On a device and on the iOS simulator, open Settings, Data and Backup, About and a destructive confirmation and read the texts that contain apostrophes ("Couldn't ...", "can't open its data", "Delete 'Name' ..."): no backslash anywhere (fixed in code, see PROGRESS.md).
-- [ ] `./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.ui.IosUiTests"` on the Mac (25 shared UI scenarios; run with English and a phone-sized simulator).
+## 6. Recording results and closing Part 1
 
-## Device and simulator tests written in P2 steps 8-9 (not run on the machine they were written on)
-
-Android (emulator or phone, API 26+; an emulator image with Google APIs is fine). The app is installed twice,
-as the app and as the test APK; tests delete the app database first, so **use an emulator, not the phone that holds
-your real data**.
-
-```
-./gradlew :composeApp:connectedDebugAndroidTest
-./gradlew :composeApp:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.habitsheet.app.BackupServiceTest
-```
-
-- [ ] `AppSmokeTest` - first run, skip tutorial, add a habit, check it off, rotate twice, recreate, relaunch.
-- [ ] `WidgetToggleTest` - real broadcast to the widget provider: check, uncheck, stale date ignored.
-- [ ] `BackupServiceTest` - export/import through a registry that answers instead of the picker.
-- [ ] `DatabaseMigrationOnDeviceTest` - every released schema upgrades in place; `theDriverEnforcesForeignKeysSoAnOrphanCheckOffIsRejected` answers the open "does the Android driver keep foreign keys ON" question (if it fails, deletes rely only on the explicit cascades, which is safe; record the answer).
-
-iOS (Mac with Xcode, English simulator language):
-
-```
-./gradlew :composeApp:iosSimulatorArm64Test
-./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.app.IosRepositoryContractTest"
-./gradlew :composeApp:iosSimulatorArm64Test --tests "com.habitsheet.ui.IosUiTests"
-gem install xcodeproj && ruby scripts/ios/add_ui_test_target.rb      # once
-xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp \
-  -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:iosAppUITests
-```
-
-- [ ] `iosSimulatorArm64Test` - all shared tests plus the three below on the simulator.
-- [ ] `IosRepositoryContractTest` - the repository contract on `NativeSqliteDriver`.
-- [ ] `IosDriverTest` - answers whether the native driver enforces foreign keys.
-- [ ] `IosStartupRecoveryTest` - where the driver puts `habit-sheet.db`, and that recovery finds and moves it.
-- [ ] `AppSmokeUITests` (XCUITest) - add a habit, check it off, background and foreground. It assumes the accessibility labels of the English copy and that Compose exposes the row's state as the element value; if the last assertion fails, check how the element reports its value before changing the test.
+1. Fill the arrows in this file and commit it ("Mac session results") together with any bug fixes (each bug: failing
+   test first, its own commit) and the `iosAppUITests` target if 1.4 worked.
+2. Add one line per finding to the `PROGRESS.md` session log; then tick, in `PROGRESS.md`:
+   - **Manual checks still owed**: every item whose section above passed (P0-A step 9, P0-B list, P0-C release smoke
+     and `[mac]` path, P1-1 steps 4–5/8/9–10/11, P1-2 device checks, P1-3 steps 1–9);
+   - the bullets under P0-A, P0-C, P1-1 and P1-3 "Owed";
+   - **[Done\*] → [Done]** for P0-A … P1-3, **P2 Testing** and **Part 1 exit gate**.
+3. Tick the nested boxes in `part-1-local/P1-3-gaps-in-existing-features.md` (accessibility, iOS backup, first run,
+   sweep) and the "pass on your machines" and "release-APK smoke" boxes in `part-1-local/P2-testing.md` section 5.
+4. Update `00-context/PROJECT_CONTEXT.md` "Status" and "Verification state" with the Mac numbers (JVM tests, iOS
+   simulator tests, results of `IosDriverTest` and `theDriverEnforcesForeignKeys…`) and remove the entry for foreign
+   keys from "Known limitations" in `PROGRESS.md`.
+5. **Part 1 is complete when:** sections 1 and 5 are fully ticked, sections 2–4 are ticked or each unticked item is
+   written down as a known limitation with a reason, and `./gradlew check` is green on both the Windows PC and the Mac.
+6. Then start Part 2 with `part-2-beyond-code/B1-ci-cd.md` (its CI jobs are listed at the end of `docs/TESTING.md`).

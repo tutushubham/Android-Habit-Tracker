@@ -79,9 +79,10 @@ It does not merge simultaneous edits to one row (the last device to sync wins), 
 Android lint, Spotless (ktlint 1.8, IntelliJ IDEA style; `./gradlew spotlessApply` formats), detekt (default rules plus
 `config/detekt/detekt.yml`; findings that predate it are in `composeApp/detekt-baseline.xml`) and, on a Mac, the common
 tests on the iOS simulator. Production code compiles with `allWarningsAsErrors` (every Android and iOS main
-compilation). Formatting-only commits are listed in `.git-blame-ignore-revs`. Dependency updates come as grouped
+compilation). Coverage floors per package group are checked by `verifyCoverageFloors` (part of `check`); how the
+tests are organised and run is in `docs/TESTING.md`. Formatting-only commits are listed in `.git-blame-ignore-revs`. Dependency updates come as grouped
 Dependabot PRs (`.github/dependabot.yml`).
 
 ## Decisions
 
-Architecture decision records live in `docs/adr/`: Google Sheet as the backend (0001), lifecycle ViewModels (0002), the navigation back stack (0003), no DI framework (0004).
+Architecture decision records live in `docs/adr/`: Google Sheet as the backend (0001), lifecycle ViewModels (0002), the navigation back stack (0003), no DI framework (0004), strings in resources and `UiText` (0005).

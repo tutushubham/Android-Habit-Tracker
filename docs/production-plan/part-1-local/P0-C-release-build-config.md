@@ -16,7 +16,7 @@ Android — `composeApp/build.gradle.kts`:
 
 iOS — `iosApp/`:
 - `Info.plist`: `CFBundleShortVersionString 1.1.3`, `CFBundleVersion 6` hard-coded; `GIDClientID` and URL scheme contain the personal client ID.
-- `project.pbxproj`: `MARKETING_VERSION = 1.1.3` (l.180, 214), `DEVELOPMENT_TEAM = G5VX9GMK76` (l.257), `PRODUCT_BUNDLE_IDENTIFIER = com.habitsheet.app`, `IPHONEOS_DEPLOYMENT_TARGET = 15.0`.
+- `project.pbxproj`: `MARKETING_VERSION = 1.1.3` (l.180, 214), your Apple `DEVELOPMENT_TEAM` (l.257), `PRODUCT_BUNDLE_IDENTIFIER = com.habitsheet.app`, `IPHONEOS_DEPLOYMENT_TARGET = 15.0`.
 - No `PrivacyInfo.xcprivacy`, no entitlements, no `.xcconfig`.
 
 Shared: version is read by `AndroidVersionProvider` / `IosVersionProvider` (About screen).
@@ -70,7 +70,7 @@ Run the whole plan: execute P0-C steps 1-11 with a commit per step; mark any [ma
 
 ## 4. Verification
 ```
-git grep -nE "G5VX9GMK76|412589914724|apps.googleusercontent.com" -- . ':!docs' ':!personal'   # expect only .example placeholders / none
+git grep -nE "<your Apple team id>|<your client id number>|apps.googleusercontent.com" -- . ':!docs' ':!personal'   # expect only .example placeholders / none
 ./gradlew :composeApp:assembleDebug :composeApp:testDebugUnitTest
 ./gradlew :composeApp:assembleRelease :composeApp:bundleRelease   # needs keystore.properties
 ```

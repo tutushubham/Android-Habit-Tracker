@@ -61,6 +61,10 @@ The shared Kotlin/Native target supports Apple silicon simulators and physical a
 builds the Android app and validates the shared and iOS Kotlin sources without a simulator. Linking and running the
 Apple app requires full Xcode. `scripts/screenshots/` compares every screen of two builds on an Android emulator.
 
+`check` also enforces line-coverage floors per package group (`verifyCoverageFloors`). The test layers, how to run
+each (device, simulator, screenshots, the release-APK smoke test) and how to add a test are in
+[`docs/TESTING.md`](docs/TESTING.md).
+
 ## Key source locations
 
 - `composeApp/src/commonMain/kotlin/com/habitsheet/domain` — models, repository contract, and workbook calculations

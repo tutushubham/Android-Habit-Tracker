@@ -23,9 +23,9 @@ Everything here was derived from an audit of the repo at commit `53d074e` (see `
 | 4 | `P1-1-robustness-and-data-safety.md` | Logging, backups, migrations, timezone, destructive actions |
 | 5 | `P1-2-architecture-and-code-quality.md` | Lifecycle-aware ViewModels, navigation, splitting god classes, lint |
 | 6 | `P1-3-gaps-in-existing-features.md` | Strings/localization, accessibility, iOS file backup, neutral first-run |
-| 7 | `P2-testing.md` | Fill coverage: UI, sync fakes, migrations, iOS |
+| 7 | `P2-testing.md` | Fill coverage: UI, sync fakes, migrations, iOS (see `docs/TESTING.md`) |
 
-**Status (2026-10-12):** plans 1–6 are done in code; the Mac/device verification of P0-C … P1-3 is collected in `MAC_AND_DEVICE_CHECKLIST.md`, then P2 starts.
+**Status (2026-10-12):** plans 1–7 are done in code, automated tests and docs. What remains for Part 1 is the Mac/device session in `MAC_AND_DEVICE_CHECKLIST.md` (commands for Claude in section 1, device checks for you, exit gate in section 5).
 
 **Exit gate for Part 1:** everything runs locally (`./gradlew` tests + Android release build, iOS simulator build on a Mac), a fresh install shows a neutral app with no personal data, and your own phone/iPad still work with your sheet.
 
@@ -60,6 +60,6 @@ Start only after Part 1's exit gate.
 ## Files
 
 - `PROGRESS.md` — tick boxes as you go.
-- `MAC_AND_DEVICE_CHECKLIST.md` — everything that needs a Mac, an iPhone/iPad or an Android device, with commands and result lines. Run it after P1-3 and before P2.
+- `MAC_AND_DEVICE_CHECKLIST.md` — everything that needs a Mac, an iPhone/iPad or an Android device, with commands and result lines. It is the Part 1 close-out runbook: commands Claude runs on the Mac, your device checks, the exit gate and what to tick. Run it after P2.
 - `00-context/PROJECT_CONTEXT.md` — product vision, constraints, architecture snapshot, full audit findings.
 - `00-context/DECISIONS.md` — open decisions with recommended defaults. Resolve these early; plans assume the recommended default.

@@ -3,11 +3,11 @@
 Tick when the plan's *Definition of done* is fully met and merged.
 Legend: **[Done]** = code, automated tests and docs complete and on `master`. Items that can only be checked on a real device are listed separately under *Manual checks still owed*.
 
-## Next session: run the Mac/device checklist, then P2 (Testing)
-- **P1-3 is finished in code (steps 1–9 and the section-7 inputs from P1-1).** What remains is verification that needs a Mac, an iPhone/iPad or an Android device. It is all in **`MAC_AND_DEVICE_CHECKLIST.md`** (next to this file): commands to run on the Mac, the iOS checks, the Android device pass and where to record results. `docs/accessibility-checklist.md` has the TalkBack/VoiceOver detail.
-- Order of work: (1) pull `master` on the Mac and run section 0–2 of the checklist (automated + release path); (2) section 3–4 on devices; (3) fix what fails; (4) tick the boxes below and in the P1-3 plan; (5) start `part-1-local/P2-testing.md` (its section 0 and "Inputs from P1-3" say what to build on).
+## Next: one Mac session closes Part 1 (all code and automated tests are done)
+- **Everything in Part 1 (P0-A … P2) is finished in code, automated tests and docs on `master`.** What remains needs a Mac, an iPhone/iPad, an Android emulator/device or your Google account. It is all in **`MAC_AND_DEVICE_CHECKLIST.md`**, in order: section 1 is commands Claude can run on the Mac (**[auto]**), sections 2–5 need you (**[you]**), section 6 says what to tick when done. `docs/accessibility-checklist.md` has the TalkBack/VoiceOver detail, `docs/TESTING.md` explains the test layers and commands.
+- Order of work: (1) `git pull` on the Mac, section 0; (2) ask Claude to do section 1; (3) sections 2–4 with your devices; (4) section 5 (exit gate, D2); (5) section 6 ticks. Part 1 is complete when sections 1 and 5 are ticked and `check` is green on both machines.
 - Branch policy: **only `master`; no new branches.** `origin/docs/production-plan` (one older commit with an earlier draft of the plan, not in `master`) was kept: delete it in D2 housekeeping if you do not want it. Dependabot PRs #3 (Ktor 3.6.0) and #2 (Kotlin/Compose/AGP) are open and **must not be merged**: both need compileSdk 37 (`notes/p1-2-dependency-review.md`, last section).
-- Baseline to protect: `./gradlew check` green (383 JVM tests on Windows at the end of P1-3; the iOS-simulator tests only run on a Mac, 275 at P1-3 step 1), `assembleDebug`, `compileKotlinIosSimulatorArm64` + `compileTestKotlinIosSimulatorArm64`. Visual baseline: `scripts/screenshots/` (P1-3 changed dates, grid cell size, borders, empty state and Settings on purpose; re-capture a new baseline after review).
+- Baseline to protect: `./gradlew check` green (**548 JVM tests** on Windows at the end of P2, coverage floors included; the iOS-simulator tests only run on a Mac: 281 common tests at P1-2, plus the P2 additions), `assembleDebug`, `compileKotlinIosSimulatorArm64` + `compileTestKotlinIosSimulatorArm64`, `assembleDebugAndroidTest`. Visual baselines: the 30 Roborazzi goldens (`docs/TESTING.md`; recorded on Windows, never re-record them on the Mac) and `scripts/screenshots/` (emulator comparison, re-capture after review).
 - Signing on the Mac: `iosApp/Config/Local.xcconfig` (gitignored) holds the team ID and the iOS Google client IDs. Install on a device with `xcodebuild … -destination 'id=<device>' -allowProvisioningUpdates build` then `xcrun devicectl device install app --device <id> <app>`.
 - Emulator tips for the screenshot scripts: pin `ANDROID_SERIAL=emulator-5554` when a phone is also connected; stop idle Gradle daemons (`./gradlew --stop`) before a long capture; capture the old and new build on the same day.
 - Untracked on purpose (not part of any plan): `.claude/`, `gradle/gradle-daemon-jvm.properties`, `node_modules` (symlink), `graphify-out/` (ignored; rebuild with `python -m graphify update .`).
@@ -19,8 +19,8 @@ Legend: **[Done]** = code, automated tests and docs complete and on `master`. It
 - [Done*] P1-1 Robustness & data safety (steps 1–11 on `master`; *code, automated checks and docs complete; owed: the device checks and `[mac]` iOS checks listed under "Manual checks still owed")
 - [Done*] P1-2 Architecture & code quality (steps 1–12 on `master`; *code, automated checks, emulator checks and docs complete; owed: the device/iPad checks under "Manual checks still owed")
 - [Done*] P1-3 Gaps in existing features (steps 1–9 and the P1-1 inputs on `master`; *code, automated checks and docs complete; owed: `MAC_AND_DEVICE_CHECKLIST.md`)
-- [ ] P2 Testing
-- [ ] **Part 1 exit gate** (see README)
+- [Done*] P2 Testing (steps 1–12 on `master`; *548 JVM tests, property/contract/atomicity/fault-matrix/UI/screenshot tests, coverage floors in `check`, `docs/TESTING.md`; owed: the device and simulator runs of the tests written without a device, `MAC_AND_DEVICE_CHECKLIST.md` section 1)
+- [ ] **Part 1 exit gate** (README; `MAC_AND_DEVICE_CHECKLIST.md` section 5)
 
 ## Part 2 — Beyond the code
 - [ ] B1 CI/CD
@@ -101,6 +101,15 @@ State after the review: **196 JVM tests, 0 failures**; `assembleDebug` OK; iOS k
 - [x] Section 7 (inputs from P1-1): export "Include my Google Sheet link" choice, import is pick → **preview** (counts of the file vs the device) → confirm, optional "Also use the sheet link stored in this backup", "Export a backup first" in the Import and Reset dialogs, startup failure screen headings/live region. `BackupViewModel.pickBackup` / `restore` / `hasSheetLink`, `BackupPreview`.
 - [ ] Owed: everything in `MAC_AND_DEVICE_CHECKLIST.md`; Definition-of-done boxes for accessibility on devices, iOS backup validated, first-run and sweep on devices.
 - Decisions kept: no clipboard fallback on iOS (not trivial); default categories stay the ten generic life areas (data in the user's own DB, editable in Manage → Categories; not localised, changing them would alter existing installs); digits stay ASCII; only English ships; licence texts are names + project links (full texts: B3/B5).
+
+### P2 — Testing (on `master`)
+- [x] Steps 1–2 Kover (floors, see step 12), fixtures: `FakeDateProvider`, `FakeLogger`, `buildSnapshot { }`, `FakeSheetsServer` reused. `7f57c25`
+- [x] Steps 3–4 Seeded property tests (PlanResolver precedence vs an independent oracle, MonthEngine 1970–2120, HabitCalculations invariants), `HabitRepositoryContract` on SQLite and the in-memory double, `AtomicWritesTest` (failure injected at every statement). Bugs: `applySheetSync` bumped `updated_at` on every re-apply (fixed); the in-memory double accepted what SQLite rejects (fixed). `64d241d` … `6188dea`
+- [x] Steps 5–6 `SheetSyncFaultMatrixTest` (10 fault kinds at every request of both flows incl. a lost reply), `SyncVirtualTimeTest`, `SheetSyncSqliteTest`, `MonthViewModelBehaviourTest`, `ErrorSurfacesTest`. No production bug found. `a559145`
+- [x] Step 7 Compose UI tests: 25 shared scenarios, Android on Robolectric (`AndroidUiTests`), iOS simulator (`IosUiTests`). Bugs: **every apostrophe in `strings.xml` was escaped `\'` and rendered with the backslash on both platforms** (fixed, `StringCatalogEscapesTest`); theme radio rows and the Day/Month switch exposed no selected state (fixed). `077e51f` … `74c375b`
+- [x] Steps 8–9 Instrumented tests (`AppSmokeTest`, `WidgetToggleTest`, `BackupServiceTest`, `DatabaseMigrationOnDeviceTest`), iOS tests (`IosRepositoryContractTest`, `IosDriverTest`, `IosStartupRecoveryTest`, `AppSmokeUITests` + `scripts/ios/add_ui_test_target.rb`). Written without a device or Mac; they compile. `d566c07`
+- [x] Steps 10–12 30 screenshot goldens (Roborazzi library; the Gradle plugin made every test 2x slower and was dropped), `scripts/android/release_smoke.py`, no sleeping in tests (`NoSleepInTestsTest`), `docs/TESTING.md`, coverage floors (`verifyCoverageFloors`, part of `check`). `5ba1246`
+- [ ] Owed: `MAC_AND_DEVICE_CHECKLIST.md` section 1 (the tests above that were written but never run), then the exit gate.
 
 ## Manual checks still owed (need a device / your Google account)
 - **All remaining Mac/device checks are consolidated in `MAC_AND_DEVICE_CHECKLIST.md` (2026-10-12); this list is the historic record, the checklist is what to run.**

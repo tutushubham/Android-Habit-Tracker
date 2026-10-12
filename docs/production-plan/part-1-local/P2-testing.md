@@ -103,12 +103,14 @@ xcodebuild test -scheme iosApp ...                   # [mac], XCUITest smoke
 ```
 
 ## 5. Definition of done
-- [ ] Coverage report with agreed thresholds enforced.
-- [ ] Domain, data, sync, ViewModel and UI layers each have meaningful tests; failure paths covered.
-- [ ] Instrumented + iOS smoke tests exist and pass on your machines.
-- [ ] Release-APK smoke test script passes.
-- [ ] `docs/TESTING.md` written; bugs found are fixed with regression tests.
-- [ ] `PROGRESS.md` ticked → **Part 1 exit gate** review.
+- [x] Coverage report with agreed thresholds enforced (`verifyCoverageFloors`, part of `check`; floors = measured minus 2).
+- [x] Domain, data, sync, ViewModel and UI layers each have meaningful tests; failure paths covered.
+- [x] Instrumented + iOS smoke tests exist (written without a device; they compile).
+  - [ ] They pass on your machines (`MAC_AND_DEVICE_CHECKLIST.md` 1.1, 1.4, 1.5).
+- [x] Release-APK smoke test script exists (`scripts/android/release_smoke.py`; its parser self-test passes and its build step was run).
+  - [ ] It passes on an emulator (`MAC_AND_DEVICE_CHECKLIST.md` 1.5).
+- [x] `docs/TESTING.md` written; bugs found are fixed with regression tests.
+- [x] `PROGRESS.md` ticked as [Done*] → **Part 1 exit gate** review (`MAC_AND_DEVICE_CHECKLIST.md` section 5).
 
 ## 6. Part 1 exit gate (do this after P2)
 1. Clean clone → `./gradlew check assembleRelease` passes; iOS archive builds `[mac]`.
@@ -122,3 +124,25 @@ xcodebuild test -scheme iosApp ...                   # [mac], XCUITest smoke
 - **Missing, assign here:** Compose UI tests for `DestructiveConfirmDialog` flows (Reset, Import, delete habit/category, remove session), `StartupFailureScreen` (three buttons, reset confirmation, success → retry), `DataBackupScreen` result messages; instrumented tests for `AndroidBackupService` (process death while the picker is open), `AndroidStartupRecovery` and a forced corrupt database (Android's default would delete it; `onCorruption` is a no-op by design); iOS tests for `IosBackupService`, `IosStartupRecovery` (file locations, share sheet) and the `NSSystemTimeZoneDidChange` / `NSCalendarDayChanged` observers `[mac]`; a device check that the Android/iOS SQLite drivers keep `PRAGMA foreign_keys = ON`.
 - **Performance:** `LoadSnapshotPerformanceTest` prints timings and, since the P1-2 audit, asserts the targets (best of 15 loads < 100 ms, check-off median < 50 ms for 36k completions; measured 37 ms and 1 ms idle on an Apple-silicon Mac, so only the check-off bound would have caught the old behaviour on that machine). If CI hardware makes it flaky, loosen the bound rather than delete the test.
 - **Coverage tooling gap:** `androidUnitTest` is where all SQLite tests run (JDBC driver); they locate `sqldelight/databases` and `ui/` sources by relative path from the module directory.
+
+## 8. Result (2026-10-12)
+All 12 steps are on `master`, one or more commits each, with a running list of production bugs found (each fixed with
+its failing test committed first):
+
+| # | Bug | Found by |
+|---|-----|----------|
+| 1 | `applySheetSync` raised a sheet-supplied completion's `updated_at` by 1 on every re-apply | `HabitRepositoryContract` |
+| 2 | The in-memory repository double accepted data SQLite rejects and lowered `updated_at` (test-only) | `HabitRepositoryContract` |
+| 3 | Every apostrophe in `strings.xml` was escaped `\'`; the resource plugin keeps the backslash, so the app showed "Couldn\'t …" | Compose UI test (startup failure screen) |
+| 4 | Theme radio rows and the Day/Month switch exposed no selected state to accessibility | Compose UI test |
+
+No bug was found in `PlanResolver`, `MonthEngine`, `HabitCalculations` or the sync state machine by the property and
+fault-matrix tests. Numbers: **548 JVM tests**; floors domain 97, data 97, sync 97, presentation 92, ui 70,
+app + platform 19, total 75 (measured 99.3 / 99.3 / 99.6 / 94.6 / 72.0 / 21.4 / 77.1).
+
+Deviations from the plan: Roborazzi is used as a library without its Gradle plugin (the plugin halved test speed and
+failed `LoadSnapshotPerformanceTest`); Kover's own per-package rules were not usable in 0.9.11, so the floors are
+checked by `verifyCoverageFloors` against the XML report; the instrumented and iOS tests could not be run where they
+were written (no emulator, no Mac) and are queued in `MAC_AND_DEVICE_CHECKLIST.md`.
+
+Handoff: `docs/TESTING.md` (layers, commands, rules, CI jobs for B1) and the checklist above.
