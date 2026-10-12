@@ -59,6 +59,8 @@ internal fun TodayModeContent(
     onBackToToday: () -> Unit,
     onTogglePlanned: (planId: String, date: LocalDate) -> Unit,
     onToggleWeekly: (habitId: String, weekStart: LocalDate) -> Unit,
+    onManage: () -> Unit = {},
+    onLinkSheet: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier.fillMaxWidth().padding(top = 20.dp, bottom = 24.dp)) {
@@ -83,6 +85,12 @@ internal fun TodayModeContent(
                 TextButton(onClick = onBackToToday, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
                     Text(stringResource(Res.string.today_back))
                 }
+            }
+
+            if (state.isEmpty) {
+                // First run: nothing to check off yet, so offer the two ways to start instead of 0 of 0.
+                EmptyHabits(onManage, onLinkSheet)
+                return@Column
             }
 
             val summary = state.todaySummary

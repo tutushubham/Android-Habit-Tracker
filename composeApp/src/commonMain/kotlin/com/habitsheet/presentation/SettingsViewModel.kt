@@ -104,6 +104,27 @@ class SettingsViewModel(
         }
     }
 
+    /** Saves the link (when it is valid and changed) and then syncs: the one action behind "Connect & sync". */
+    fun connect(input: String) {
+        val service = sheetSync
+        val canonical = SheetLink.canonicalize(input)
+        if (canonical == null) {
+            _sheetMessage.value = UiText.of(Res.string.sheet_msg_invalid_link)
+            return
+        }
+        scope.launch(ioDispatcher) {
+            val saved = runCatchingCancellable {
+                if (repository.getSheetUrl() != canonical) repository.setSheetUrl(canonical)
+                _sheetUrl.value = canonical
+                _sheetMessage.value = null
+            }.onFailure {
+                logger.e(TAG, "connect failed", it)
+                _sheetMessage.value = UiText.of(Res.string.sheet_msg_save_failed)
+            }.isSuccess
+            if (saved) service?.sync(interactive = true)
+        }
+    }
+
     /** Unlinks the sheet and forgets sync state. Habits, plans and check-offs on this device are kept. */
     fun disconnect() {
         scope.launch(ioDispatcher) {

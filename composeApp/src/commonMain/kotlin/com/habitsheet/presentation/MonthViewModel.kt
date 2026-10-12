@@ -189,6 +189,11 @@ class MonthViewModel(
         error.value = null
     }
 
+    /** Shows the first-run tutorial again (from Settings). Completing or skipping it stores the flag as before. */
+    fun showTutorial() {
+        onboardingVisible.value = true
+    }
+
     fun completeOnboarding() {
         onboardingVisible.value = false
         scope.launch {

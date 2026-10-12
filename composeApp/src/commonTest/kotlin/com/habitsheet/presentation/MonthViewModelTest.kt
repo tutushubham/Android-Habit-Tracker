@@ -167,6 +167,23 @@ class MonthViewModelTest {
     }
 
     @Test
+    fun tutorialCanBeShownAgainFromSettingsEvenAfterItWasCompleted() = runTest {
+        val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
+        runCurrent()
+        viewModel.completeOnboarding()
+        runCurrent()
+        assertFalse(viewModel.state.value.onboardingVisible)
+
+        viewModel.showTutorial()
+        runCurrent()
+        assertTrue(viewModel.state.value.onboardingVisible)
+
+        viewModel.completeOnboarding()
+        runCurrent()
+        assertFalse(viewModel.state.value.onboardingVisible)
+    }
+
+    @Test
     fun tutorialIsNotShownToInstallsThatAlreadyHaveHabits() = runTest {
         val existing = InMemoryHabitRepository(
             HabitSnapshot(

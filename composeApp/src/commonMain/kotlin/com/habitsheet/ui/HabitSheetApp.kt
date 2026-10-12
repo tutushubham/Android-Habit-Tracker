@@ -171,6 +171,10 @@ private fun AppDestination(
             },
             onBackup = { if (backupViewModel != null) navigate(Destination.Backup) },
             onAbout = { navigate(Destination.About) },
+            onShowTutorial = {
+                monthViewModel.showTutorial()
+                navigate(Destination.Tracker)
+            },
             showBack = !tabletLayout,
         )
 

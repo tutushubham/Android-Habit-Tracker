@@ -2,6 +2,7 @@ package com.habitsheet.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,20 +14,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.ThemeMode
 import com.habitsheet.presentation.asString
 import com.habitsheet.resources.*
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
@@ -34,6 +40,7 @@ fun SettingsScreen(
     onManageCategories: () -> Unit,
     onBackup: () -> Unit,
     onAbout: () -> Unit,
+    onShowTutorial: () -> Unit = {},
     showBack: Boolean = true,
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -54,33 +61,51 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
             ) {
                 SettingsSection(stringResource(Res.string.settings_plan_sync)) {
+                    val draftInvalid = sheetDraft.isNotBlank() && SheetLink.canonicalize(sheetDraft) == null
+                    val uriHandler = LocalUriHandler.current
                     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+                        Text(
+                            stringResource(Res.string.settings_sync_intro),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(stringResource(Res.string.settings_step_create), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(Res.string.settings_step_copy), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(Res.string.settings_step_paste), style = MaterialTheme.typography.bodyMedium)
+                        }
                         OutlinedTextField(
                             value = sheetDraft,
                             onValueChange = { sheetDraft = it },
                             label = { Text(stringResource(Res.string.settings_sheet_link)) },
                             placeholder = { Text(stringResource(Res.string.settings_sheet_placeholder)) },
+                            isError = draftInvalid,
+                            supportingText = if (draftInvalid) ({ Text(stringResource(Res.string.settings_link_invalid)) }) else null,
                             modifier = Modifier.fillMaxWidth(),
                             maxLines = 2,
                         )
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(onClick = { viewModel.saveSheetUrl(sheetDraft) }) { Text(stringResource(Res.string.settings_save_link)) }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { viewModel.connect(sheetDraft) },
+                                enabled = sheetDraft.isNotBlank() && !draftInvalid && !syncState.busy,
+                            ) {
+                                Text(stringResource(if (syncState.busy) Res.string.settings_syncing else Res.string.settings_connect_sync))
+                            }
                             if (sheetUrl.isNotBlank()) {
+                                OutlinedButton(onClick = { uriHandler.openUri(sheetUrl) }) { Text(stringResource(Res.string.plan_open_sheet)) }
                                 OutlinedButton(
                                     onClick = viewModel::disconnect,
                                     enabled = !syncState.busy,
                                 ) { Text(stringResource(Res.string.settings_disconnect)) }
                             }
-                            Button(onClick = viewModel::syncNow, enabled = sheetUrl.isNotBlank() && !syncState.busy) {
-                                Text(stringResource(if (syncState.busy) Res.string.settings_syncing else Res.string.settings_connect_sync))
-                            }
                         }
-                        sheetMessage?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall) }
+                        sheetMessage?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp)) }
                         Text(
                             syncStatus.text.asString(),
                             style = MaterialTheme.typography.bodySmall,
                             color = if (syncStatus.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
                         )
                         Text(
                             stringResource(Res.string.settings_sheet_note),
@@ -106,6 +131,14 @@ fun SettingsScreen(
 
                 SettingsSection(stringResource(Res.string.settings_data)) {
                     SettingsActionItem(stringResource(Res.string.settings_data_backup), stringResource(Res.string.settings_data_backup_desc), onBackup)
+                }
+
+                SettingsSection(stringResource(Res.string.settings_help)) {
+                    SettingsActionItem(
+                        stringResource(Res.string.settings_show_tutorial),
+                        stringResource(Res.string.settings_show_tutorial_desc),
+                        onShowTutorial,
+                    )
                 }
 
                 SettingsSection(stringResource(Res.string.settings_about)) {

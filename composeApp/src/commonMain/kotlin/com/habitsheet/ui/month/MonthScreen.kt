@@ -150,13 +150,15 @@ private fun PhoneMonthScreen(
                     onBackToToday = actions.currentDay,
                     onTogglePlanned = actions.togglePlanned,
                     onToggleWeekly = actions.toggleWeekly,
+                    onManage = onManage,
+                    onLinkSheet = onSettings,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
             } else {
                 MonthSummaryStrip(state, onCurrentMonth = actions.currentMonth)
                 MonthGridLegend()
                 if (state.habits.isEmpty()) {
-                    EmptyHabits(onManage)
+                    EmptyHabits(onManage, onSettings)
                 } else {
                     BoxWithConstraints(
                         Modifier
@@ -216,6 +218,8 @@ private fun TabletMonthScreen(
                     onBackToToday = actions.currentDay,
                     onTogglePlanned = actions.togglePlanned,
                     onToggleWeekly = actions.toggleWeekly,
+                    onManage = onManage,
+                    onLinkSheet = onSettings,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp),
@@ -224,7 +228,7 @@ private fun TabletMonthScreen(
                 MonthSummaryStrip(state, Modifier.padding(horizontal = 24.dp, vertical = 16.dp), actions.currentMonth)
                 MonthGridLegend(Modifier.padding(horizontal = 24.dp))
                 if (state.habits.isEmpty()) {
-                    EmptyHabits(onManage)
+                    EmptyHabits(onManage, onSettings)
                 } else {
                     BoxWithConstraints(
                         Modifier

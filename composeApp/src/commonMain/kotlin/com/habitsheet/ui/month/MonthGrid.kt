@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,7 +65,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun EmptyHabits(onManage: () -> Unit) {
+internal fun EmptyHabits(onManage: () -> Unit, onLinkSheet: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -88,6 +89,13 @@ internal fun EmptyHabits(onManage: () -> Unit) {
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         ) {
             Text(stringResource(Res.string.empty_daily_button))
+        }
+        OutlinedButton(
+            onClick = onLinkSheet,
+            modifier = Modifier.padding(top = 8.dp),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Text(stringResource(Res.string.empty_link_sheet_button))
         }
     }
 }
@@ -400,7 +408,7 @@ private fun DailyHabitGridPreview() {
 @Preview
 @Composable
 private fun EmptyHabitsPreview() {
-    HabitSheetTheme(darkTheme = false) { Surface { EmptyHabits(onManage = {}) } }
+    HabitSheetTheme(darkTheme = false) { Surface { EmptyHabits(onManage = {}, onLinkSheet = {}) } }
 }
 
 @Preview
