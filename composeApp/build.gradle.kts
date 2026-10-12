@@ -63,6 +63,8 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+            implementation(libs.compose.ui.test)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
@@ -72,6 +74,9 @@ kotlin {
         }
         androidUnitTest.dependencies {
             implementation(libs.sqldelight.sqlite.driver)
+            // Compose UI tests run on the JVM under Robolectric (see src/androidUnitTest/.../ui/AndroidUiTests.kt).
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.robolectric)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)
@@ -140,6 +145,8 @@ kotlin.sourceSets.named("commonTest") { kotlin.srcDir(generateEnglishCatalog.map
 // Renders the commonMain @Preview functions in Android Studio; debug builds only, never shipped.
 dependencies {
     debugImplementation(libs.compose.ui.tooling)
+    // Registers the empty ComponentActivity the Compose UI tests launch; debug builds only.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 android {
@@ -181,6 +188,11 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+
+    testOptions {
+        // Robolectric needs the merged manifest and resources (Compose resources are packaged as assets).
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
