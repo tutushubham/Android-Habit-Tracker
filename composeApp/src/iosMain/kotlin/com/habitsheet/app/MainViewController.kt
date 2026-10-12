@@ -17,6 +17,7 @@ import com.habitsheet.AppStartup
 import com.habitsheet.StartupState
 import com.habitsheet.domain.calculation.DailyShareSummary
 import com.habitsheet.platform.IosLogger
+import com.habitsheet.platform.Logger
 import com.habitsheet.resources.Res
 import com.habitsheet.resources.share_text_progress
 import com.habitsheet.resources.share_text_title
@@ -52,12 +53,13 @@ fun MainViewController(tokenProvider: SheetTokenProvider) = ComposeUIViewControl
             HabitSheetTheme { StartupFailureScreen(startup.cause, recovery, onRetry = { attempt++ }) }
         }
 
-        is StartupState.Ready -> ReadyApp(startup.graph, hostController)
+        is StartupState.Ready -> ReadyApp(startup.graph, hostController, logger)
     }
 }
 
 @Composable
-private fun ReadyApp(graph: AppGraph, hostController: UIViewController) {
+private fun ReadyApp(graph: AppGraph, hostController: UIViewController, logger: Logger) {
+    val backupService = remember(hostController) { IosBackupService({ topViewController(hostController) }, logger) }
     LaunchedEffect(graph) { graph.syncOnForeground() }
     val scope = rememberCoroutineScope()
     val shareService = remember(hostController, scope) {
@@ -126,7 +128,7 @@ private fun ReadyApp(graph: AppGraph, hostController: UIViewController) {
     HabitSheetApp(
         graph,
         shareService,
-        IosBackupService(),
+        backupService,
         IosVersionProvider(),
     )
 }

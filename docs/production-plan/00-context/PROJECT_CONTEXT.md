@@ -110,7 +110,7 @@ Legend: **V** = verified by reading code/config; **I** = inferred.
 ### P1 — robustness (**resolved in P1-1** except where marked; details in `PROGRESS.md`)
 - No logging or crash reporting; 31 `catch` blocks in `commonMain` (V).
 - Backup (`domain/backup/BackupModels.kt`) serializes only `HabitSnapshot`; sheet link/theme/onboarding and `sheetManagedHabitIds` (`@Transient`) are excluded; `restoreFromSnapshot` wipes `sheet_managed_habits` (V).
-- `AndroidBackupService` import reads lines and concatenates without newlines (V). iOS backup is clipboard-based (README).
+- `AndroidBackupService` import reads lines and concatenates without newlines (V). iOS backup was clipboard-based (file-based since P1-3 step 4).
 - `allowBackup="true"` and no `dataExtractionRules` → the whole DB (with sync state) goes to Google backup (V).
 - `deleteDailyHabit` cascades plans and completions (V schema); confirm UI guards (DestructiveActionsTest exists).
 - `SystemDateProvider` uses device TZ; midnight rollover/travel untested (I).
@@ -128,7 +128,7 @@ Legend: **V** = verified by reading code/config; **I** = inferred.
 - 0 uses of `stringResource` — all UI text is hard-coded (V); Android widget uses `strings.xml` (inconsistent).
 - 22 `contentDescription`s across UI; month grid is custom-drawn (V).
 - Default seed categories are the workbook's ten (`data/DefaultData.kt`) and first-run seeds OND (V).
-- iOS: Data & Backup copies to clipboard (V per README); Android: system document picker.
+- iOS: Data & Backup was clipboard-based (file share + document picker since P1-3 step 4); Android: system document picker.
 - No iOS widget; no reminders (V) → **deferred, not in scope** (D4).
 
 ### P2 — testing

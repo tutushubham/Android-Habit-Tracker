@@ -92,9 +92,8 @@
     <string name="file_err_save">Couldn\'t save the file.</string>
     <string name="backup_saved">Backup saved.</string>
     <string name="csv_saved">CSV saved.</string>
-    <string name="backup_copied">Backup copied. Paste and save it somewhere safe before copying anything else.</string>
-    <string name="csv_copied">CSV copied to clipboard.</string>
-    <string name="backup_clipboard_empty">The clipboard has no backup text. Copy your backup first, then try again.</string>
+    <string name="backup_shared">Backup exported. Keep the file somewhere safe.</string>
+    <string name="csv_shared">CSV exported.</string>
     <string name="recovery_no_file_to_save">There is no data file on this device to save.</string>
     <string name="recovery_err_prepare">Couldn\'t prepare the copy. Is the storage full?</string>
     <string name="recovery_err_copy_lost">The copy was lost. Please try again.</string>

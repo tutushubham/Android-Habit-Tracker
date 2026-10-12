@@ -74,7 +74,7 @@ Apple app requires full Xcode. `scripts/screenshots/` compares every screen of t
 - `iosApp` — native SwiftUI host project
 - `stitch` — design reference screens (code, images, metadata)
 
-On iOS, Data & Backup copies JSON or CSV to the clipboard; save the copied text somewhere durable. Import reads a previously copied JSON backup. On Android, Data & Backup uses the system document picker for files. Backups are written as format version 4 (habits, plans, history, theme and first-run flag, with a checksum that detects a damaged or edited file); versions 1–3 still import. A backup never contains sync state, and importing one makes the next sync start from your Google Sheet. **Reset all data** and **Import** both replace local data only and say so before they run; your Google Sheet is never touched.
+On iOS, Data & Backup exports through the share sheet (a `.json` or `.csv` file: "Save to Files", AirDrop, Mail) and imports a JSON file with the document picker. On Android, Data & Backup uses the system document picker for files. Backups are written as format version 4 (habits, plans, history, theme and first-run flag, with a checksum that detects a damaged or edited file); versions 1–3 still import. A backup never contains sync state, and importing one makes the next sync start from your Google Sheet. **Reset all data** and **Import** both replace local data only and say so before they run; your Google Sheet is never touched.
 
 If the app cannot open its local database at start, it shows a recovery screen (Try again / Save a copy of the data file / Start with empty data) instead of crashing; nothing is deleted without a confirmation, and the old file is kept on the device when you start empty.
 
