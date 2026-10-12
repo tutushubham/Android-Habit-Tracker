@@ -470,10 +470,12 @@ abstract class HabitRepositoryContract {
             assertTrue(repo.getSheetSyncedKeys().isEmpty())
             assertEquals(2, repo.getThemeMode())
             assertEquals(true, repo.isOnboardingCompleted())
-            assertEquals(snapshot, handle.reopen().snapshot.value)
+            // reopen() closes `repo` (the native driver then rejects any use of it): continue on the new instance.
+            val reopened = handle.reopen()
+            assertEquals(snapshot, reopened.snapshot.value)
 
-            repo.restoreFromSnapshot(backup(), settings, restoreSheetLink = true)
-            assertEquals("https://docs.google.com/spreadsheets/d/other/edit", repo.getSheetUrl())
+            reopened.restoreFromSnapshot(backup(), settings, restoreSheetLink = true)
+            assertEquals("https://docs.google.com/spreadsheets/d/other/edit", reopened.getSheetUrl())
         }
     }
 

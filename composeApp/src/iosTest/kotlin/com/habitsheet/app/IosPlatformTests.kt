@@ -2,6 +2,7 @@
 
 package com.habitsheet.app
 
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import com.habitsheet.data.DatabaseFileNames
 import com.habitsheet.data.HabitRepositoryContract
@@ -10,6 +11,8 @@ import com.habitsheet.data.RepositoryHandle
 import com.habitsheet.database.HabitsDatabase
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.repository.HabitRepository
+import com.habitsheet.platform.IosLogger
+import com.habitsheet.platform.LogLevel
 import com.habitsheet.presentation.UiText
 import com.habitsheet.resources.Res
 import com.habitsheet.resources.recovery_moved_aside
@@ -112,8 +115,12 @@ class IosStartupRecoveryTest {
 
     @Test
     fun theDatabaseIsFoundWhereTheDriverPutItAndMovedAside() {
-        IosDriverFactory().createDriver().close()
-        assertTrue(filesNamed(name).any { it.endsWith("/$name") }, "the driver created $name in one of the searched directories")
+        // NativeSqliteDriver opens its connections lazily: nothing is on disk until the first statement runs.
+        IosDriverFactory().createDriver().also { it.executeQuery(null, "PRAGMA user_version", { QueryResult.Value(Unit) }, 0) }.close()
+        assertTrue(
+            filesNamed(name).any { it.endsWith("/$name") },
+            "the driver created $name in one of the searched directories",
+        )
 
         val result = IosStartupRecovery({ null }).setAsideDatabase()
 
@@ -126,5 +133,14 @@ class IosStartupRecoveryTest {
                 .forEach { manager.removeItemAtPath(it, null) }
         }
         assertIs<BackupResult.Success>(result)
+    }
+}
+
+class IosLoggerTest {
+    @Test
+    fun loggingDoesNotCrashAndTreatsFormatCharactersInTheMessageAsText() {
+        val logger = IosLogger()
+        logger.log(LogLevel.ERROR, "Tag", "100% done %@ %s %d %n", IllegalStateException("boom %@"))
+        logger.log(LogLevel.INFO, "Tag", "plain", null)
     }
 }

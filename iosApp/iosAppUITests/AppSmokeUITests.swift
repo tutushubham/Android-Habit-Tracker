@@ -19,6 +19,12 @@ final class AppSmokeUITests: XCTestCase {
         return app.descendants(matching: .any).matching(predicate).firstMatch
     }
 
+    /// Fails with the accessibility tree attached to the log: what the app exposes is the thing to look at.
+    private func require(_ element: XCUIElement, _ app: XCUIApplication, _ what: String, timeout: TimeInterval = 10) {
+        if !element.waitForExistence(timeout: timeout) { print("TREE[\(what)] \(app.debugDescription)") }
+        XCTAssertTrue(element.exists, what)
+    }
+
     func testAddAHabitCheckItOffAndComeBackFromTheBackground() throws {
         let app = XCUIApplication()
         app.launch()
@@ -30,24 +36,25 @@ final class AppSmokeUITests: XCTestCase {
 
         // Habits tab -> Add Daily Habit -> name and goal -> Save
         let habitsTab = element(app, label: "Habits")
-        XCTAssertTrue(habitsTab.waitForExistence(timeout: 15), "the bottom bar did not appear")
+        require(habitsTab, app, "the bottom bar did not appear", timeout: 15)
         habitsTab.tap()
         let add = element(app, label: "Add Daily Habit", contains: true)
-        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        require(add, app, "Add Daily Habit button")
         add.tap()
-        let fields = app.textFields
-        XCTAssertTrue(fields.element(boundBy: 0).waitForExistence(timeout: 10))
+        // Compose text fields are exposed as text views, labelled with the field's label.
+        let fields = app.textViews
+        require(fields.element(boundBy: 0), app, "name field")
         fields.element(boundBy: 0).tap()
         fields.element(boundBy: 0).typeText(habitName)
         fields.element(boundBy: 1).tap()
         fields.element(boundBy: 1).typeText("12")
         app.buttons["Save"].tap()
-        XCTAssertTrue(element(app, label: habitName, contains: true).waitForExistence(timeout: 10))
+        require(element(app, label: habitName, contains: true), app, "habit listed after save")
 
         // Back on the tracker, today's list shows it unchecked; tap it.
         element(app, label: "Tracker").tap()
         let row = element(app, label: habitName, contains: true)
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        require(row, app, "habit row on tracker")
         row.tap()
         XCTAssertEqual(element(app, label: habitName, contains: true).value as? String, "Completed")
 
@@ -55,7 +62,7 @@ final class AppSmokeUITests: XCTestCase {
         XCUIDevice.shared.press(.home)
         app.activate()
         let again = element(app, label: habitName, contains: true)
-        XCTAssertTrue(again.waitForExistence(timeout: 15))
+        require(again, app, "habit row after foregrounding", timeout: 15)
         XCTAssertEqual(again.value as? String, "Completed")
     }
 }

@@ -7,19 +7,34 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		76A65576BA6789F3BD9BC1DC /* AppSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2EC28FEEC7016A55A37B9AE /* AppSmokeUITests.swift */; };
 		A10000000000000000000001 /* HabitSheetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* HabitSheetApp.swift */; };
 		A10000000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* Assets.xcassets */; };
-		A10000000000000000000004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* PrivacyInfo.xcprivacy */; };
 		A10000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000091 /* GoogleSignIn */; };
+		A10000000000000000000004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* PrivacyInfo.xcprivacy */; };
+		A4020F3BA05D6213D5E2FBF3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF6623A4058EC2E91E54F6D3 /* Foundation.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		49754233726A91A4D8D344B9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000050 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000040;
+			remoteInfo = iosApp;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000010 /* Habit Sheet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Habit Sheet.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* HabitSheetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitSheetApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Version.xcconfig; path = Config/Version.xcconfig; sourceTree = "<group>"; };
 		A10000000000000000000015 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BE5A7D412D3A7FCC2FADD8C5 /* iosAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iosAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2EC28FEEC7016A55A37B9AE /* AppSmokeUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSmokeUITests.swift; sourceTree = "<group>"; };
+		CF6623A4058EC2E91E54F6D3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -28,6 +43,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000003 /* GoogleSignIn in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D4DCC45A014192EA0316084F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A4020F3BA05D6213D5E2FBF3 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -40,6 +63,8 @@
 				A10000000000000000000014 /* Version.xcconfig */,
 				A10000000000000000000031 /* iosApp */,
 				A10000000000000000000032 /* Products */,
+				C2D89EE248337115844FCF96 /* Frameworks */,
+				A95AC75DDBE9FA8197024686 /* iosAppUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -58,8 +83,34 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000010 /* Habit Sheet.app */,
+				BE5A7D412D3A7FCC2FADD8C5 /* iosAppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A95AC75DDBE9FA8197024686 /* iosAppUITests */ = {
+			isa = PBXGroup;
+			children = (
+				C2EC28FEEC7016A55A37B9AE /* AppSmokeUITests.swift */,
+			);
+			name = iosAppUITests;
+			path = iosAppUITests;
+			sourceTree = "<group>";
+		};
+		C2D89EE248337115844FCF96 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				ECCBDAC24B96A157B2713DDD /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		ECCBDAC24B96A157B2713DDD /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				CF6623A4058EC2E91E54F6D3 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -79,12 +130,30 @@
 			dependencies = (
 			);
 			name = iosApp;
-			productName = iosApp;
 			packageProductDependencies = (
 				A10000000000000000000091 /* GoogleSignIn */,
 			);
+			productName = iosApp;
 			productReference = A10000000000000000000010 /* Habit Sheet.app */;
 			productType = "com.apple.product-type.application";
+		};
+		EFF2B8D417EA5BAFDA368C0B /* iosAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C9B4F9DFECD2B8906BF00AB7 /* Build configuration list for PBXNativeTarget "iosAppUITests" */;
+			buildPhases = (
+				76E14CFAFC1701365478E032 /* Sources */,
+				D4DCC45A014192EA0316084F /* Frameworks */,
+				2E82232779E7979DB236599C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5CE20435F078F17EA1C5A110 /* PBXTargetDependency */,
+			);
+			name = iosAppUITests;
+			productName = iosAppUITests;
+			productReference = BE5A7D412D3A7FCC2FADD8C5 /* iosAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -110,19 +179,27 @@
 				Base,
 			);
 			mainGroup = A10000000000000000000030;
-			productRefGroup = A10000000000000000000032 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
 			packageReferences = (
 				A10000000000000000000090 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
+			productRefGroup = A10000000000000000000032 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
 			targets = (
 				A10000000000000000000040 /* iosApp */,
+				EFF2B8D417EA5BAFDA368C0B /* iosAppUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		2E82232779E7979DB236599C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000000000000000000022 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -153,6 +230,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		76E14CFAFC1701365478E032 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				76A65576BA6789F3BD9BC1DC /* AppSmokeUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000000000000000000021 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -163,7 +248,47 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		5CE20435F078F17EA1C5A110 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = iosApp;
+			target = A10000000000000000000040 /* iosApp */;
+			targetProxy = 49754233726A91A4D8D344B9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		145C4B0D6E1820BADFD380CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.habitsheet.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = iosApp;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		86F93C77F31AB36AEB9AF33C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.habitsheet.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = iosApp;
+			};
+			name = Debug;
+		};
 		A10000000000000000000060 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A10000000000000000000014 /* Version.xcconfig */;
@@ -346,6 +471,15 @@
 			buildConfigurations = (
 				A10000000000000000000062 /* Debug */,
 				A10000000000000000000063 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C9B4F9DFECD2B8906BF00AB7 /* Build configuration list for PBXNativeTarget "iosAppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				145C4B0D6E1820BADFD380CA /* Release */,
+				86F93C77F31AB36AEB9AF33C /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

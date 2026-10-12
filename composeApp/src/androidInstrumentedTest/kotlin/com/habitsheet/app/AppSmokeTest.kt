@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -58,7 +59,8 @@ class AppSmokeTest {
         compose.onAllNodes(hasSetTextAction())[0].performTextInput(habitName)
         compose.onAllNodes(hasSetTextAction())[1].performTextInput("12")
         compose.onNode(hasText(s(Res.string.action_save)) and hasAnyAncestor(isDialog())).performClick()
-        compose.onNodeWithText(habitName).assertExists()
+        // The save goes through the repository on another dispatcher; wait for the list instead of assuming it is there.
+        compose.waitUntil(timeoutMillis = 10_000) { compose.onAllNodesWithText(habitName).fetchSemanticsNodes().isNotEmpty() }
 
         // Back to the tracker through the bottom bar.
         compose.onNode(hasText(s(Res.string.nav_tracker))).performClick()

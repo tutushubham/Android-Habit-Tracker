@@ -2,6 +2,9 @@
 
 package com.habitsheet.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
@@ -64,7 +67,12 @@ private fun hasRole(role: Role) = SemanticsMatcher.expectValue(SemanticsProperti
  */
 object UiScenarios {
     private fun ComposeUiTest.showMonthScreen(world: UiWorld, onManage: () -> Unit = {}, onSettings: () -> Unit = {}) {
-        setContent { HabitSheetTheme(darkTheme = false) { MonthScreen(world.month, onManage = onManage, onSettings = onSettings) } }
+        // A phone-sized box: the iOS test window is 1024 dp wide, which would select the tablet layout (no bottom tabs).
+        setContent {
+            HabitSheetTheme(darkTheme = false) {
+                Box(Modifier.size(412.dp, 892.dp)) { MonthScreen(world.month, onManage = onManage, onSettings = onSettings) }
+            }
+        }
     }
 
     // ---- empty state and first run ----

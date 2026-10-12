@@ -3,7 +3,7 @@
 #   gem install xcodeproj      # once (CocoaPods installs it as well)
 #   ruby scripts/ios/add_ui_test_target.rb
 #
-# Written on Windows and NOT RUN there: check `git diff iosApp/` after running it and open the project once in Xcode.
+# Written on Windows, first run on the Mac: PRODUCT_NAME had to be set explicitly (new_target leaves it empty).
 require 'xcodeproj'
 
 root = File.expand_path('../..', __dir__)
@@ -29,6 +29,7 @@ app_bundle_id = app.build_configurations.first.build_settings['PRODUCT_BUNDLE_ID
 target.build_configurations.each do |config|
   settings = config.build_settings
   settings['TEST_TARGET_NAME'] = 'iosApp'
+  settings['PRODUCT_NAME'] = '$(TARGET_NAME)'
   settings['PRODUCT_BUNDLE_IDENTIFIER'] = "#{app_bundle_id}.uitests"
   settings['GENERATE_INFOPLIST_FILE'] = 'YES'
   settings['SWIFT_VERSION'] = '5.0'
