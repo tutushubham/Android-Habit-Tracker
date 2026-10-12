@@ -17,6 +17,7 @@ google-auth = "21.5.1"
 spotless = "8.10.3"
 ktlint = "1.8.0"
 detekt = "1.23.8"
+kover = "0.9.11"
 # detekt 1.23.x is built with Kotlin 2.0.21 and must run with that compiler (see composeApp/build.gradle.kts).
 detekt-kotlin = "2.0.21"
 
@@ -56,3 +57,4 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

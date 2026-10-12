@@ -7,8 +7,8 @@ import com.habitsheet.StartupState
 import com.habitsheet.data.DriverFactory
 import com.habitsheet.database.HabitsDatabase
 import com.habitsheet.platform.LogLevel
-import com.habitsheet.platform.RecordingLogger
 import com.habitsheet.sync.SheetTokenProvider
+import com.habitsheet.testing.FakeLogger
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -59,7 +59,7 @@ class AppStartupTest {
 
     @Test
     fun aDriverThatThrowsGivesTheRecoveryStateInsteadOfCrashing() {
-        val logger = RecordingLogger()
+        val logger = FakeLogger()
         val state = AppStartup.create({ throw IllegalStateException("cannot open") }, tokens, logger)
 
         val failed = assertIs<StartupState.Failed>(state)

@@ -9,8 +9,8 @@ import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
-import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.MonthViewModel
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,10 +87,7 @@ class LoadSnapshotPerformanceTest {
             }
 
             // Recomputing the month screen's state from a snapshot this size (measured on the in-memory repository).
-            val dates = object : DateProvider {
-                override fun today() = LocalDate(2026, 9, 15)
-                override fun nowEpochMillis() = 0L
-            }
+            val dates = FakeDateProvider(today = LocalDate(2026, 9, 15), nowMillis = 0L)
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
             val uiState = (1..5).map {
                 val t = System.nanoTime()

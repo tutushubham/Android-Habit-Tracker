@@ -5,6 +5,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
@@ -19,12 +20,8 @@ import kotlin.test.assertTrue
 class MonthViewModelTest {
     private val repository = InMemoryHabitRepository()
 
-    private var currentTime = 1000L
     private val fixedDate = LocalDate(2026, 8, 26)
-    private val dateProvider = object : DateProvider {
-        override fun today(): LocalDate = fixedDate
-        override fun nowEpochMillis(): Long = currentTime++
-    }
+    private val dateProvider = FakeDateProvider(today = fixedDate, nowMillis = 1000L, tickMillis = 1)
 
     @Test
     fun initialMonthIsCurrentMonth() = runTest {

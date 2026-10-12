@@ -12,7 +12,7 @@ import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.platform.LogLevel
-import com.habitsheet.platform.RecordingLogger
+import com.habitsheet.testing.FakeLogger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.awaitCancellation
@@ -116,7 +116,7 @@ class HabitWidgetLogicTest {
             val opener = WidgetStoreOpener {
                 LocalHabitRepository({ JdbcSqliteDriver(url) }).let { repo -> WidgetStore(repo) { repo.close() } }
             }
-            val result = runWidgetWork(opener, RecordingLogger()) { store -> HabitWidgetLogic.toggleDaily(store, "run-pm", "run", today, nowMillis = 10) }
+            val result = runWidgetWork(opener, FakeLogger()) { store -> HabitWidgetLogic.toggleDaily(store, "run-pm", "run", today, nowMillis = 10) }
             assertTrue(result)
 
             val reopened = LocalHabitRepository({ JdbcSqliteDriver(url) })
@@ -146,7 +146,7 @@ class HabitWidgetLogicTest {
             val lock = Mutex()
             val taps = List(2) { tap ->
                 async {
-                    runWidgetWork(opener, RecordingLogger(), lock = lock) { store ->
+                    runWidgetWork(opener, FakeLogger(), lock = lock) { store ->
                         yield() // the other tap runs now if nothing stops it
                         HabitWidgetLogic.toggleDaily(store, "run-pm", "run", today, nowMillis = 10L + tap)
                     }
@@ -166,7 +166,7 @@ class HabitWidgetLogicTest {
 
     @Test
     fun aDatabaseThatCannotBeOpenedIsLoggedNotThrown() = runTest {
-        val logger = RecordingLogger()
+        val logger = FakeLogger()
         val result = runWidgetWork(WidgetStoreOpener { error("file is not a database") }, logger) { }
         assertFalse(result)
         assertEquals(LogLevel.ERROR, logger.entries.single().level)
@@ -175,7 +175,7 @@ class HabitWidgetLogicTest {
 
     @Test
     fun workIsBoundedAndTheStoreIsAlwaysClosed() = runTest {
-        val logger = RecordingLogger()
+        val logger = FakeLogger()
         var closed = 0
         val opener = WidgetStoreOpener { WidgetStore(InMemoryHabitRepository()) { closed++ } }
 

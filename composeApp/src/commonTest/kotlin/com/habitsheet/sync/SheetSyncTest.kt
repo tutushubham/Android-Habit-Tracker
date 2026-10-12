@@ -6,7 +6,7 @@ import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.WeeklyPlan
-import com.habitsheet.presentation.DateProvider
+import com.habitsheet.testing.FakeDateProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -27,10 +27,7 @@ class SheetSyncTest {
             completion("test-token", null)
         }
     }
-    private val dates = object : DateProvider {
-        override fun today() = day
-        override fun nowEpochMillis() = 0L
-    }
+    private val dates = FakeDateProvider(today = day, nowMillis = 0L)
     private val jsonHeaders = headersOf(HttpHeaders.ContentType, "application/json")
 
     @Test

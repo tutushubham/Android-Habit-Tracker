@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.spotless)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -292,5 +293,28 @@ detekt {
 configurations.matching { it.name == "detekt" }.configureEach {
     resolutionStrategy.eachDependency {
         if (requested.group == "org.jetbrains.kotlin") useVersion(libs.versions.detekt.kotlin.get())
+    }
+}
+
+// --- Coverage (P2 step 1): report-only. `./gradlew :composeApp:koverHtmlReport` (or koverXmlReport) after the JVM
+// unit tests; `scripts/coverage-by-package.py` prints the per-package table. No threshold is enforced yet (P2 step 12
+// ratchets one to what was achieved). Generated code is excluded so the numbers describe code we wrote.
+kover {
+    reports {
+        filters {
+            excludes {
+                packages(
+                    "com.habitsheet.database",
+                    "habitsheet.composeapp.generated.resources",
+                    "com.habitsheet.resources",
+                )
+                classes(
+                    "*ComposableSingletons*",
+                    "com.habitsheet.app.BuildConfig",
+                    "*.R",
+                    "*.R\$*",
+                )
+            }
+        }
     }
 }

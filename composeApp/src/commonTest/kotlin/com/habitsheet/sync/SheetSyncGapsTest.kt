@@ -4,7 +4,7 @@ import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
-import com.habitsheet.presentation.DateProvider
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
@@ -17,10 +17,7 @@ import kotlin.test.assertTrue
 /** Coverage gaps noted after P0-B step 1: concurrency, rolling window bounds, failure after N calls. */
 class SheetSyncGapsTest {
     private val day = LocalDate(2026, 10, 15)
-    private val dates = object : DateProvider {
-        override fun today() = day
-        override fun nowEpochMillis() = 0L
-    }
+    private val dates = FakeDateProvider(today = day, nowMillis = 0L)
     private val link = "https://docs.google.com/spreadsheets/d/test-sheet/edit"
 
     private fun sync(repo: InMemoryHabitRepository, server: FakeSheetsServer) = SheetSync(

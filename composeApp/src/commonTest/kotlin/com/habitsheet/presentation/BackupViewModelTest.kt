@@ -9,6 +9,7 @@ import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.resources.Res
 import com.habitsheet.resources.backup_err_invalid
 import com.habitsheet.resources.backup_err_not_backup
+import com.habitsheet.testing.FakeDateProvider
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,10 +27,7 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BackupViewModelTest {
-    private val dateProvider = object : DateProvider {
-        override fun today() = LocalDate(2026, 8, 26)
-        override fun nowEpochMillis() = 4321L
-    }
+    private val dateProvider = FakeDateProvider(today = LocalDate(2026, 8, 26), nowMillis = 4321L)
 
     @Test
     fun exportsRestorableJsonAndCsv() = runTest {

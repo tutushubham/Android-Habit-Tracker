@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
 import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.testing.English
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -24,12 +25,7 @@ import kotlin.test.assertTrue
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MonthStateWiringTest {
-    private var today = LocalDate(2026, 10, 5)
-    private var now = 1_000L
-    private val dates = object : DateProvider {
-        override fun today() = today
-        override fun nowEpochMillis() = now++
-    }
+    private val dates = FakeDateProvider(today = LocalDate(2026, 10, 5), nowMillis = 1_000L, tickMillis = 1)
     private val habit = DailyHabit("read", "Read", null, 10, 0, true, LocalDate(2026, 9, 1), null, 1, 1)
 
     @Test
@@ -39,8 +35,8 @@ class MonthStateWiringTest {
         runCurrent()
         val initial = viewModel.state.value
         assertEquals(MonthKey(2026, 10), initial.selectedMonth)
-        assertEquals(today, initial.today)
-        assertEquals(today, initial.selectedDay)
+        assertEquals(dates.today, initial.today)
+        assertEquals(dates.today, initial.selectedDay)
         assertTrue(initial.todayMode)
         assertTrue(initial.onboardingVisible, "a new install with no habits shows the tutorial")
         assertEquals(0L, initial.scrollToTodayTrigger)
@@ -62,14 +58,14 @@ class MonthStateWiringTest {
         viewModel.setTodayMode(false)
         runCurrent()
         assertFalse(viewModel.state.value.todayMode)
-        assertEquals(today, viewModel.state.value.selectedDay)
+        assertEquals(dates.today, viewModel.state.value.selectedDay)
 
         // selected month only
         viewModel.nextMonth()
         runCurrent()
         assertEquals(MonthKey(2026, 11), viewModel.state.value.selectedMonth)
-        assertEquals(today, viewModel.state.value.selectedDay)
-        assertEquals(today, viewModel.state.value.today)
+        assertEquals(dates.today, viewModel.state.value.selectedDay)
+        assertEquals(dates.today, viewModel.state.value.today)
 
         // scroll-to-today trigger (and back to the current month)
         viewModel.currentMonth()
@@ -84,7 +80,7 @@ class MonthStateWiringTest {
         assertEquals(LocalDate(2026, 10, 5), viewModel.state.value.today)
 
         // today, without moving a day the person picked
-        today = LocalDate(2026, 10, 7)
+        dates.today = LocalDate(2026, 10, 7)
         viewModel.refreshToday()
         runCurrent()
         assertEquals(LocalDate(2026, 10, 7), viewModel.state.value.today)

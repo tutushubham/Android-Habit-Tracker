@@ -10,6 +10,7 @@ import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.testing.FakeDateProvider
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.Dispatchers
@@ -39,10 +40,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class ViewModelLifecycleTest {
     private val today = LocalDate(2026, 8, 26)
-    private val dates = object : DateProvider {
-        override fun today() = today
-        override fun nowEpochMillis() = 1_000L
-    }
+    private val dates = FakeDateProvider(today = today, nowMillis = 1_000L)
     private val repository = InMemoryHabitRepository(
         HabitSnapshot(dailyHabits = listOf(DailyHabit("read", "Read", null, 20, 0, true, LocalDate(2020, 1, 1), null, 0, 0))),
     )

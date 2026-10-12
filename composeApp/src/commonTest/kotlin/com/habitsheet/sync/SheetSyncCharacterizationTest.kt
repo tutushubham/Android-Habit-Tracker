@@ -5,8 +5,8 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
-import com.habitsheet.presentation.DateProvider
 import com.habitsheet.testing.English
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonPrimitive
@@ -28,10 +28,7 @@ class SheetSyncCharacterizationTest {
     private val day = LocalDate(2026, 10, 1)
     private val tomorrow = LocalDate(2026, 10, 2)
     private val url = "https://docs.google.com/spreadsheets/d/test-sheet/edit"
-    private val dates = object : DateProvider {
-        override fun today() = day
-        override fun nowEpochMillis() = 0L
-    }
+    private val dates = FakeDateProvider(today = day, nowMillis = 0L)
 
     private class Token(val value: String?) : SheetTokenProvider {
         var requests = 0

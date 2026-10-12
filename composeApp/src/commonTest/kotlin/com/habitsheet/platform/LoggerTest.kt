@@ -7,7 +7,6 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.repository.HabitRepository
-import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.sync.FakeSheetsServer
 import com.habitsheet.sync.FaultAction
@@ -15,6 +14,8 @@ import com.habitsheet.sync.RetryPolicy
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.testing.English
+import com.habitsheet.testing.FakeDateProvider
+import com.habitsheet.testing.FakeLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
@@ -27,23 +28,8 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class RecordingLogger : Logger {
-    data class Entry(val level: LogLevel, val tag: String, val message: String, val throwable: Throwable?)
-
-    val entries = mutableListOf<Entry>()
-    override fun log(level: LogLevel, tag: String, message: String, throwable: Throwable?) {
-        entries += Entry(level, tag, message, throwable)
-    }
-
-    /** Everything a platform logger would print. */
-    fun printed(): String = entries.joinToString("\n") { "${it.tag} ${formatLogLine(it.message, it.throwable)}" }
-}
-
 class LoggerTest {
-    private val dates = object : DateProvider {
-        override fun today() = LocalDate(2026, 10, 1)
-        override fun nowEpochMillis() = 0L
-    }
+    private val dates = FakeDateProvider(today = LocalDate(2026, 10, 1), nowMillis = 0L)
 
     @Test
     fun runCatchingCancellableCapturesFailuresButRethrowsCancellation() {
@@ -62,7 +48,7 @@ class LoggerTest {
 
     @Test
     fun failedSaveIsLoggedWithoutUserTextAndStillShowsTheUserMessage() = runTest {
-        val logger = RecordingLogger()
+        val logger = FakeLogger()
         val inner = InMemoryHabitRepository()
         val failing = object : HabitRepository by inner {
             override suspend fun saveCategory(category: Category) = error("cannot save ${category.name}")
@@ -81,7 +67,7 @@ class LoggerTest {
 
     @Test
     fun cancelledOperationIsNeitherLoggedNorShownAsAnError() = runTest {
-        val logger = RecordingLogger()
+        val logger = FakeLogger()
         val inner = InMemoryHabitRepository()
         val cancelling = object : HabitRepository by inner {
             override suspend fun saveCategory(category: Category) = throw CancellationException("scope closed")
@@ -99,7 +85,7 @@ class LoggerTest {
     @Test
     fun syncFailureLogsNeverContainSheetIdTokenOrHabitText() = runTest {
         val day = LocalDate(2026, 10, 1)
-        val logger = RecordingLogger()
+        val logger = FakeLogger()
         val repo = InMemoryHabitRepository(
             HabitSnapshot(
                 dailyHabits = listOf(DailyHabit("run", "Secret Habit", null, 12, 0, true, day, null, 1, 1, datedOnly = true)),

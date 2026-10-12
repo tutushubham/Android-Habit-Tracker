@@ -4,6 +4,7 @@ import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.*
 import com.habitsheet.presentation.ManageHabitsViewModel
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -12,10 +13,7 @@ import kotlin.test.*
 class HabitUsabilityTest {
     private val repository = InMemoryHabitRepository()
     private val idGenerator = DefaultIdGenerator()
-    private val dateProvider = object : com.habitsheet.presentation.DateProvider {
-        override fun today(): LocalDate = LocalDate(2026, 8, 27)
-        override fun nowEpochMillis(): Long = 1000
-    }
+    private val dateProvider = FakeDateProvider(today = LocalDate(2026, 8, 27), nowMillis = 1_000)
 
     @Test
     fun habitReorderingPersistence() = runTest {

@@ -13,6 +13,7 @@ import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.testing.English
+import com.habitsheet.testing.FakeDateProvider
 import com.habitsheet.ui.BackupResult
 import com.habitsheet.ui.BackupService
 import io.ktor.client.HttpClient
@@ -40,10 +41,7 @@ class NarrowStoresTest {
     private class OnlyBackups(repository: HabitRepository) : BackupStore by repository
 
     private val day = LocalDate(2026, 10, 5)
-    private val dates = object : DateProvider {
-        override fun today() = day
-        override fun nowEpochMillis() = 1_000L
-    }
+    private val dates = FakeDateProvider(today = day, nowMillis = 1_000L)
 
     @Test
     fun manageHabitsNeedsOnlyTheHabitStore() = runTest {

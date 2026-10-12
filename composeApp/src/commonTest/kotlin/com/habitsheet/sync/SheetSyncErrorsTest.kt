@@ -4,9 +4,9 @@ import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
-import com.habitsheet.presentation.DateProvider
 import com.habitsheet.presentation.toStatus
 import com.habitsheet.testing.English
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
@@ -19,10 +19,7 @@ import kotlin.test.assertTrue
 /** One fake-server test per [SyncError], plus retry/backoff rules. */
 class SheetSyncErrorsTest {
     private val day = LocalDate(2026, 10, 1)
-    private val dates = object : DateProvider {
-        override fun today() = day
-        override fun nowEpochMillis() = 0L
-    }
+    private val dates = FakeDateProvider(today = day, nowMillis = 0L)
     private val sleeps = mutableListOf<Long>()
 
     /** random = 1.0 makes backoff deterministic: 500, 1000, 2000 ... */

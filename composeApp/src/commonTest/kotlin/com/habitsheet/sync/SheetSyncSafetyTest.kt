@@ -5,7 +5,7 @@ import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
-import com.habitsheet.presentation.DateProvider
+import com.habitsheet.testing.FakeDateProvider
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import kotlinx.coroutines.test.runTest
@@ -18,10 +18,7 @@ import kotlin.test.assertTrue
 /** The sync may only ever write to a valid `Plan` tab it created or recognised; nothing else in the spreadsheet. */
 class SheetSyncSafetyTest {
     private val day = LocalDate(2026, 10, 1)
-    private val dates = object : DateProvider {
-        override fun today() = day
-        override fun nowEpochMillis() = 0L
-    }
+    private val dates = FakeDateProvider(today = day, nowMillis = 0L)
     private val otherTabs = listOf("Food", "Workout", "Marathon Plan")
 
     private fun habit(id: String, name: String) = DailyHabit(id, name, null, 12, 0, true, day, null, 1, 1, datedOnly = true)

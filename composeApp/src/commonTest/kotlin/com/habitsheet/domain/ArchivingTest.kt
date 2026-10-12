@@ -2,9 +2,9 @@ package com.habitsheet.domain
 
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.calculation.HabitCalculations
-import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.MonthKey
+import com.habitsheet.testing.buildSnapshot
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -14,22 +14,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ArchivingTest {
+    private fun testHabit(id: String, createdOn: LocalDate) =
+        buildSnapshot { dailyHabit(id, "Test Habit", goal = 10, createdOn = createdOn) }.dailyHabits.single()
 
     @Test
     fun archiveAndRestoreDailyHabit() = runTest {
         val repository = InMemoryHabitRepository()
         val habitId = "habit-1"
-        val habit = DailyHabit(
-            id = habitId,
-            name = "Test Habit",
-            categoryId = null,
-            monthlyGoal = 10,
-            displayOrder = 0,
-            active = true,
-            createdOn = LocalDate(2026, 8, 1),
-            createdAtEpochMillis = 0,
-            updatedAtEpochMillis = 0,
-        )
+        val habit = testHabit(habitId, createdOn = LocalDate(2026, 8, 1))
         repository.saveDailyHabit(habit)
 
         // 1. Verify initially active
@@ -67,17 +59,7 @@ class ArchivingTest {
         val date1 = LocalDate(2026, 8, 1)
         val date2 = LocalDate(2026, 8, 2)
 
-        val habit = DailyHabit(
-            id = habitId,
-            name = "Test Habit",
-            categoryId = null,
-            monthlyGoal = 10,
-            displayOrder = 0,
-            active = true,
-            createdOn = date1,
-            createdAtEpochMillis = 0,
-            updatedAtEpochMillis = 0,
-        )
+        val habit = testHabit(habitId, createdOn = date1)
         repository.saveDailyHabit(habit)
         repository.setDailyCompletion(DailyHabitCompletion(habitId, date1, true, 0))
 
@@ -104,17 +86,7 @@ class ArchivingTest {
         val habitId = "habit-1"
         val archiveDate = LocalDate(2026, 8, 1) // Archived at start of month
 
-        val habit = DailyHabit(
-            id = habitId,
-            name = "Test Habit",
-            categoryId = null,
-            monthlyGoal = 10,
-            displayOrder = 0,
-            active = true,
-            createdOn = LocalDate(2026, 7, 1),
-            createdAtEpochMillis = 0,
-            updatedAtEpochMillis = 0,
-        )
+        val habit = testHabit(habitId, createdOn = LocalDate(2026, 7, 1))
         repository.saveDailyHabit(habit)
         repository.archiveDailyHabit(habitId, archiveDate, 1000)
 

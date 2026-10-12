@@ -3,6 +3,7 @@ package com.habitsheet.presentation
 import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
+import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -15,10 +16,7 @@ class ManageHabitsViewModelTest {
     private val repository = InMemoryHabitRepository()
     private val idGenerator = DefaultIdGenerator()
     private val fixedDate = LocalDate(2026, 8, 27)
-    private val dateProvider = object : DateProvider {
-        override fun today(): LocalDate = fixedDate
-        override fun nowEpochMillis(): Long = 1000
-    }
+    private val dateProvider = FakeDateProvider(today = fixedDate, nowMillis = 1_000)
 
     @Test
     fun createDailyHabit() = runTest {
