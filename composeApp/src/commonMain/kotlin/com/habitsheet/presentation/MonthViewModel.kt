@@ -117,16 +117,6 @@ class MonthViewModel(
                 refreshToday()
             }
         }
-        this.scope.launch {
-            runCatchingCancellable {
-                // Existing installs that already have habits are not shown the first-run tutorial.
-                onboardingVisible.value = !settings.isOnboardingCompleted() &&
-                    repository.snapshot.value.dailyHabits.isEmpty()
-            }.onFailure {
-                logger.e(TAG, "loading onboarding state failed", it)
-                error.value = UiText.of(Res.string.err_load_settings)
-            }
-        }
     }
 
     /** What the person is looking at. */

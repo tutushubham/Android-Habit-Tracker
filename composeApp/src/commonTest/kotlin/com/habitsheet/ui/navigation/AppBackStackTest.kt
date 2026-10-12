@@ -30,6 +30,7 @@ class AppBackStackTest {
             Destination.Backup to Destination.Settings,
             Destination.About to Destination.Settings,
             Destination.Licenses to Destination.About,
+            Destination.Onboarding to Destination.Tracker,
         )
         expectedParent.forEach { (screen, parent) ->
             val stack = AppBackStack()

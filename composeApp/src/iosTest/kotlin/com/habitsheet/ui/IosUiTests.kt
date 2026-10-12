@@ -15,8 +15,8 @@ import com.habitsheet.ui.UiScenarios.exportOffersToIncludeTheSheetLinkWhenOneIsS
 import com.habitsheet.ui.UiScenarios.importShowsWhatWillBeReplacedAndOnlyOffersTheLinkWhenTheFileHasOne
 import com.habitsheet.ui.UiScenarios.monthNavigationMovesTheTitleAndThePickerJumpsToAnyMonthAndYear
 import com.habitsheet.ui.UiScenarios.resetNeedsAConfirmationThatNamesWhatIsLostAndCancelChangesNothing
+import com.habitsheet.ui.UiScenarios.theCoachMarksShowWhenAskedAndSkippingThemIsRemembered
 import com.habitsheet.ui.UiScenarios.theDayAndMonthSwitchExposesWhichModeIsSelected
-import com.habitsheet.ui.UiScenarios.theFirstRunTutorialShowsOnceAndSkippingItIsRemembered
 import com.habitsheet.ui.UiScenarios.theSheetLinkIsValidatedWhileTypingAndConnectNeedsAValidLink
 import com.habitsheet.ui.UiScenarios.theThemeOptionsExposeWhichOneIsSelected
 import com.habitsheet.ui.UiScenariosMore.aFailedSetAsideShowsTheReasonAndDoesNotRestartTheApp
@@ -27,6 +27,12 @@ import com.habitsheet.ui.UiScenariosMore.deletingAnArchivedHabitNeedsConfirmatio
 import com.habitsheet.ui.UiScenariosMore.theDarkThemeRendersTheMonthScreenAndItsCellsAreStillLabelled
 import com.habitsheet.ui.UiScenariosMore.theLicencesScreenListsEveryNoticeItIsGiven
 import com.habitsheet.ui.UiScenariosMore.theStartupFailureScreenOffersThreeActionsAndResettingNeedsConfirmation
+import com.habitsheet.ui.UiScenariosOnboarding.aFreshInstallGoesFromWelcomeToAMarathonPlanWithASheetInSevenSteps
+import com.habitsheet.ui.UiScenariosOnboarding.aRefusedNotificationPermissionOffersTheSystemSettingsAndContinuing
+import com.habitsheet.ui.UiScenariosOnboarding.ownSheetLinksAreCheckedBeforeConnectIsOffered
+import com.habitsheet.ui.UiScenariosOnboarding.skippingOnTheFirstStepAsksFirstAndMarksSetupDone
+import com.habitsheet.ui.UiScenariosOnboarding.theBackButtonOfAStepGoesToThePreviousStep
+import com.habitsheet.ui.UiScenariosOnboarding.theEmptyTrackerOffersToSetUpAPlan
 import kotlin.test.Test
 
 /**
@@ -41,7 +47,7 @@ class IosUiTests {
     fun emptyStateOffersTheTwoWaysToStartInBothModes() = runComposeUiTest { emptyStateOffersTheTwoWaysToStartInBothModes() }
 
     @Test
-    fun theFirstRunTutorialShowsOnceAndSkippingItIsRemembered() = runComposeUiTest { theFirstRunTutorialShowsOnceAndSkippingItIsRemembered() }
+    fun theCoachMarksShowWhenAskedAndSkippingThemIsRemembered() = runComposeUiTest { theCoachMarksShowWhenAskedAndSkippingThemIsRemembered() }
 
     @Test
     fun aSessionInTheDayListTogglesIndependentlyOfItsSiblings() = runComposeUiTest { aSessionInTheDayListTogglesIndependentlyOfItsSiblings() }
@@ -111,4 +117,22 @@ class IosUiTests {
 
     @Test
     fun theDarkThemeRendersTheMonthScreenAndItsCellsAreStillLabelled() = runComposeUiTest { theDarkThemeRendersTheMonthScreenAndItsCellsAreStillLabelled() }
+
+    @Test
+    fun aFreshInstallGoesFromWelcomeToAMarathonPlanWithASheetInSevenSteps() = runComposeUiTest { aFreshInstallGoesFromWelcomeToAMarathonPlanWithASheetInSevenSteps() }
+
+    @Test
+    fun skippingOnTheFirstStepAsksFirstAndMarksSetupDone() = runComposeUiTest { skippingOnTheFirstStepAsksFirstAndMarksSetupDone() }
+
+    @Test
+    fun theBackButtonOfAStepGoesToThePreviousStep() = runComposeUiTest { theBackButtonOfAStepGoesToThePreviousStep() }
+
+    @Test
+    fun aRefusedNotificationPermissionOffersTheSystemSettingsAndContinuing() = runComposeUiTest { aRefusedNotificationPermissionOffersTheSystemSettingsAndContinuing() }
+
+    @Test
+    fun ownSheetLinksAreCheckedBeforeConnectIsOffered() = runComposeUiTest { ownSheetLinksAreCheckedBeforeConnectIsOffered() }
+
+    @Test
+    fun theEmptyTrackerOffersToSetUpAPlan() = runComposeUiTest { theEmptyTrackerOffersToSetUpAPlan() }
 }

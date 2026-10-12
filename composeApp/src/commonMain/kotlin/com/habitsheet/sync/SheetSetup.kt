@@ -21,6 +21,15 @@ sealed interface SheetSetupResult {
     data class Failed(val error: SyncError) : SheetSetupResult
 }
 
+/** What the first-run wizard needs to link a sheet; [SheetSetup] in the app, a fake in tests. */
+interface SheetLinker {
+    /** Signs in, creates a spreadsheet named [title] with an empty `Plan` tab, links it and runs the first sync. */
+    suspend fun createAndLink(title: String): SheetSetupResult
+
+    /** Links the sheet at [input] (the person's own) and runs the first sync. */
+    suspend fun linkExisting(input: String): SheetSetupResult
+}
+
 /**
  * Links a Google Sheet to the app and fills it, for the first-run wizard. The plan is already in the local store, so
  * the first [SheetSync.sync] of a new (blank) sheet uploads it: no separate upload path.
@@ -32,17 +41,15 @@ class SheetSetup(
     private val client: HttpClient,
     private val retryPolicy: RetryPolicy = RetryPolicy(),
     private val logger: Logger = NoOpLogger,
-) {
-    /** Signs in, creates a spreadsheet named [title] with an empty `Plan` tab, links it and runs the first sync. */
-    suspend fun createAndLink(title: String): SheetSetupResult = attempt {
+) : SheetLinker {
+    override suspend fun createAndLink(title: String): SheetSetupResult = attempt {
         val token = tokenProvider.awaitToken(interactive = true) ?: return@attempt SheetSetupResult.Cancelled
         val created = SheetsApi(client, id = "", token, retryPolicy, logger).createSpreadsheet(title)
         val url = checkNotNull(SheetLink.canonicalize(created.url) ?: SheetLink.canonicalize("https://docs.google.com/spreadsheets/d/${created.id}/edit"))
         link(url)
     }
 
-    /** Links the sheet at [input] (the person's own) and runs the first sync. */
-    suspend fun linkExisting(input: String): SheetSetupResult {
+    override suspend fun linkExisting(input: String): SheetSetupResult {
         val url = SheetLink.canonicalize(input) ?: return SheetSetupResult.InvalidLink
         return attempt { link(url) }
     }

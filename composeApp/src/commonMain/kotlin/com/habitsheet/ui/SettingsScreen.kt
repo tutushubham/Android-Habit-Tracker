@@ -31,6 +31,7 @@ import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.ThemeMode
 import com.habitsheet.presentation.asString
 import com.habitsheet.resources.*
+import com.habitsheet.ui.onboarding.ReminderSetting
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -42,6 +43,7 @@ fun SettingsScreen(
     onBackup: () -> Unit,
     onAbout: () -> Unit,
     onShowTutorial: () -> Unit = {},
+    onSetUpPlan: () -> Unit = {},
     showBack: Boolean = true,
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -116,6 +118,10 @@ fun SettingsScreen(
                     }
                 }
 
+                if (viewModel.remindersAvailable) {
+                    SettingsSection(stringResource(Res.string.settings_reminder)) { ReminderSetting(viewModel) }
+                }
+
                 SettingsSection(stringResource(Res.string.settings_appearance)) {
                     ThemeOption(stringResource(Res.string.theme_system), ThemeMode.System, themeMode) { viewModel.setThemeMode(it) }
                     ThemeOption(stringResource(Res.string.theme_light), ThemeMode.Light, themeMode) { viewModel.setThemeMode(it) }
@@ -123,6 +129,11 @@ fun SettingsScreen(
                 }
 
                 SettingsSection(stringResource(Res.string.settings_management)) {
+                    SettingsActionItem(
+                        stringResource(Res.string.settings_setup_plan),
+                        stringResource(Res.string.settings_setup_plan_text),
+                        onSetUpPlan,
+                    )
                     SettingsActionItem(
                         stringResource(Res.string.settings_manage_categories),
                         stringResource(Res.string.settings_manage_categories_desc),

@@ -16,13 +16,16 @@ internal enum class Destination {
     Backup,
     About,
     Licenses,
+
+    /** The first-run setup wizard (also opened again from Settings). Full screen: no sidebar. */
+    Onboarding,
     ;
 
     /** Where Back leads (on-screen and system back alike); null for the start screen. */
     val parent: Destination?
         get() = when (this) {
             Tracker -> null
-            Manage, Plan, Settings -> Tracker
+            Manage, Plan, Settings, Onboarding -> Tracker
             Backup, About -> Settings
             Licenses -> About
         }

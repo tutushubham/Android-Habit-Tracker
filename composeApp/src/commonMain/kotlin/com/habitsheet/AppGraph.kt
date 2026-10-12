@@ -16,11 +16,15 @@ import com.habitsheet.presentation.DailyReminders
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
+import com.habitsheet.presentation.onboarding.OnboardingServices
+import com.habitsheet.presentation.onboarding.OnboardingViewModel
 import com.habitsheet.sync.SerializingTokenProvider
+import com.habitsheet.sync.SheetSetup
 import com.habitsheet.sync.SheetSync
 import com.habitsheet.sync.SheetTokenProvider
 import com.habitsheet.sync.SyncError
 import com.habitsheet.sync.SyncScheduler
+import com.habitsheet.sync.createSheetsHttpClient
 import com.habitsheet.ui.BackupService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +50,8 @@ class AppGraph(
     val sheetSync = SheetSync(repository, repository, serializedTokens, logger = logger)
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val dailyReminders = DailyReminders(repository, reminderPlatform, logger)
+    private val setupClient = createSheetsHttpClient()
+    private val sheetSetup = SheetSetup(repository, sheetSync, serializedTokens, setupClient, logger = logger)
 
     // "Will sync when online": while offline with check-offs still waiting, retry on its own (30 s, doubling to 5 min).
     private val syncScheduler = SyncScheduler(
@@ -61,7 +67,14 @@ class AppGraph(
     fun viewModelProviderFactory(backupService: BackupService? = null): ViewModelProvider.Factory = viewModelFactory {
         initializer { MonthViewModel(repository, repository, onLocalChange = syncScheduler::markDirty, logger = logger) }
         initializer { ManageHabitsViewModel(repository, DefaultIdGenerator(), logger = logger) }
-        initializer { SettingsViewModel(repository, sheetSync = sheetSync, logger = logger) }
+        initializer { SettingsViewModel(repository, sheetSync = sheetSync, logger = logger, reminders = dailyReminders) }
+        initializer {
+            OnboardingViewModel(
+                repository,
+                OnboardingServices(sheetLinker = sheetSetup, reminders = dailyReminders, idGenerator = DefaultIdGenerator()),
+                logger = logger,
+            )
+        }
         if (backupService != null) {
             initializer {
                 BackupViewModel(
@@ -93,6 +106,7 @@ class AppGraph(
         viewModelStore.clear()
         syncScope.cancel()
         sheetSync.close()
+        setupClient.close()
         serializedTokens.close()
         repository.close()
     }

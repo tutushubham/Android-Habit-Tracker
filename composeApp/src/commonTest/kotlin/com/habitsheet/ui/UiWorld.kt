@@ -3,12 +3,21 @@ package com.habitsheet.ui
 import com.habitsheet.data.DefaultIdGenerator
 import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.HabitSnapshot
+import com.habitsheet.platform.ReminderPlatform
 import com.habitsheet.presentation.BackupViewModel
+import com.habitsheet.presentation.DailyReminders
 import com.habitsheet.presentation.ManageHabitsViewModel
 import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.UiText
+import com.habitsheet.presentation.onboarding.OnboardingServices
+import com.habitsheet.presentation.onboarding.OnboardingViewModel
+import com.habitsheet.sync.SheetLinker
+import com.habitsheet.sync.SheetSetupResult
+import com.habitsheet.testing.English
 import com.habitsheet.testing.FakeDateProvider
+import com.habitsheet.testing.FakeNotificationPermission
+import com.habitsheet.testing.FakeReminderScheduler
 import com.habitsheet.testing.buildSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +47,16 @@ internal class FakeBackupService(var fileToImport: String? = null) : BackupServi
     }
 }
 
+/** A sheet linker that answers [result] and records what was asked. */
+internal class FakeSheetLinker(var result: SheetSetupResult = SheetSetupResult.Linked("https://docs.google.com/spreadsheets/d/new/edit", null)) : SheetLinker {
+    val created = mutableListOf<String>()
+    val linked = mutableListOf<String>()
+
+    override suspend fun createAndLink(title: String): SheetSetupResult = result.also { created += title }
+
+    override suspend fun linkExisting(input: String): SheetSetupResult = result.also { linked += input }
+}
+
 /**
  * Everything a screen test needs: a repository, a controllable clock and real ViewModels running on an unconfined
  * scope, so state changes are visible to the UI as soon as they are made. Call [close] at the end of a scenario.
@@ -63,6 +82,19 @@ internal class UiWorld(
     val manage by lazy { ManageHabitsViewModel(repository, DefaultIdGenerator(), dates, scope) }
     val settings by lazy { SettingsViewModel(repository, scope, Dispatchers.Unconfined) }
     val backup by lazy { BackupViewModel(repository, backupService, dates, scope, Dispatchers.Unconfined) }
+    val sheetLinker = FakeSheetLinker()
+    val reminderScheduler = FakeReminderScheduler()
+    val notificationPermission = FakeNotificationPermission()
+    val reminders by lazy { DailyReminders(repository, ReminderPlatform(reminderScheduler, notificationPermission), resolveText = English::render) }
+    val onboarding by lazy {
+        OnboardingViewModel(
+            repository,
+            OnboardingServices(sheetLinker = sheetLinker, reminders = reminders, idGenerator = DefaultIdGenerator()),
+            dates,
+            scope,
+            resolveText = English::render,
+        )
+    }
 
     /** Runs repository calls that suspend only formally. */
     fun now(block: suspend () -> Unit) {

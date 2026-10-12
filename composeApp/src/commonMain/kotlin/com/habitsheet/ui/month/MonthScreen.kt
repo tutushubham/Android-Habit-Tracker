@@ -48,6 +48,7 @@ fun MonthScreen(
     onManage: () -> Unit,
     onSettings: () -> Unit = {},
     onPlan: () -> Unit = {},
+    onSetUpPlan: (() -> Unit)? = null,
     shareService: ShareService? = null,
     tabletLayout: Boolean = false,
 ) {
@@ -62,9 +63,29 @@ fun MonthScreen(
             // iPad portrait is 834dp wide. Treat it (and similarly sized Android
             // tablets) as an expanded layout instead of stretching phone chrome.
             if (tabletLayout || maxWidth >= 720.dp) {
-                TabletMonthScreen(state, actions, onManage, onSettings, onPlan, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
+                TabletMonthScreen(
+                    state,
+                    actions,
+                    onManage,
+                    onSettings,
+                    onPlan,
+                    onSetUpPlan,
+                    onShare = { showSharePreview = true },
+                    onPosition = { tag, rect -> targetPositions[tag] = rect },
+                    onShowPicker = { showMonthPicker = true },
+                )
             } else {
-                PhoneMonthScreen(state, actions, onManage, onSettings, onPlan, onShare = { showSharePreview = true }, onPosition = { tag, rect -> targetPositions[tag] = rect }, onShowPicker = { showMonthPicker = true })
+                PhoneMonthScreen(
+                    state,
+                    actions,
+                    onManage,
+                    onSettings,
+                    onPlan,
+                    onSetUpPlan,
+                    onShare = { showSharePreview = true },
+                    onPosition = { tag, rect -> targetPositions[tag] = rect },
+                    onShowPicker = { showMonthPicker = true },
+                )
             }
 
             if (showSharePreview && shareService != null) {
@@ -126,6 +147,7 @@ private fun PhoneMonthScreen(
     onManage: () -> Unit,
     onSettings: () -> Unit,
     onPlan: () -> Unit,
+    onSetUpPlan: (() -> Unit)?,
     onShare: () -> Unit,
     onPosition: (String, Rect) -> Unit = { _, _ -> },
     onShowPicker: () -> Unit,
@@ -152,13 +174,14 @@ private fun PhoneMonthScreen(
                     onToggleWeekly = actions.toggleWeekly,
                     onManage = onManage,
                     onLinkSheet = onSettings,
+                    onSetUpPlan = onSetUpPlan,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
             } else {
                 MonthSummaryStrip(state, onCurrentMonth = actions.currentMonth)
                 MonthGridLegend()
                 if (state.habits.isEmpty()) {
-                    EmptyHabits(onManage, onSettings)
+                    EmptyHabits(onManage, onSettings, onSetUpPlan)
                 } else {
                     BoxWithConstraints(
                         Modifier
@@ -199,6 +222,7 @@ private fun TabletMonthScreen(
     onManage: () -> Unit,
     onSettings: () -> Unit,
     onPlan: () -> Unit,
+    onSetUpPlan: (() -> Unit)?,
     onShare: () -> Unit,
     onPosition: (String, Rect) -> Unit = { _, _ -> },
     onShowPicker: () -> Unit,
@@ -220,6 +244,7 @@ private fun TabletMonthScreen(
                     onToggleWeekly = actions.toggleWeekly,
                     onManage = onManage,
                     onLinkSheet = onSettings,
+                    onSetUpPlan = onSetUpPlan,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp),
@@ -228,7 +253,7 @@ private fun TabletMonthScreen(
                 MonthSummaryStrip(state, Modifier.padding(horizontal = 24.dp, vertical = 16.dp), actions.currentMonth)
                 MonthGridLegend(Modifier.padding(horizontal = 24.dp))
                 if (state.habits.isEmpty()) {
-                    EmptyHabits(onManage, onSettings)
+                    EmptyHabits(onManage, onSettings, onSetUpPlan)
                 } else {
                     BoxWithConstraints(
                         Modifier

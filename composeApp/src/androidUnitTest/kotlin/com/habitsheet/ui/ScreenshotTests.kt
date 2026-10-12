@@ -9,8 +9,11 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.plan.PlanTemplateId
+import com.habitsheet.presentation.onboarding.OnboardingViewModel
 import com.habitsheet.ui.manage.ManageHabitsScreen
 import com.habitsheet.ui.month.MonthScreen
+import com.habitsheet.ui.onboarding.OnboardingScreen
 import kotlinx.datetime.LocalDate
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,7 +25,8 @@ private const val PHONE = "w411dp-h891dp-xxhdpi"
 private const val TABLET = "w834dp-h1194dp-xhdpi"
 
 /**
- * Screenshot tests of the key screens: light and dark, phone and tablet, and a phone at 200% text size.
+ * Screenshot tests of the key screens: light and dark, phone and tablet, and a phone at 200% text size. The setup
+ * wizard's goal, preview and sheet steps were added on a Mac without goldens: record them on the goldens' OS.
  *
  *     ./gradlew :composeApp:testDebugUnitTest --tests "*ScreenshotTests" -Proborazzi.test.record=true   # write/update goldens
  *     ./gradlew :composeApp:testDebugUnitTest --tests "*ScreenshotTests" -Proborazzi.test.verify=true   # fail on a difference
@@ -38,11 +42,12 @@ private const val TABLET = "w834dp-h1194dp-xhdpi"
 @Config(sdk = [34])
 @OptIn(ExperimentalTestApi::class)
 class ScreenshotTests {
-    private enum class Screen { MonthDay, MonthGrid, Empty, Settings, Backup, Manage }
+    private enum class Screen { MonthDay, MonthGrid, Empty, Settings, Backup, Manage, WizardGoal, WizardPreview, WizardSheet }
 
     private fun capture(screen: Screen, name: String, tablet: Boolean, dark: Boolean, fontScale: Float) = runComposeUiTest {
-        val world = if (screen == Screen.Empty) UiWorld() else UiWorld(UiWorld.sampleData())
-        if (screen != Screen.Empty) {
+        val fresh = screen == Screen.Empty || screen.name.startsWith("Wizard")
+        val world = if (fresh) UiWorld() else UiWorld(UiWorld.sampleData())
+        if (!fresh) {
             world.now {
                 world.repository.setDailyCompletion(DailyHabitCompletion("read", LocalDate(2026, 10, 12), true, 10))
                 world.repository.setDailyCompletion(DailyHabitCompletion("read", LocalDate(2026, 10, 11), true, 10))
@@ -50,6 +55,7 @@ class ScreenshotTests {
             }
         }
         if (screen == Screen.MonthGrid) world.month.setTodayMode(false)
+        if (screen.name.startsWith("Wizard")) world.onboarding.walkTo(screen)
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
                 HabitSheetTheme(darkTheme = dark) { Content(world, screen, tablet) }
@@ -67,7 +73,20 @@ class ScreenshotTests {
             Screen.Settings -> SettingsScreen(world.settings, onBack = {}, onManageCategories = {}, onBackup = {}, onAbout = {})
             Screen.Backup -> DataBackupScreen(world.backup, onBack = {})
             Screen.Manage -> ManageHabitsScreen(world.manage, onTracker = {}, tabletLayout = tablet)
+            Screen.WizardGoal, Screen.WizardPreview, Screen.WizardSheet -> OnboardingScreen(world.onboarding) { _, _ -> }
         }
+    }
+
+    /** Takes the wizard to the step a screenshot shows: the goals, the marathon plan's preview, the sheet step. */
+    private fun OnboardingViewModel.walkTo(screen: Screen) {
+        start()
+        next()
+        if (screen == Screen.WizardGoal) return
+        plan.chooseTemplate(PlanTemplateId.MARATHON)
+        plan.buildPlan()
+        if (screen == Screen.WizardPreview) return
+        plan.createPlan()
+        reminder.skip()
     }
 
     @Test
@@ -189,4 +208,52 @@ class ScreenshotTests {
     @Test
     @Config(qualifiers = PHONE)
     fun managePhoneFont200() = capture(Screen.Manage, "manage_phoneFont200", tablet = false, dark = false, fontScale = 2f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardGoalPhoneLight() = capture(Screen.WizardGoal, "wizardGoal_phoneLight", tablet = false, dark = false, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardGoalPhoneDark() = capture(Screen.WizardGoal, "wizardGoal_phoneDark", tablet = false, dark = true, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = TABLET)
+    fun wizardGoalTabletLight() = capture(Screen.WizardGoal, "wizardGoal_tabletLight", tablet = true, dark = false, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardGoalPhoneFont200() = capture(Screen.WizardGoal, "wizardGoal_phoneFont200", tablet = false, dark = false, fontScale = 2f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardPreviewPhoneLight() = capture(Screen.WizardPreview, "wizardPreview_phoneLight", tablet = false, dark = false, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardPreviewPhoneDark() = capture(Screen.WizardPreview, "wizardPreview_phoneDark", tablet = false, dark = true, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = TABLET)
+    fun wizardPreviewTabletLight() = capture(Screen.WizardPreview, "wizardPreview_tabletLight", tablet = true, dark = false, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardPreviewPhoneFont200() = capture(Screen.WizardPreview, "wizardPreview_phoneFont200", tablet = false, dark = false, fontScale = 2f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardSheetPhoneLight() = capture(Screen.WizardSheet, "wizardSheet_phoneLight", tablet = false, dark = false, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardSheetPhoneDark() = capture(Screen.WizardSheet, "wizardSheet_phoneDark", tablet = false, dark = true, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = TABLET)
+    fun wizardSheetTabletLight() = capture(Screen.WizardSheet, "wizardSheet_tabletLight", tablet = true, dark = false, fontScale = 1f)
+
+    @Test
+    @Config(qualifiers = PHONE)
+    fun wizardSheetPhoneFont200() = capture(Screen.WizardSheet, "wizardSheet_phoneFont200", tablet = false, dark = false, fontScale = 2f)
 }

@@ -148,10 +148,13 @@ class MonthViewModelTest {
     }
 
     @Test
-    fun tutorialShowsOnFreshInstallAndStaysDismissedAfterCompletion() = runTest {
+    fun theCoachMarksNoLongerOpenByThemselvesAndStayDismissedAfterCompletion() = runTest {
         val viewModel = MonthViewModel(repository, repository, dateProvider, backgroundScope)
         runCurrent()
-        assertTrue(viewModel.state.first { it.onboardingVisible }.onboardingVisible)
+        assertFalse(viewModel.state.value.onboardingVisible, "a fresh install starts the setup wizard instead")
+        viewModel.showTutorial()
+        runCurrent()
+        assertTrue(viewModel.state.value.onboardingVisible)
 
         viewModel.completeOnboarding()
         runCurrent()

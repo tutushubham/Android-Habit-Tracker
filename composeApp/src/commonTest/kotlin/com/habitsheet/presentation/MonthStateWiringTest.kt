@@ -4,8 +4,8 @@ import com.habitsheet.data.InMemoryHabitRepository
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.MonthKey
-import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.testing.English
+import com.habitsheet.testing.FailingHabitStore
 import com.habitsheet.testing.FakeDateProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -38,7 +38,7 @@ class MonthStateWiringTest {
         assertEquals(dates.today, initial.today)
         assertEquals(dates.today, initial.selectedDay)
         assertTrue(initial.todayMode)
-        assertTrue(initial.onboardingVisible, "a new install with no habits shows the tutorial")
+        assertFalse(initial.onboardingVisible, "the first run starts the setup wizard, not the coach marks")
         assertEquals(0L, initial.scrollToTodayTrigger)
         assertNull(initial.error)
         assertTrue(initial.allDailyHabits.isEmpty())
@@ -50,6 +50,9 @@ class MonthStateWiringTest {
         assertEquals(initial.selectedMonth, viewModel.state.value.selectedMonth)
 
         // tutorial
+        viewModel.showTutorial()
+        runCurrent()
+        assertTrue(viewModel.state.value.onboardingVisible)
         viewModel.completeOnboarding()
         runCurrent()
         assertFalse(viewModel.state.value.onboardingVisible)
@@ -90,12 +93,11 @@ class MonthStateWiringTest {
     @Test
     fun errorsReachTheStateAndCanBeCleared() = runTest {
         val inner = InMemoryHabitRepository(HabitSnapshot(dailyHabits = listOf(habit)))
-        val failingSettings = object : SettingsStore by inner {
-            override suspend fun isOnboardingCompleted(): Boolean = error("storage unavailable")
-        }
-        val viewModel = MonthViewModel(inner, failingSettings, dates, backgroundScope)
+        val viewModel = MonthViewModel(FailingHabitStore(inner, "saveDayPlan"), inner, dates, backgroundScope)
         runCurrent()
-        assertEquals("Couldn't load app settings.", English.render(assertNotNull(viewModel.state.value.error)))
+        viewModel.saveDayPlan("read", dates.today, "Chapter 3")
+        runCurrent()
+        assertEquals("Couldn't save the day plan.", English.render(assertNotNull(viewModel.state.value.error)))
         viewModel.clearError()
         runCurrent()
         assertNull(viewModel.state.value.error)

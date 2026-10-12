@@ -9,7 +9,8 @@
 
 Why this is not the instrumented suite: the instrumented tests are compiled against the unobfuscated classes, so they
 cannot run against an R8 build. This script uses only what a person sees (text and content descriptions read from
-`uiautomator dump`), so it exercises the shrunk app as shipped: start, tutorial, add a habit, check it off, restart.
+`uiautomator dump`), so it exercises the shrunk app as shipped: start, the first-run setup wizard with one plan
+template (enum- and resource-driven code that R8 must keep), the coach marks, a check-off, restart.
 
 It UNINSTALLS the app from the target first (that is how a differently signed build gets installed) and so wipes its
 data. It therefore refuses anything that is not an emulator unless --allow-physical is given. Assumes the emulator
@@ -32,15 +33,17 @@ from pathlib import Path
 PACKAGE = "com.habitsheet.app"
 ACTIVITY = f"{PACKAGE}/{PACKAGE}.MainActivity"
 ROOT = Path(__file__).resolve().parents[2]
-HABIT = "Smoke"
 
 # The app's English copy used below (composeResources/values/strings.xml).
+GET_STARTED = "Get started"
+GOAL = "Healthy routine"
+SHOW_PLAN = "Show my plan"
+CREATE_PLAN = "Create my plan"
+NOT_NOW = "Not now"
+DONE = "Go to my plan"
 SKIP_TUTORIAL = "Skip tutorial"
-FIRST_HABIT = "Add your first habit"
-ADD_DAILY = "Add Daily Habit"
-SAVE = "Save"
-TRACKER = "Tracker"
-ONE_OF_ONE = re.compile(r"\b1 / 1 completed\b")
+HABIT = "Drink 2 litres of water"  # an every-day habit of that plan: due today whatever the weekday
+ONE_DONE = re.compile(r"\b1 / \d+ completed\b")
 
 
 @dataclass
@@ -100,7 +103,7 @@ def self_test() -> None:
     sample = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
   <node text="" content-desc="Skip tutorial" class="android.view.View" clickable="true" bounds="[100,50][300,150]" />
-  <node text="Add your first habit" content-desc="" class="android.widget.Button" clickable="false" bounds="[0,400][1080,520]" />
+  <node text="Get started" content-desc="" class="android.widget.Button" clickable="false" bounds="[0,400][1080,520]" />
   <node text="" content-desc="" class="android.widget.Button" clickable="true" bounds="[0,400][1080,520]" />
   <node text="Name" content-desc="" class="android.widget.EditText" clickable="true" bounds="[40,800][1040,900]" />
   <node text="" content-desc="" class="android.widget.EditText" clickable="true" bounds="[40,300][1040,400]" />
@@ -110,11 +113,11 @@ def self_test() -> None:
     nodes = parse_dump(sample)
     assert len(nodes) == 6, nodes  # the zero-size node is dropped
     assert find(nodes, "Skip tutorial").center == (200, 100)
-    assert find(nodes, FIRST_HABIT).bounds == (0, 400, 1080, 520)
+    assert find(nodes, GET_STARTED).bounds == (0, 400, 1080, 520)
     assert find(nodes, "Smoke", contains=True).center == (540, 1050)
     assert find(nodes, "nothing") is None
     assert [f.bounds[1] for f in edit_fields(nodes)] == [300, 800], "fields are ordered top to bottom"
-    assert ONE_OF_ONE.search("1 / 1 completed • 100%") and not ONE_OF_ONE.search("11 / 12 completed")
+    assert ONE_DONE.search("1 / 4 completed • 25%") and not ONE_DONE.search("11 / 12 completed")
     print("self-test ok")
 
 
@@ -202,48 +205,35 @@ def smoke(device: Device, apk: Path) -> None:
         device.shell(f"am start -W -n {ACTIVITY}")
 
     launch()
-    print("1/6 started")
-    first = wait_for(
-        device,
-        lambda n: find(n, SKIP_TUTORIAL) or find(n, FIRST_HABIT),
-        "the tutorial or the empty state",
-    )
-    if find(device.dump(), SKIP_TUTORIAL):
-        device.tap(first)
-        print("2/6 tutorial skipped")
-    else:
-        print("2/6 no tutorial shown")
+    print("1/7 started")
+    device.tap(wait_for(device, lambda n: find(n, GET_STARTED), "the setup wizard"))
+    device.tap(wait_for(device, lambda n: find(n, GOAL), f"the goal '{GOAL}'"))
+    device.tap(wait_for(device, lambda n: find(n, SHOW_PLAN), f"'{SHOW_PLAN}'"))
+    device.tap(wait_for(device, lambda n: find(n, CREATE_PLAN), f"'{CREATE_PLAN}'"))
+    print("2/7 plan created")
+    device.tap(wait_for(device, lambda n: find(n, NOT_NOW), "the reminder step"))
+    device.tap(wait_for(device, lambda n: find(n, NOT_NOW), "the sheet step"))
+    device.tap(wait_for(device, lambda n: find(n, DONE), f"'{DONE}'"))
+    print("3/7 wizard finished")
+    device.tap(wait_for(device, lambda n: find(n, SKIP_TUTORIAL), "the coach marks"))
+    print("4/7 coach marks skipped")
 
-    device.tap(wait_for(device, lambda n: find(n, FIRST_HABIT), "'Add your first habit'"))
-    device.tap(wait_for(device, lambda n: find(n, ADD_DAILY, contains=True), "'Add Daily Habit'"))
-    fields = wait_for(device, lambda n: edit_fields(n) if len(edit_fields(n)) >= 2 else None, "the name and goal fields")
-    device.tap(fields[0])
-    device.type_text(HABIT)
-    device.shell("input keyevent KEYCODE_BACK")  # close the keyboard
-    fields = wait_for(device, lambda n: edit_fields(n) if len(edit_fields(n)) >= 2 else None, "the editor again")
-    device.tap(fields[1])
-    device.type_text("12")
-    device.shell("input keyevent KEYCODE_BACK")
-    device.tap(wait_for(device, lambda n: find(n, SAVE), "'Save'"))
-    wait_for(device, lambda n: find(n, HABIT, contains=True), "the new habit in the list")
-    print("3/6 habit added")
-
-    device.tap(wait_for(device, lambda n: find(n, TRACKER), "the Tracker tab"))
-    row = wait_for(device, lambda n: find(n, HABIT, contains=True), "the habit in today's list")
-    device.tap(row)
-    wait_for(device, lambda n: any(ONE_OF_ONE.search(x.text) for x in n), "'1 / 1 completed'")
-    print("4/6 checked off")
+    device.tap(wait_for(device, lambda n: find(n, HABIT, contains=True), "the plan's habit in today's list"))
+    wait_for(device, lambda n: any(ONE_DONE.search(x.text) for x in n), "'1 / … completed'")
+    print("5/7 checked off")
 
     device.shell(f"am force-stop {PACKAGE}")
     launch()
-    wait_for(device, lambda n: any(ONE_OF_ONE.search(x.text) for x in n), "the check-off after a restart")
-    print("5/6 survived a restart")
+    wait_for(device, lambda n: any(ONE_DONE.search(x.text) for x in n), "the check-off after a restart")
+    if find(device.dump(), GET_STARTED):
+        raise SystemExit("FAILED: the setup wizard opened again after it was finished")
+    print("6/7 survived a restart, no second wizard")
 
     log = device.run("logcat", "-d", "-t", "2000", check=False)
     crashes = [line for line in log.splitlines() if "FATAL EXCEPTION" in line or f"Process: {PACKAGE}" in line]
     if crashes:
         raise SystemExit("FAILED: the app crashed:\n" + "\n".join(crashes[:10]))
-    print("6/6 no crash in the log\nrelease smoke test PASSED")
+    print("7/7 no crash in the log\nrelease smoke test PASSED")
 
 
 def main() -> None:

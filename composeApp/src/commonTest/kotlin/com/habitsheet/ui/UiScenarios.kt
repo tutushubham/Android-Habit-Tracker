@@ -94,9 +94,11 @@ object UiScenarios {
         world.close()
     }
 
-    fun ComposeUiTest.theFirstRunTutorialShowsOnceAndSkippingItIsRemembered() {
+    fun ComposeUiTest.theCoachMarksShowWhenAskedAndSkippingThemIsRemembered() {
         val world = UiWorld(onboardingCompleted = false)
         showMonthScreen(world)
+        onNodeWithText(text(Res.string.tutorial_manage_title)).assertDoesNotExist()
+        world.month.showTutorial()
 
         onNodeWithText(text(Res.string.tutorial_manage_title)).assertExists()
         onNodeWithText(text(Res.string.tutorial_step_of, 1, 3)).assertExists()

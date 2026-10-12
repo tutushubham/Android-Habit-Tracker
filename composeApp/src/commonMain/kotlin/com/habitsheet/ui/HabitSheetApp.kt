@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,11 +47,13 @@ import com.habitsheet.presentation.MonthViewModel
 import com.habitsheet.presentation.SettingsViewModel
 import com.habitsheet.presentation.ThemeMode
 import com.habitsheet.presentation.VersionProvider
+import com.habitsheet.presentation.onboarding.OnboardingViewModel
 import com.habitsheet.resources.*
 import com.habitsheet.ui.manage.ManageHabitsScreen
 import com.habitsheet.ui.month.MonthScreen
 import com.habitsheet.ui.navigation.AppBackStack
 import com.habitsheet.ui.navigation.Destination
+import com.habitsheet.ui.onboarding.OnboardingScreen
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -69,6 +72,16 @@ fun HabitSheetApp(
     val manageHabitsViewModel = viewModel<ManageHabitsViewModel>(viewModelStoreOwner = graph, factory = factory)
     val settingsViewModel = viewModel<SettingsViewModel>(viewModelStoreOwner = graph, factory = factory)
     val backupViewModel = if (backupService != null) viewModel<BackupViewModel>(viewModelStoreOwner = graph, factory = factory) else null
+    val onboardingViewModel = viewModel<OnboardingViewModel>(viewModelStoreOwner = graph, factory = factory)
+
+    // A fresh install opens the setup wizard once; existing users (with habits) never see it.
+    val autoStart by onboardingViewModel.autoStart.collectAsStateWithLifecycle()
+    LaunchedEffect(autoStart) {
+        if (autoStart) {
+            onboardingViewModel.start()
+            backStack.navigate(Destination.Onboarding)
+        }
+    }
 
     // Android system / predictive back and the iOS edge swipe go up one level; on the start screen the platform
     // handles them (leaves the app).
@@ -86,7 +99,7 @@ fun HabitSheetApp(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val tabletLayout = maxWidth >= 720.dp
             AdaptiveFrame(
-                tabletLayout = tabletLayout,
+                tabletLayout = tabletLayout && backStack.current != Destination.Onboarding,
                 sidebar = { AppSidebar(backStack.current, backStack::navigate) },
             ) {
                 AppDestination(
@@ -100,6 +113,7 @@ fun HabitSheetApp(
                     shareService = shareService,
                     settingsViewModel = settingsViewModel,
                     backupViewModel = backupViewModel,
+                    onboardingViewModel = onboardingViewModel,
                     versionProvider = versionProvider,
                     navigate = backStack::navigate,
                     back = { backStack.back() },
@@ -136,6 +150,7 @@ private fun AppDestination(
     shareService: ShareService,
     settingsViewModel: SettingsViewModel,
     backupViewModel: BackupViewModel?,
+    onboardingViewModel: OnboardingViewModel,
     versionProvider: VersionProvider,
     navigate: (Destination) -> Unit,
     back: () -> Unit,
@@ -146,6 +161,10 @@ private fun AppDestination(
             onManage = { navigate(Destination.Manage) },
             onSettings = { navigate(Destination.Settings) },
             onPlan = { navigate(Destination.Plan) },
+            onSetUpPlan = {
+                onboardingViewModel.start()
+                navigate(Destination.Onboarding)
+            },
             shareService = shareService,
             tabletLayout = tabletLayout,
         )
@@ -176,6 +195,10 @@ private fun AppDestination(
                 monthViewModel.showTutorial()
                 navigate(Destination.Tracker)
             },
+            onSetUpPlan = {
+                onboardingViewModel.start()
+                navigate(Destination.Onboarding)
+            },
             showBack = !tabletLayout,
         )
 
@@ -189,6 +212,19 @@ private fun AppDestination(
         )
 
         Destination.Licenses -> LicensesScreen(onBack = back, showBack = !tabletLayout)
+
+        Destination.Onboarding -> OnboardingScreen(onboardingViewModel) { openHabits, planAdded ->
+            onboardingViewModel.onLeft()
+            // The wizard may have linked a sheet or set a reminder.
+            settingsViewModel.reloadFromStorage()
+            if (openHabits) {
+                navigate(Destination.Manage)
+            } else {
+                navigate(Destination.Tracker)
+                // After a new plan, the coach marks show where things are.
+                if (planAdded) monthViewModel.showTutorial()
+            }
+        }
     }
 }
 

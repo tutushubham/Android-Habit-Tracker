@@ -1,6 +1,7 @@
 package com.habitsheet.presentation
 
 import androidx.lifecycle.ViewModel
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.domain.model.SheetLink
 import com.habitsheet.domain.repository.SettingsStore
 import com.habitsheet.platform.Logger
@@ -43,6 +44,7 @@ class SettingsViewModel(
     private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
     private val sheetSync: SheetSync? = null,
     private val logger: Logger = NoOpLogger,
+    private val reminders: DailyReminders? = null,
 ) : ViewModel() {
     /** Defaults to the ViewModel's own background scope; tests inject theirs. */
     private val scope: CoroutineScope = scope ?: backgroundScope()
@@ -56,7 +58,21 @@ class SettingsViewModel(
     val sheetSyncStatus: StateFlow<SyncStatus> = sheetSyncState.map { it.toStatus() }
         .stateIn(this.scope, SharingStarted.Eagerly, sheetSyncState.value.toStatus())
 
+    private val _reminder = MutableStateFlow<DailyReminder?>(null)
+
+    /** The daily reminder, null when off. */
+    val reminder: StateFlow<DailyReminder?> = _reminder.asStateFlow()
+    private val _reminderMessage = MutableStateFlow<UiText?>(null)
+    val reminderMessage: StateFlow<UiText?> = _reminderMessage.asStateFlow()
+
+    /** Whether this platform offers reminders at all. */
+    val remindersAvailable: Boolean get() = reminders != null
+
     init {
+        this.scope.launch(ioDispatcher) {
+            runCatchingCancellable { _reminder.value = reminders?.current() }
+                .onFailure { logger.e(TAG, "loading the reminder failed", it) }
+        }
         this.scope.launch(ioDispatcher) {
             runCatchingCancellable {
                 val mode = repository.getThemeMode()
@@ -66,8 +82,31 @@ class SettingsViewModel(
         }
     }
 
+    /** Turns the daily reminder on at [minuteOfDay] (asking for permission if needed), or off for null. */
+    fun setReminder(minuteOfDay: Int?) {
+        val service = reminders ?: return
+        scope.launch(ioDispatcher) {
+            val outcome = service.set(minuteOfDay?.let(::DailyReminder))
+            _reminderMessage.value = when (outcome) {
+                ReminderOutcome.PERMISSION_DENIED -> UiText.of(Res.string.settings_reminder_denied)
+                ReminderOutcome.FAILED -> UiText.of(Res.string.onboarding_err_reminder)
+                else -> null
+            }
+            runCatchingCancellable { _reminder.value = service.current() }
+                .onFailure { logger.e(TAG, "reading the reminder failed", it) }
+        }
+    }
+
+    fun openNotificationSettings() {
+        reminders?.openSystemSettings()
+    }
+
     /** Re-reads theme and sheet link and forgets the last sync result, after data was reset or restored. */
     fun reloadFromStorage() {
+        scope.launch(ioDispatcher) {
+            runCatchingCancellable { _reminder.value = reminders?.current() }
+                .onFailure { logger.e(TAG, "reloading the reminder failed", it) }
+        }
         scope.launch(ioDispatcher) {
             runCatchingCancellable {
                 val mode = repository.getThemeMode()

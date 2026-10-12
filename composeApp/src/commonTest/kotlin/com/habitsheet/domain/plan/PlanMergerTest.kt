@@ -130,4 +130,17 @@ class PlanMergerTest {
         val archived = buildSnapshot { repeat(MAX_DAILY_HABITS) { dailyHabit("h$it", name = "Habit $it", active = false, archivedOn = today) } }
         assertIs<PlanMergeResult.Ok>(merge(archived), "archived habits do not count")
     }
+
+    @Test
+    fun everyLabelTheMergerAsksForIsListedUpFront() {
+        val asked = mutableSetOf<PlanLabel>()
+        val recording = object : PlanWording {
+            override fun text(label: PlanLabel): String = this@PlanMergerTest.text(label).also { asked += label }
+
+            override fun copyName(name: String) = name
+        }
+        val snapshot = buildSnapshot { }
+        PlanMerger.merge(snapshot, draft, recording, { "id-$it" }, PlanTime(today, now))
+        assertTrue(PlanMerger.labelsNeeded(draft).containsAll(asked), "asked $asked")
+    }
 }

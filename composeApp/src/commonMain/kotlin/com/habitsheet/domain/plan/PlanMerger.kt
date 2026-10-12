@@ -102,6 +102,10 @@ object PlanMerger {
         )
     }
 
+    /** Every label [merge] may ask [PlanWording.text] for with this [draft], so a caller can resolve them up front. */
+    fun labelsNeeded(draft: PlanDraft): Set<PlanLabel> =
+        (draft.enabledHabits.map { it.label } + draft.sessions.map { it.label } + CategoryResolver.names.values.map { PlanLabel(it) }).toSet()
+
     private fun String.normalized(): String = trim().lowercase()
 
     /** The name the plan habit gets and the id of an existing habit it reuses, if any (see the rules above). */

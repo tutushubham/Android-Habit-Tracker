@@ -65,7 +65,7 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun EmptyHabits(onManage: () -> Unit, onLinkSheet: () -> Unit) {
+internal fun EmptyHabits(onManage: () -> Unit, onLinkSheet: () -> Unit, onSetUpPlan: (() -> Unit)? = null) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -82,13 +82,27 @@ internal fun EmptyHabits(onManage: () -> Unit, onLinkSheet: () -> Unit) {
             modifier = Modifier.padding(top = 8.dp),
             textAlign = TextAlign.Center,
         )
-        Button(
-            onClick = onManage,
-            modifier = Modifier.padding(top = 24.dp),
-            shape = RoundedCornerShape(12.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-        ) {
-            Text(stringResource(Res.string.empty_daily_button))
+        if (onSetUpPlan != null) {
+            Button(
+                onClick = onSetUpPlan,
+                modifier = Modifier.padding(top = 24.dp),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+            ) {
+                Text(stringResource(Res.string.empty_setup_plan_button))
+            }
+            OutlinedButton(onClick = onManage, modifier = Modifier.padding(top = 8.dp), shape = RoundedCornerShape(12.dp)) {
+                Text(stringResource(Res.string.empty_daily_button))
+            }
+        } else {
+            Button(
+                onClick = onManage,
+                modifier = Modifier.padding(top = 24.dp),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+            ) {
+                Text(stringResource(Res.string.empty_daily_button))
+            }
         }
         OutlinedButton(
             onClick = onLinkSheet,

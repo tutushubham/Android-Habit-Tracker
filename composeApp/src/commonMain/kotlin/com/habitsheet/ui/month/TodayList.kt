@@ -61,6 +61,7 @@ internal fun TodayModeContent(
     onToggleWeekly: (habitId: String, weekStart: LocalDate) -> Unit,
     onManage: () -> Unit = {},
     onLinkSheet: () -> Unit = {},
+    onSetUpPlan: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier.fillMaxWidth().padding(top = 20.dp, bottom = 24.dp)) {
@@ -89,7 +90,7 @@ internal fun TodayModeContent(
 
             if (state.isEmpty) {
                 // First run: nothing to check off yet, so offer the two ways to start instead of 0 of 0.
-                EmptyHabits(onManage, onLinkSheet)
+                EmptyHabits(onManage, onLinkSheet, onSetUpPlan)
                 return@Column
             }
 

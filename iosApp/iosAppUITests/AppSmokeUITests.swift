@@ -5,9 +5,10 @@ import XCTest
 ///
 ///     ruby scripts/ios/add_ui_test_target.rb          # once: adds this target and scheme entry
 ///     xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp \
-///       -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:iosAppUITests
+///       -destination 'platform=iOS Simulator,name=iPhone 17 Pro' ARCHS=arm64 -only-testing:iosAppUITests
 ///
-/// It does not assume a fresh install: the habit name is unique per run and the tutorial is skipped only if shown.
+/// It does not assume a fresh install: the habit name is unique per run; the setup wizard and the tutorial are
+/// skipped only if shown.
 final class AppSmokeUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -29,8 +30,16 @@ final class AppSmokeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        // A fresh install opens the setup wizard: skip it (confirming), then the coach marks if they show.
+        let skipSetup = element(app, label: "Skip setup")
+        if skipSetup.waitForExistence(timeout: 10) {
+            skipSetup.tap()
+            let confirm = app.buttons["Skip"]
+            require(confirm, app, "the skip confirmation")
+            confirm.tap()
+        }
         let skip = element(app, label: "Skip tutorial")
-        if skip.waitForExistence(timeout: 5) { skip.tap() }
+        if skip.waitForExistence(timeout: 3) { skip.tap() }
 
         let habitName = "Smoke \(Int(Date().timeIntervalSince1970))"
 
