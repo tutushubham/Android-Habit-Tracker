@@ -21,6 +21,7 @@ internal class BackupStoreImpl(
         db.write {
             deleteAllHabitData()
             setSetting(SettingKeys.ONBOARDING_COMPLETED, 0L)
+            setSetting(SettingKeys.DAILY_REMINDER_MINUTE, -1L)
             // The sheet link and everything learned from it belongs to the data that was just removed.
             // (Pending-upload flags went with the completions.) The Google Sheet itself is never touched.
             setTextSetting(SettingKeys.SHEET_URL, "")

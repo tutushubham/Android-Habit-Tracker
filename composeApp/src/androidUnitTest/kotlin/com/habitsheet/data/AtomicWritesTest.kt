@@ -7,12 +7,14 @@ import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.habitsheet.database.HabitsDatabase
 import com.habitsheet.domain.backup.BackupSettings
+import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionAck
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetSyncChanges
+import com.habitsheet.domain.plan.PlanApplication
 import com.habitsheet.testing.buildSnapshot
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -229,6 +231,22 @@ class AtomicWritesTest {
         assertAtomic("updateDailyHabitOrders") { updateDailyHabitOrders(mapOf("run" to 1, "read" to 0), updatedAtEpochMillis = 900) }
         assertAtomic("saveDailyHabit") {
             saveDailyHabit(DailyHabit("read", "Read more", "c1", 20, 5, true, LocalDate(2026, 9, 1), null, 100, 900))
+        }
+    }
+
+    @Test
+    fun applyingAPlanIsAllOrNothingAtEveryStatement() = runTest {
+        assertAtomic("applyPlan") {
+            applyPlan(
+                PlanApplication(
+                    categories = listOf(Category("c-plan", "Plan", 9, true, 900)),
+                    habits = listOf(DailyHabit("plan-run", "Plan run", "c-plan", 12, 9, true, LocalDate(2026, 10, 1), null, 900, 900, datedOnly = true)),
+                    dayPlans = listOf(
+                        DayPlan("plan-run", LocalDate(2026, 10, 6), "Easy run 5 km", updatedAtEpochMillis = 900),
+                        DayPlan("run", LocalDate(2026, 10, 7), "Long run 12 km", updatedAtEpochMillis = 900),
+                    ),
+                ),
+            )
         }
     }
 

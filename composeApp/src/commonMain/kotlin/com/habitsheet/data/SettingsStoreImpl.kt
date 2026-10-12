@@ -1,5 +1,6 @@
 package com.habitsheet.data
 
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.monotonicUpdatedAt
 import com.habitsheet.domain.repository.SettingsStore
@@ -11,6 +12,14 @@ internal class SettingsStoreImpl(private val db: LocalDatabase) : SettingsStore 
 
     override suspend fun setOnboardingCompleted(completed: Boolean) {
         db.locked { setSetting(SettingKeys.ONBOARDING_COMPLETED, if (completed) 1L else 0L) }
+    }
+
+    override suspend fun getDailyReminder(): DailyReminder? = db.locked {
+        getSetting(SettingKeys.DAILY_REMINDER_MINUTE).executeAsOneOrNull()?.toInt()?.takeIf { it >= 0 }?.let(::DailyReminder)
+    }
+
+    override suspend fun setDailyReminder(reminder: DailyReminder?) {
+        db.locked { setSetting(SettingKeys.DAILY_REMINDER_MINUTE, reminder?.minuteOfDay?.toLong() ?: -1L) }
     }
 
     override suspend fun getThemeMode(): Int =

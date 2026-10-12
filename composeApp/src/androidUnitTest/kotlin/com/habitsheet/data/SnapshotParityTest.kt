@@ -14,6 +14,7 @@ import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.domain.plan.PlanApplication
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import java.nio.file.Files
@@ -122,6 +123,14 @@ class SnapshotParityTest {
             parity("deleteWeeklyPlan")
             repo.deleteDailyHabit("b")
             parity("deleteDailyHabit")
+            repo.applyPlan(
+                PlanApplication(
+                    categories = listOf(Category("c-plan", "Plan", 5, true, 20)),
+                    habits = listOf(habit("p", 2).copy(categoryId = "c-plan", datedOnly = true)),
+                    dayPlans = listOf(DayPlan("p", day.plusDays(1), "Long run 10 km", updatedAtEpochMillis = 20), DayPlan("a", day.plusDays(4), "Easy", updatedAtEpochMillis = 20)),
+                ),
+            )
+            parity("applyPlan")
             repo.deleteWeeklyHabit("w")
             parity("deleteWeeklyHabit")
             repo.deleteCategory("c1")

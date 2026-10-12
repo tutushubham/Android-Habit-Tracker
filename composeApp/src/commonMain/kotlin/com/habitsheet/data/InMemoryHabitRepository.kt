@@ -6,6 +6,7 @@ import com.habitsheet.domain.model.Category
 import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetSyncChanges
@@ -13,8 +14,10 @@ import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.model.monotonicUpdatedAt
+import com.habitsheet.domain.plan.PlanApplication
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.repository.readBackupSettings
+import com.habitsheet.domain.repository.requireConsistentWith
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -216,6 +219,19 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
         )
     }
 
+    override suspend fun applyPlan(application: PlanApplication) {
+        application.requireConsistentWith(mutableSnapshot.value)
+        application.categories.forEach { saveCategory(it) }
+        application.habits.forEach { saveDailyHabit(it) }
+        application.dayPlans.forEach { saveDayPlan(it) }
+    }
+
+    private var dailyReminder: DailyReminder? = null
+    override suspend fun getDailyReminder(): DailyReminder? = dailyReminder
+    override suspend fun setDailyReminder(reminder: DailyReminder?) {
+        dailyReminder = reminder
+    }
+
     private var onboardingCompleted = false
     override suspend fun isOnboardingCompleted(): Boolean = onboardingCompleted
     override suspend fun setOnboardingCompleted(completed: Boolean) {
@@ -289,6 +305,7 @@ class InMemoryHabitRepository(initial: HabitSnapshot = HabitSnapshot()) : HabitR
     override suspend fun clearAllData() {
         mutableSnapshot.value = HabitSnapshot()
         onboardingCompleted = false
+        dailyReminder = null
         sheetUrl = ""
         sheetSyncedKeys = emptySet()
         sheetLastSync = 0L

@@ -10,9 +10,11 @@ import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
 import com.habitsheet.domain.model.monotonicUpdatedAt
+import com.habitsheet.domain.plan.PlanApplication
 import com.habitsheet.domain.repository.BackupStore
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.domain.repository.SettingsStore
+import com.habitsheet.domain.repository.requireConsistentWith
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
 
@@ -189,6 +191,21 @@ class LocalHabitRepository private constructor(
             )
         },
     )
+
+    override suspend fun applyPlan(application: PlanApplication) {
+        application.requireConsistentWith(db.snapshot.value)
+        db.write {
+            application.categories.forEach {
+                insert(it)
+                update(it)
+            }
+            application.habits.forEach { write(it) }
+            application.dayPlans.forEach { plan ->
+                val updatedAt = nextDayPlanTime(plan.id, plan.updatedAtEpochMillis)
+                upsertDayPlan(plan.id, plan.habitId, plan.date.toString(), plan.detail, plan.skipped.toDbLong(), updatedAt)
+            }
+        }
+    }
 
     fun close() {
         db.close()

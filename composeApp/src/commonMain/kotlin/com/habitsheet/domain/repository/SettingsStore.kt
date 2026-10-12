@@ -1,12 +1,17 @@
 package com.habitsheet.domain.repository
 
 import com.habitsheet.domain.backup.BackupSettings
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.domain.model.SheetSyncChanges
 
 /** App settings (theme, first-run tutorial), the sheet link and everything sync remembers about the sheet. */
 interface SettingsStore {
     suspend fun isOnboardingCompleted(): Boolean
     suspend fun setOnboardingCompleted(completed: Boolean)
+
+    /** The daily reminder, or null when it is off. A device setting: not in backups, cleared by a reset. */
+    suspend fun getDailyReminder(): DailyReminder?
+    suspend fun setDailyReminder(reminder: DailyReminder?)
     suspend fun getThemeMode(): Int
     suspend fun setThemeMode(mode: Int)
     suspend fun getSheetUrl(): String

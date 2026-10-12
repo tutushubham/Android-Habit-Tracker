@@ -7,6 +7,7 @@ import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.domain.plan.PlanApplication
 import com.habitsheet.domain.repository.HabitStore
 import kotlinx.datetime.LocalDate
 
@@ -20,6 +21,11 @@ class FailingHabitStore(private val inner: HabitStore, vararg failing: String) :
 
     private fun failIfListed(operation: String) {
         check(operation !in failing) { "injected failure in $operation" }
+    }
+
+    override suspend fun applyPlan(application: PlanApplication) {
+        failIfListed("applyPlan")
+        inner.applyPlan(application)
     }
 
     override suspend fun saveCategory(category: Category) {

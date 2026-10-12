@@ -119,6 +119,9 @@ internal object SettingKeys {
     const val DEFAULTS_SEEDED = "defaults_seeded"
     const val ONBOARDING_COMPLETED = "onboarding_completed"
     const val THEME_MODE = "theme_mode"
+
+    /** Minute of the day for the daily reminder; absent or negative = off. */
+    const val DAILY_REMINDER_MINUTE = "daily_reminder_minute"
     const val SHEET_URL = "sheet_url"
     const val SHEET_LAST_SYNC = "sheet_last_sync"
     const val SHEET_SYNCED_KEYS = "sheet_synced_keys"

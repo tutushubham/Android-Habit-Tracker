@@ -6,12 +6,14 @@ import com.habitsheet.domain.model.CompletionAck
 import com.habitsheet.domain.model.CompletionKey
 import com.habitsheet.domain.model.DailyHabit
 import com.habitsheet.domain.model.DailyHabitCompletion
+import com.habitsheet.domain.model.DailyReminder
 import com.habitsheet.domain.model.DayPlan
 import com.habitsheet.domain.model.HabitSnapshot
 import com.habitsheet.domain.model.SheetSyncChanges
 import com.habitsheet.domain.model.WeeklyHabit
 import com.habitsheet.domain.model.WeeklyHabitCompletion
 import com.habitsheet.domain.model.WeeklyPlan
+import com.habitsheet.domain.plan.PlanApplication
 import com.habitsheet.domain.repository.HabitRepository
 import com.habitsheet.testing.buildSnapshot
 import kotlinx.coroutines.test.runTest
@@ -539,5 +541,77 @@ abstract class HabitRepositoryContract {
             repo.refresh()
             assertEquals(before, repo.snapshot.value)
         }
+    }
+
+    // --- plans from the first-run wizard ---
+
+    private fun planApplication() = PlanApplication(
+        categories = listOf(category("c-plan", "Fitness", order = 4)),
+        habits = listOf(habit("run", "Running", order = 1, goal = 12, categoryId = "c-plan").copy(datedOnly = true)),
+        dayPlans = listOf(DayPlan("run", day, "Easy run 5 km", updatedAtEpochMillis = 100), DayPlan("old", day, "Kept", updatedAtEpochMillis = 100)),
+    )
+
+    @Test
+    fun applyingAPlanAddsItsRowsNextToTheExistingOnesAndKeepsCheckOffs() = runTest {
+        test { repo, handle ->
+            repo.saveDailyHabit(habit("old", "Reading"))
+            repo.setDailyCompletion(DailyHabitCompletion("old", day, true, 50))
+
+            repo.applyPlan(planApplication())
+
+            val snapshot = repo.snapshot.value
+            assertEquals(listOf("old", "run"), snapshot.dailyHabits.map { it.id }.sorted())
+            assertTrue(snapshot.dailyHabits.single { it.id == "run" }.datedOnly)
+            assertEquals(listOf("c-plan"), snapshot.categories.map { it.id })
+            assertEquals(setOf("run|$day", "old|$day"), snapshot.dayPlans.map { it.id }.toSet())
+            assertEquals(listOf(DailyHabitCompletion("old", day, true, 50)), snapshot.dailyCompletions)
+            assertEquals(snapshot, handle.reopen().snapshot.value)
+        }
+    }
+
+    @Test
+    fun applyingTheSamePlanTwiceChangesNothing() = runTest {
+        test { repo, _ ->
+            repo.saveDailyHabit(habit("old", "Reading"))
+            repo.applyPlan(planApplication())
+            val once = repo.snapshot.value
+            repo.applyPlan(planApplication())
+            assertEquals(once, repo.snapshot.value)
+        }
+    }
+
+    @Test
+    fun anInvalidPlanIsRejectedBeforeAnythingIsWritten() = runTest {
+        test { repo, _ ->
+            val before = repo.snapshot.value
+            val blankSession = planApplication().copy(dayPlans = listOf(DayPlan("run", day, " ", updatedAtEpochMillis = 1)))
+            assertFailsWith<IllegalArgumentException> { repo.applyPlan(blankSession) }
+            val unknownHabit = planApplication().copy(dayPlans = listOf(DayPlan("ghost", day, "Run", updatedAtEpochMillis = 1)))
+            assertFailsWith<IllegalArgumentException> { repo.applyPlan(unknownHabit) }
+            assertEquals(before, repo.snapshot.value)
+        }
+    }
+
+    // --- daily reminder (a device setting) ---
+
+    @Test
+    fun theDailyReminderIsOffUntilSetAndResetClearsIt() = runTest {
+        test { repo, handle ->
+            assertNull(repo.getDailyReminder())
+            repo.setDailyReminder(DailyReminder(7 * 60 + 30))
+            assertEquals(DailyReminder(450), repo.getDailyReminder())
+            assertEquals(DailyReminder(450), handle.reopen().getDailyReminder())
+            handle.repository.setDailyReminder(null)
+            assertNull(handle.repository.getDailyReminder())
+            handle.repository.setDailyReminder(DailyReminder(60))
+            handle.repository.clearAllData()
+            assertNull(handle.repository.getDailyReminder())
+        }
+    }
+
+    @Test
+    fun aReminderTimeOutsideTheDayIsRejected() {
+        assertFailsWith<IllegalArgumentException> { DailyReminder(-1) }
+        assertFailsWith<IllegalArgumentException> { DailyReminder(24 * 60) }
     }
 }
