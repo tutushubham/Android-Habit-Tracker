@@ -21,7 +21,7 @@ kover = "0.9.11"
 robolectric = "4.16.1"
 roborazzi = "1.76.0"
 androidx-compose-test = "1.11.2"
-androidx-test-runner = "1.6.2"
+androidx-test-runner = "1.7.0"
 androidx-test-ext = "1.2.1"
 # Espresso < 3.7 calls InputManager.getInstance(), removed on API 36: every Compose device test then fails in onIdle.
 androidx-test-espresso = "3.7.0"
